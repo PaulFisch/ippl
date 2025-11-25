@@ -483,7 +483,7 @@ namespace ippl {
                 else if constexpr (Dim == 2)
                     return {64, 64};  // 64 KB
                 else if constexpr (Dim == 3)
-                    return {8, 8, 8};  // 64 KB
+                    return {4, 4, 4};  // 64 KB
             }
 
             KOKKOS_INLINE_FUNCTION static constexpr int get_team_size() { return 64; }

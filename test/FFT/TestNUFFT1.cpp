@@ -126,8 +126,8 @@ int main(int argc, char* argv[]) {
         fftParams.add("nthreads", 0);
 #endif
 
-        fftParams.add("use_finufft_defaults", false);
-        fftParams.add("use_kokkos_nufft", false);
+        fftParams.add("use_finufft_defaults", true);
+        fftParams.add("use_kokkos_nufft", true);
 
         typedef ippl::FFT<ippl::NUFFTransform, real_field_type> FFT_type;
 
