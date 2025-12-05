@@ -55,6 +55,7 @@ option(IPPL_ENABLE_SCRIPTS "Generate job script templates for some benchmarks/te
 
 option(IPPL_ENABLE_KOKKOS_NUFFT "Enable Kokkos NUFFT" OFF)
 option(IPPL_ENABLE_FINUFFT "Enable (CU)FINUFFT" OFF)
+option(IPPL_ENABLE_CUFFTMP "Enable cuFFTMP for distributed multi-GPU FFTs" OFF)
 
 # "Build IPPL as a shared library (ON) or static library (OFF)" OFF) if(IPPL_DYL)
 # set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE) message(WARNING "IPPL_DYL is deprecated; use

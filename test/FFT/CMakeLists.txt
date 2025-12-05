@@ -18,3 +18,8 @@ add_ippl_integration_test(TestNUFFT2 LABELS integration fft)
 add_ippl_integration_test(TestNUFFTPerformance LABELS integration fft benchmark)
 add_ippl_integration_test(TestNUFFTParamSweep LABELS integration fft benchmark)
 add_ippl_integration_test(TestScatterGatherKernel LABELS integration fft)
+
+# cuFFTMP test (only added if cuFFTMP is enabled)
+if(IPPL_ENABLE_CUFFTMP)
+    add_ippl_integration_test(TestCuFFTMP LABELS integration fft cufftmp)
+endif()

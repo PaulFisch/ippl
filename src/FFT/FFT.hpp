@@ -33,14 +33,41 @@ namespace ippl {
     FFTBase<Field, FFT, Backend, T>::FFTBase(const Layout_t& layout, const ParameterList& params) {
         std::array<long long, 3> low;
         std::array<long long, 3> high;
+        std::array<long long, 3> globalDims;
 
         const NDIndex<Dim> lDom = layout.getLocalNDIndex();
         domainToBounds(lDom, low, high);
 
+        // Extract global dimensions for cuFFTMP
+        const NDIndex<Dim>& gDom = layout.getDomain();
+        globalDims.fill(1);
+        for (size_t d = 0; d < Dim; ++d) {
+            globalDims[d] = static_cast<long long>(gDom[d].length());
+        }
+
         heffte::box3d<long long> inbox  = {low, high};
         heffte::box3d<long long> outbox = {low, high};
 
-        setup(inbox, outbox, params);
+        setup(inbox, outbox, params, globalDims);
+    }
+
+    template <typename Field, template <typename...> class FFT, typename Backend, typename T>
+    FFTBase<Field, FFT, Backend, T>::~FFTBase() {
+#ifdef ENABLE_CUFFTMP
+        if (use_cufftmp_m) {
+#ifdef KOKKOS_ENABLE_CUDA
+            // Clean up cuFFTMP resources
+            if (cufftmp_workspace_m != nullptr) {
+                cudaFree(cufftmp_workspace_m);
+                cufftmp_workspace_m = nullptr;
+            }
+            if (cufftmp_plan_m != 0) {
+                cufftDestroy(cufftmp_plan_m);
+                cufftmp_plan_m = 0;
+            }
+#endif
+        }
+#endif
     }
 
     template <typename Field, template <typename...> class FFT, typename Backend, typename T>
@@ -66,7 +93,92 @@ namespace ippl {
     template <typename Field, template <typename...> class FFT, typename Backend, typename T>
     void FFTBase<Field, FFT, Backend, T>::setup(const heffte::box3d<long long>& inbox,
                                                 const heffte::box3d<long long>& outbox,
-                                                const ParameterList& params) {
+                                                const ParameterList& params,
+                                                const std::array<long long, 3>& globalDims) {
+#ifdef ENABLE_CUFFTMP
+        // Check if cuFFTMP is requested
+        use_cufftmp_m = params.get<bool>("use_cufftmp", false);
+
+        if (use_cufftmp_m) {
+#ifdef KOKKOS_ENABLE_CUDA
+            // cuFFTMP setup for distributed multi-GPU FFTs
+            // Get MPI communicator
+            MPI_Comm mpi_comm = Comm->getCommunicator();
+
+            // Determine transform type and create plan
+            cufftResult result;
+
+            // For complex-to-complex transform (3D)
+            if constexpr (std::is_same_v<FFT<heffteBackend>, heffte::fft3d<heffteBackend>>) {
+                // Complex-to-complex transform
+                if constexpr (std::is_same_v<T, Kokkos::complex<float>>) {
+                    result = cufftPlan3d(&cufftmp_plan_m,
+                                        globalDims[2], globalDims[1], globalDims[0],
+                                        CUFFT_C2C);
+                } else if constexpr (std::is_same_v<T, Kokkos::complex<double>>) {
+                    result = cufftPlan3d(&cufftmp_plan_m,
+                                        globalDims[2], globalDims[1], globalDims[0],
+                                        CUFFT_Z2Z);
+                } else {
+                    throw IpplException("FFT::setup",
+                        "cuFFTMP C2C transform requires complex float or double type");
+                }
+            } else {
+                // Real-to-complex transform
+                if constexpr (std::is_same_v<T, Kokkos::complex<float>>) {
+                    result = cufftPlan3d(&cufftmp_plan_m,
+                                        globalDims[2], globalDims[1], globalDims[0],
+                                        CUFFT_R2C);
+                } else if constexpr (std::is_same_v<T, Kokkos::complex<double>>) {
+                    result = cufftPlan3d(&cufftmp_plan_m,
+                                        globalDims[2], globalDims[1], globalDims[0],
+                                        CUFFT_D2Z);
+                } else {
+                    throw IpplException("FFT::setup",
+                        "cuFFTMP R2C transform requires complex float or double type");
+                }
+            }
+
+            if (result != CUFFT_SUCCESS) {
+                throw IpplException("FFT::setup",
+                    "Failed to create cuFFTMP plan: " + std::to_string(result));
+            }
+
+            // Query workspace size
+            result = cufftGetSize(cufftmp_plan_m, &cufftmp_workspace_size_m);
+            if (result != CUFFT_SUCCESS) {
+                throw IpplException("FFT::setup",
+                    "Failed to get cuFFTMP workspace size: " + std::to_string(result));
+            }
+
+            // Allocate workspace on GPU
+            if (cufftmp_workspace_size_m > 0) {
+                cudaError_t cuda_result = cudaMalloc(&cufftmp_workspace_m,
+                                                     cufftmp_workspace_size_m);
+                if (cuda_result != cudaSuccess) {
+                    cufftDestroy(cufftmp_plan_m);
+                    throw IpplException("FFT::setup",
+                        "Failed to allocate cuFFTMP workspace: " +
+                        std::string(cudaGetErrorString(cuda_result)));
+                }
+                result = cufftSetWorkArea(cufftmp_plan_m, cufftmp_workspace_m);
+                if (result != CUFFT_SUCCESS) {
+                    cudaFree(cufftmp_workspace_m);
+                    cufftDestroy(cufftmp_plan_m);
+                    throw IpplException("FFT::setup",
+                        "Failed to set cuFFTMP workspace: " + std::to_string(result));
+                }
+            }
+
+            return; // Skip heFFTe setup when using cuFFTMP
+#else
+            throw IpplException("FFT::setup",
+                "cuFFTMP requested but CUDA is not enabled for Kokkos");
+#endif
+        }
+#endif
+
+        // Standard heFFTe setup
         heffte::plan_options heffteOptions = heffte::default_options<heffteBackend>();
 
         if (!params.get<bool>("use_heffte_defaults")) {
@@ -119,6 +231,82 @@ namespace ippl {
     void FFT<CCTransform, ComplexField>::transform(TransformDirection direction, ComplexField& f) {
         static_assert(Dim == 2 || Dim == 3, "heFFTe only supports 2D and 3D");
 
+#ifdef ENABLE_CUFFTMP
+        if (this->use_cufftmp_m) {
+#ifdef KOKKOS_ENABLE_CUDA
+            // cuFFTMP transform
+            auto fview       = f.getView();
+            const int nghost = f.getNghost();
+
+            auto& tempField = this->tempField;
+            if (tempField.size() != f.getOwned().size()) {
+                tempField = detail::shrinkView("tempField", fview, nghost);
+            }
+
+            using index_array_type = typename RangePolicy<Dim>::index_array_type;
+            // Copy data to temp field (removing ghost zones)
+            ippl::parallel_for(
+                "copy from Kokkos FFT cuFFTMP", getRangePolicy(fview, nghost),
+                KOKKOS_LAMBDA(const index_array_type& args) {
+                    apply(tempField, args - nghost).real(apply(fview, args).real());
+                    apply(tempField, args - nghost).imag(apply(fview, args).imag());
+                });
+            Kokkos::fence();
+
+            // Execute cuFFT transform
+            cufftResult result;
+            if (direction == FORWARD) {
+                if constexpr (std::is_same_v<Complex_t, Kokkos::complex<float>>) {
+                    result = cufftExecC2C(this->cufftmp_plan_m,
+                                         reinterpret_cast<cufftComplex*>(tempField.data()),
+                                         reinterpret_cast<cufftComplex*>(tempField.data()),
+                                         CUFFT_FORWARD);
+                } else {
+                    result = cufftExecZ2Z(this->cufftmp_plan_m,
+                                         reinterpret_cast<cufftDoubleComplex*>(tempField.data()),
+                                         reinterpret_cast<cufftDoubleComplex*>(tempField.data()),
+                                         CUFFT_FORWARD);
+                }
+            } else if (direction == BACKWARD) {
+                if constexpr (std::is_same_v<Complex_t, Kokkos::complex<float>>) {
+                    result = cufftExecC2C(this->cufftmp_plan_m,
+                                         reinterpret_cast<cufftComplex*>(tempField.data()),
+                                         reinterpret_cast<cufftComplex*>(tempField.data()),
+                                         CUFFT_INVERSE);
+                } else {
+                    result = cufftExecZ2Z(this->cufftmp_plan_m,
+                                         reinterpret_cast<cufftDoubleComplex*>(tempField.data()),
+                                         reinterpret_cast<cufftDoubleComplex*>(tempField.data()),
+                                         CUFFT_INVERSE);
+                }
+            } else {
+                throw std::logic_error("Only FORWARD and BACKWARD are allowed as directions");
+            }
+
+            if (result != CUFFT_SUCCESS) {
+                throw IpplException("FFT::transform",
+                    "cuFFTMP execution failed: " + std::to_string(result));
+            }
+
+            cudaDeviceSynchronize();
+
+            // Copy data back (adding ghost zones)
+            ippl::parallel_for(
+                "copy to Kokkos FFT cuFFTMP", getRangePolicy(fview, nghost),
+                KOKKOS_LAMBDA(const index_array_type& args) {
+                    apply(fview, args).real() = apply(tempField, args - nghost).real();
+                    apply(fview, args).imag() = apply(tempField, args - nghost).imag();
+                });
+
+            return;
+#else
+            throw IpplException("FFT::transform",
+                "cuFFTMP requested but CUDA is not enabled");
+#endif
+        }
+#endif
+
+        // Standard heFFTe transform
         auto fview       = f.getView();
         const int nghost = f.getNghost();
 
@@ -181,6 +369,7 @@ namespace ippl {
         std::array<long long, 3> highInput;
         std::array<long long, 3> lowOutput;
         std::array<long long, 3> highOutput;
+        std::array<long long, 3> globalDims;
 
         const NDIndex<Dim>& lDomInput  = layoutInput.getLocalNDIndex();
         const NDIndex<Dim>& lDomOutput = layoutOutput.getLocalNDIndex();
@@ -188,10 +377,17 @@ namespace ippl {
         this->domainToBounds(lDomInput, lowInput, highInput);
         this->domainToBounds(lDomOutput, lowOutput, highOutput);
 
+        // Extract global dimensions for cuFFTMP
+        const NDIndex<Dim>& gDom = layoutInput.getDomain();
+        globalDims.fill(1);
+        for (size_t d = 0; d < Dim; ++d) {
+            globalDims[d] = static_cast<long long>(gDom[d].length());
+        }
+
         heffte::box3d<long long> inbox  = {lowInput, highInput};
         heffte::box3d<long long> outbox = {lowOutput, highOutput};
 
-        this->setup(inbox, outbox, params);
+        this->setup(inbox, outbox, params, globalDims);
     }
 
     template <typename RealField>
@@ -205,6 +401,106 @@ namespace ippl {
                                                 ComplexField& g) {
         static_assert(Dim == 2 || Dim == 3, "heFFTe only supports 2D and 3D");
 
+#ifdef ENABLE_CUFFTMP
+        if (this->use_cufftmp_m) {
+#ifdef KOKKOS_ENABLE_CUDA
+            // cuFFTMP R2C/C2R transform
+            auto fview        = f.getView();
+            auto gview        = g.getView();
+            const int nghostf = f.getNghost();
+            const int nghostg = g.getNghost();
+
+            auto& tempFieldf = this->tempField;
+            auto& tempFieldg = this->tempFieldComplex;
+            if (tempFieldf.size() != f.getOwned().size()) {
+                tempFieldf = detail::shrinkView("tempFieldf", fview, nghostf);
+            }
+            if (tempFieldg.size() != g.getOwned().size()) {
+                tempFieldg = detail::shrinkView("tempFieldg", gview, nghostg);
+            }
+
+            using index_array_type = typename RangePolicy<Dim>::index_array_type;
+
+            if (direction == FORWARD) {
+                // Real to Complex
+                ippl::parallel_for(
+                    "copy from Kokkos f field in FFT cuFFTMP", getRangePolicy(fview, nghostf),
+                    KOKKOS_LAMBDA(const index_array_type& args) {
+                        apply(tempFieldf, args - nghostf) = apply(fview, args);
+                    });
+                Kokkos::fence();
+
+                cufftResult result;
+                if constexpr (std::is_same_v<Real_t, float>) {
+                    result = cufftExecR2C(this->cufftmp_plan_m,
+                                         reinterpret_cast<cufftReal*>(tempFieldf.data()),
+                                         reinterpret_cast<cufftComplex*>(tempFieldg.data()));
+                } else {
+                    result = cufftExecD2Z(this->cufftmp_plan_m,
+                                         reinterpret_cast<cufftDoubleReal*>(tempFieldf.data()),
+                                         reinterpret_cast<cufftDoubleComplex*>(tempFieldg.data()));
+                }
+
+                if (result != CUFFT_SUCCESS) {
+                    throw IpplException("FFT::transform",
+                        "cuFFTMP R2C execution failed: " + std::to_string(result));
+                }
+
+                cudaDeviceSynchronize();
+
+                ippl::parallel_for(
+                    "copy to Kokkos g field FFT cuFFTMP", getRangePolicy(gview, nghostg),
+                    KOKKOS_LAMBDA(const index_array_type& args) {
+                        apply(gview, args).real() = apply(tempFieldg, args - nghostg).real();
+                        apply(gview, args).imag() = apply(tempFieldg, args - nghostg).imag();
+                    });
+
+            } else if (direction == BACKWARD) {
+                // Complex to Real
+                ippl::parallel_for(
+                    "copy from Kokkos g field in FFT cuFFTMP", getRangePolicy(gview, nghostg),
+                    KOKKOS_LAMBDA(const index_array_type& args) {
+                        apply(tempFieldg, args - nghostg).real(apply(gview, args).real());
+                        apply(tempFieldg, args - nghostg).imag(apply(gview, args).imag());
+                    });
+                Kokkos::fence();
+
+                cufftResult result;
+                if constexpr (std::is_same_v<Real_t, float>) {
+                    result = cufftExecC2R(this->cufftmp_plan_m,
+                                         reinterpret_cast<cufftComplex*>(tempFieldg.data()),
+                                         reinterpret_cast<cufftReal*>(tempFieldf.data()));
+                } else {
+                    result = cufftExecZ2D(this->cufftmp_plan_m,
+                                         reinterpret_cast<cufftDoubleComplex*>(tempFieldg.data()),
+                                         reinterpret_cast<cufftDoubleReal*>(tempFieldf.data()));
+                }
+
+                if (result != CUFFT_SUCCESS) {
+                    throw IpplException("FFT::transform",
+                        "cuFFTMP C2R execution failed: " + std::to_string(result));
+                }
+
+                cudaDeviceSynchronize();
+
+                ippl::parallel_for(
+                    "copy to Kokkos f field FFT cuFFTMP", getRangePolicy(fview, nghostf),
+                    KOKKOS_LAMBDA(const index_array_type& args) {
+                        apply(fview, args) = apply(tempFieldf, args - nghostf);
+                    });
+            } else {
+                throw std::logic_error("Only FORWARD and BACKWARD are allowed as directions");
+            }
+
+            return;
+#else
+            throw IpplException("FFT::transform",
+                "cuFFTMP requested but CUDA is not enabled");
+#endif
+        }
+#endif
+
+        // Standard heFFTe transform
         auto fview        = f.getView();
         auto gview        = g.getView();
         const int nghostf = f.getNghost();
@@ -487,6 +783,8 @@ namespace ippl {
         if (tempQ_m.size() < localNp) {
             Kokkos::realloc(tempQ_m, localNp);
         }
+
+        std::cout << "Before init "
         setup(layout, nmodes, params);
     }
 

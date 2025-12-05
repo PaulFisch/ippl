@@ -361,3 +361,25 @@ if(IPPL_ENABLE_FFT AND IPPL_ENABLE_KOKKOS_NUFFT)
   FetchContent_MakeAvailable(kokkos_nufft)
   add_compile_definitions(KOKKOS_NUFFT_AVAILABLE)
 endif()
+
+# ------------------------------------------------------------------------------
+# cuFFTMP
+# ------------------------------------------------------------------------------
+if(IPPL_ENABLE_FFT AND IPPL_ENABLE_CUFFTMP)
+  if(NOT "CUDA" IN_LIST IPPL_PLATFORMS)
+    message(FATAL_ERROR "cuFFTMP requires CUDA to be enabled. Add CUDA to IPPL_PLATFORMS.")
+  endif()
+
+  message(STATUS "Configuring cuFFTMP support")
+
+  # cuFFTMP is part of the CUDA toolkit, find cuFFT library
+  find_package(CUDAToolkit REQUIRED)
+
+  if(TARGET CUDA::cufft)
+    message(STATUS "✅ Found cuFFT library (cuFFTMP support requires CUDA Toolkit >= 11.4)")
+    target_link_libraries(ippl PUBLIC CUDA::cufft)
+    add_compile_definitions(ENABLE_CUFFTMP)
+  else()
+    message(FATAL_ERROR "cuFFT library not found. cuFFTMP requires CUDA Toolkit with cuFFT.")
+  endif()
+endif()

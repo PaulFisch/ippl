@@ -26,6 +26,10 @@
 #include <kokkos_nufft.h>
 #endif
 
+#ifdef ENABLE_CUFFTMP
+#include <cufftMp.h>
+#endif
+
 #include "Utility/IpplException.h"
 #include "Utility/ParameterList.h"
 
@@ -239,7 +243,7 @@ namespace ippl {
         using Layout_t      = FieldLayout<Dim>;
 
         FFTBase(const Layout_t& layout, const ParameterList& params);
-        ~FFTBase() = default;
+        ~FFTBase();
 
     protected:
         FFTBase() = default;
@@ -247,7 +251,7 @@ namespace ippl {
         void domainToBounds(const NDIndex<Dim>& domain, std::array<long long, 3>& low,
                             std::array<long long, 3>& high);
         void setup(const heffte::box3d<long long>& inbox, const heffte::box3d<long long>& outbox,
-                   const ParameterList& params);
+                   const ParameterList& params, const std::array<long long, 3>& globalDims = {});
 
         std::shared_ptr<FFT<heffteBackend, long long>> heffte_m;
         workspace_t workspace_m;
@@ -257,6 +261,14 @@ namespace ippl {
             typename Kokkos::View<typename FieldType::view_type::data_type, Kokkos::LayoutLeft,
                                   typename FieldType::memory_space>::uniform_type;
         temp_view_type<Field> tempField;
+
+#ifdef ENABLE_CUFFTMP
+        // cuFFTMP members
+        bool use_cufftmp_m = false;
+        cufftHandle cufftmp_plan_m;
+        void* cufftmp_workspace_m = nullptr;
+        size_t cufftmp_workspace_size_m = 0;
+#endif
     };
 
 #define IN_PLACE_FFT_BASE_CLASS(Field, Backend) \
