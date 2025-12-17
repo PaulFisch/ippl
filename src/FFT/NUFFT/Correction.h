@@ -86,7 +86,7 @@ namespace ippl {
             FieldIn& input,
             const std::array<Kokkos::View<Kokkos::complex<T>*, typename ExecSpace::memory_space>,
                              3>& factors,
-            FieldOut& output, const Vector<size_t, 3>& n_modes, const Vector<size_t, 3>& n_grid) {
+            FieldOut& output, const Vector<size_t, 3>& n_modes, const Vector<size_t, 3>&) {
             using complex_type = Kokkos::complex<T>;
 
             constexpr unsigned Dim = 3;
@@ -184,7 +184,7 @@ namespace ippl {
             FieldIn& input,
             const std::array<Kokkos::View<Kokkos::complex<T>*, typename ExecSpace::memory_space>,
                              3>& factors,
-            FieldOut& output, const Vector<size_t, 3>& n_modes, const Vector<size_t, 3>& n_grid) {
+            FieldOut& output, const Vector<size_t, 3>& n_modes, const Vector<size_t, 3>&) {
             using complex_type = Kokkos::complex<T>;
 
             constexpr unsigned Dim = 3;

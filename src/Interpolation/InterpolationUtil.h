@@ -51,7 +51,7 @@ namespace ippl::Interpolation::detail {
      * @return Index as described above
      */
     template <typename T>
-    KOKKOS_INLINE_FUNCTION local_index_type grid_point_to_grid_idx(T sx, size_type n_grid,
+    KOKKOS_INLINE_FUNCTION local_index_type grid_point_to_grid_idx(T sx, size_type,
                                                                       int w) {
         // See comment above
         const bool odd_w = w & 1;

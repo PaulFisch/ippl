@@ -50,9 +50,9 @@ def setup_style():
 
 # Colorblind-friendly palette (Okabe-Ito)
 CLUSTER_COLORS = {
-    'alps': '#0072B2',      # Blue
-    'juwels': '#E69F00',    # Orange
-    'lumi': '#009E73',      # Bluish green
+    'alps': '#2166AC',      # Blue
+    'juwels': '#D6604D',    # Orange
+    'lumi': '#4DAF4A',      # Bluish green
 }
 
 CLUSTER_MARKERS = {

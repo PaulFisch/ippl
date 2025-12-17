@@ -15,7 +15,7 @@ Usage:
 import re
 import pandas as pd
 import matplotlib.pyplot as plt
-import matplotlib as mpl
+import matplotlib.patches as mpatches
 import numpy as np
 from pathlib import Path
 import argparse
@@ -139,7 +139,7 @@ def setup_style():
         'legend.fontsize': 7,
         'legend.frameon': False,
         'legend.borderpad': 0.3,
-        'legend.handlelength': 1.0,
+        'legend.handlelength': 1.5,
         'legend.handletextpad': 0.4,
 
         # Figure
@@ -158,10 +158,10 @@ def setup_style():
 # Professional colorblind-friendly palette (Okabe-Ito)
 COLORS = {
     'IPPL OutputFocused': '#0072B2',  # Blue
-    'IPPL Warp': '#009E73',          # Bluish green
+    'IPPL Warp': '#009E73',           # Bluish green
     'IPPL Tiled': '#009E73',          # Bluish green
     'IPPL Atomic': '#E69F00',         # Orange
-    'IPPL Naive': '#E69F00',         # Orange
+    'IPPL Naive': '#E69F00',          # Orange
     'IPPL Atomic Sort': '#56B4E9',    # Sky blue
     'cuFINUFFT': '#D55E00',           # Vermillion
 }
@@ -179,8 +179,18 @@ HATCHES = {
 
 
 def plot_single_cluster(df, cluster_name, output_prefix):
-    """Create a two-panel figure for a single cluster."""
+    """Create top-tier publication plot with dual y-axes for single cluster."""
     setup_style()
+
+    # Additional refinements for top-tier appearance
+    plt.rcParams.update({
+        'font.size': 9,
+        'axes.labelsize': 9,
+        'axes.titlesize': 10,
+        'xtick.labelsize': 8,
+        'ytick.labelsize': 8,
+        'legend.fontsize': 8,
+    })
 
     df = filter_methods(df)
     cluster_df = df[df['cluster'] == cluster_name] if 'cluster' in df.columns else df
@@ -189,56 +199,119 @@ def plot_single_cluster(df, cluster_name, output_prefix):
     type1_methods = ['IPPL Atomic', 'IPPL Tiled', 'IPPL OutputFocused', 'cuFINUFFT']
     type2_methods = ['IPPL Naive', 'IPPL Atomic Sort', 'IPPL Warp', 'cuFINUFFT']
 
-    fig, axes = plt.subplots(1, 2, figsize=(5.5, 2.4))
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(5.5, 2.4),
+                                   gridspec_kw={'width_ratios': [4, 3], 'wspace': 0.35})
 
-    for ax, (nufft_type, methods) in zip(axes, [(1, type1_methods), (2, type2_methods)]):
-        type_df = cluster_df[cluster_df['type'] == nufft_type]
-        methods_present = [m for m in methods if m in type_df['method'].values]
+    type1_df = cluster_df[cluster_df['type'] == 1]
+    type2_df = cluster_df[cluster_df['type'] == 2]
 
-        x = np.arange(len(methods_present))
-        bar_width = 0.6
+    type1_present = [m for m in type1_methods if m in type1_df['method'].values]
+    type2_present = [m for m in type2_methods if m in type2_df['method'].values]
 
-        bars = []
-        for i, method in enumerate(methods_present):
-            method_data = type_df[type_df['method'] == method]
-            if not method_data.empty:
-                throughput = method_data['throughput_mpts'].values[0]
-                bar = ax.bar(i, throughput, bar_width,
-                             color=COLORS.get(method, '#666666'),
-                             edgecolor='black',
-                             linewidth=0.4,
-                             hatch=HATCHES.get(method),
-                             zorder=3)
-                bars.append((bar, throughput))
+    bar_width = 0.65
 
-        # Value labels on bars
-        for bar, val in bars:
-            height = bar[0].get_height()
-            ax.annotate(f'{val:.0f}',
-                        xy=(bar[0].get_x() + bar[0].get_width() / 2, height),
-                        xytext=(0, 2),
-                        textcoords="offset points",
-                        ha='center', va='bottom',
-                        fontsize=6,
-                        color='#333333')
+    # Track methods for legend
+    legend_handles = {}
 
-        ax.set_xticks(x)
-        ax.set_xticklabels([get_method_label(m) for m in methods_present],
-                           rotation=35, ha='right', rotation_mode='anchor')
-        ax.set_ylabel('Throughput (Mpts/s)')
+    # ============ TYPE-1 PANEL (LEFT) ============
+    x_type1 = np.arange(len(type1_present))
 
-        type_name = 'Type-1 (spreading)' if nufft_type == 1 else 'Type-2 (interpolation)'
-        ax.set_title(type_name, fontsize=9, pad=6)
+    for i, method in enumerate(type1_present):
+        method_data = type1_df[type1_df['method'] == method]
+        if not method_data.empty:
+            throughput = method_data['throughput_mpts'].values[0]
+            bar = ax1.bar(x_type1[i], throughput, bar_width,
+                          color=COLORS.get(method, '#666666'),
+                          edgecolor='black',
+                          linewidth=0.4,
+                          hatch=HATCHES.get(method),
+                          zorder=3)
 
-        ax.grid(True, axis='y', linestyle='-', linewidth=0.3, alpha=0.5, zorder=0)
-        ax.set_ylim(bottom=0)
+            if method not in legend_handles:
+                legend_handles[method] = bar[0]
 
-        # Headroom for labels
-        ymax = ax.get_ylim()[1]
-        ax.set_ylim(top=ymax * 1.15)
+            # Value label
+            ax1.annotate(f'{throughput:.0f}',
+                         xy=(x_type1[i], throughput),
+                         xytext=(0, 2),
+                         textcoords="offset points",
+                         ha='center', va='bottom',
+                         fontsize=6.5,
+                         color='#333333')
 
-    plt.tight_layout(w_pad=3.0)
-    plt.subplots_adjust(bottom=0.22)
+    ax1.set_xticks(x_type1)
+    ax1.set_xticklabels([get_method_label(m) for m in type1_present],
+                        rotation=30, ha='right', rotation_mode='anchor')
+    ax1.set_ylabel('Throughput (Mpts/s)')
+    ax1.set_title('Type-1 (spreading)', fontsize=10, fontweight='semibold', pad=8)
+
+    type1_max = type1_df['throughput_mpts'].max()
+    ax1.set_ylim(0, type1_max * 1.18)
+    ax1.yaxis.set_major_locator(plt.MaxNLocator(5, integer=True))
+    ax1.grid(True, axis='y', linestyle='-', linewidth=0.3, alpha=0.4, zorder=0)
+    ax1.set_axisbelow(True)
+
+    # ============ TYPE-2 PANEL (RIGHT) ============
+    x_type2 = np.arange(len(type2_present))
+
+    for i, method in enumerate(type2_present):
+        method_data = type2_df[type2_df['method'] == method]
+        if not method_data.empty:
+            throughput = method_data['throughput_mpts'].values[0]
+            bar = ax2.bar(x_type2[i], throughput, bar_width,
+                          color=COLORS.get(method, '#666666'),
+                          edgecolor='black',
+                          linewidth=0.4,
+                          hatch=HATCHES.get(method),
+                          zorder=3)
+
+            if method not in legend_handles:
+                legend_handles[method] = bar[0]
+
+            # Value label
+            ax2.annotate(f'{throughput:.0f}',
+                         xy=(x_type2[i], throughput),
+                         xytext=(0, 2),
+                         textcoords="offset points",
+                         ha='center', va='bottom',
+                         fontsize=6.5,
+                         color='#333333')
+
+    ax2.set_xticks(x_type2)
+    ax2.set_xticklabels([get_method_label(m) for m in type2_present],
+                        rotation=30, ha='right', rotation_mode='anchor')
+    ax2.set_ylabel('Throughput (Mpts/s)')
+    ax2.set_title('Type-2 (interpolation)', fontsize=10, fontweight='semibold', pad=8)
+
+    type2_max = type2_df['throughput_mpts'].max()
+    ax2.set_ylim(0, type2_max * 1.18)
+    ax2.yaxis.set_major_locator(plt.MaxNLocator(5, integer=True))
+    ax2.grid(True, axis='y', linestyle='-', linewidth=0.3, alpha=0.4, zorder=0)
+    ax2.set_axisbelow(True)
+
+    # ============ UNIFIED LEGEND ============
+    legend_order = ['IPPL Atomic', 'IPPL Tiled', 'IPPL OutputFocused',
+                    'IPPL Naive', 'IPPL Atomic Sort', 'IPPL Warp', 'cuFINUFFT']
+    ordered_handles = []
+    ordered_labels = []
+    for method in legend_order:
+        if method in legend_handles:
+            ordered_handles.append(legend_handles[method])
+            ordered_labels.append(get_method_label(method))
+
+    fig.legend(ordered_handles, ordered_labels,
+               loc='upper center',
+               ncol=len(ordered_labels),
+               fontsize=7,
+               frameon=False,
+               bbox_to_anchor=(0.5, 1.02),
+               columnspacing=1.0,
+               handletextpad=0.4,
+               handlelength=1.5)
+
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.82, bottom=0.20, left=0.10, right=0.97)
 
     plt.savefig(f'{output_prefix}.pdf', facecolor='white')
     plt.savefig(f'{output_prefix}.png', dpi=300, facecolor='white')
@@ -248,60 +321,157 @@ def plot_single_cluster(df, cluster_name, output_prefix):
 
 
 def plot_multi_cluster(df, output_prefix):
-    """Create grouped bar chart comparing across clusters."""
+    """Create top-tier publication plot with dual y-axes for different scales."""
     setup_style()
+
+    # Additional refinements for top-tier appearance
+    plt.rcParams.update({
+        'font.size': 9,
+        'axes.labelsize': 9,
+        'axes.titlesize': 10,
+        'xtick.labelsize': 8,
+        'ytick.labelsize': 8,
+        'legend.fontsize': 8,
+    })
 
     df = filter_methods(df)
     clusters = sorted(df['cluster'].unique())
     n_clusters = len(clusters)
 
-    # Colors for different clusters
-    cluster_colors = ['#0072B2', '#D55E00', '#009E73', '#CC79A7', '#F0E442']
+    # Refined color palette - professional and distinguishable
+    cluster_colors = {
+        'Alps (Nvidia H100)': '#2166AC',    # Strong blue
+        'Juwels (Nvidia A100)': '#D6604D',  # Muted red-orange
+        'Lumi (AMD MI250X)': '#4DAF4A',     # Green
+    }
+    # Fallback colors if cluster names don't match
+    fallback_colors = ['#2166AC', '#D6604D', '#4DAF4A', '#984EA3', '#FF7F00']
 
     type1_methods = ['IPPL Atomic', 'IPPL Tiled', 'IPPL OutputFocused', 'cuFINUFFT']
     type2_methods = ['IPPL Naive', 'IPPL Atomic Sort', 'IPPL Warp', 'cuFINUFFT']
 
-    fig, axes = plt.subplots(1, 2, figsize=(7, 2.6))
+    # Create figure with two subplots sharing nothing - true dual panels
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7, 2.4),
+                                   gridspec_kw={'width_ratios': [4, 3], 'wspace': 0.35})
 
-    for ax, (nufft_type, methods) in zip(axes, [(1, type1_methods), (2, type2_methods)]):
-        type_df = df[df['type'] == nufft_type]
-        methods_present = [m for m in methods if m in type_df['method'].values]
-        n_methods = len(methods_present)
+    # Get methods present for each type
+    type1_df = df[df['type'] == 1]
+    type2_df = df[df['type'] == 2]
 
-        x = np.arange(n_methods)
-        total_width = 0.75
-        bar_width = total_width / n_clusters
+    type1_present = [m for m in type1_methods if m in type1_df['method'].values]
+    type2_present = [m for m in type2_methods if m in type2_df['method'].values]
 
-        for i, cluster in enumerate(clusters):
-            cluster_data = type_df[type_df['cluster'] == cluster]
-            throughputs = []
-            for method in methods_present:
-                method_data = cluster_data[cluster_data['method'] == method]
-                throughputs.append(method_data['throughput_mpts'].values[0]
-                                   if not method_data.empty else 0)
+    n_type1 = len(type1_present)
+    n_type2 = len(type2_present)
 
-            offset = (i - n_clusters / 2 + 0.5) * bar_width
-            ax.bar(x + offset, throughputs, bar_width * 0.9,
-                   label=cluster,
-                   color=cluster_colors[i % len(cluster_colors)],
-                   edgecolor='black',
-                   linewidth=0.3,
-                   zorder=3)
+    total_width = 0.82
+    bar_width = total_width / n_clusters
 
-        ax.set_xticks(x)
-        ax.set_xticklabels([get_method_label(m) for m in methods_present],
-                           rotation=35, ha='right', rotation_mode='anchor')
-        ax.set_ylabel('Throughput (Mpts/s)')
+    # Track cluster handles for legend
+    cluster_handles = {}
 
-        type_name = 'Type-1 (spreading)' if nufft_type == 1 else 'Type-2 (interpolation)'
-        ax.set_title(type_name, fontsize=9, pad=6)
+    def get_color(cluster, idx):
+        return cluster_colors.get(cluster, fallback_colors[idx % len(fallback_colors)])
 
-        ax.grid(True, axis='y', linestyle='-', linewidth=0.3, alpha=0.5, zorder=0)
-        ax.set_ylim(bottom=0)
-        ax.legend(loc='upper right', fontsize=6)
+    # ============ TYPE-1 PANEL (LEFT) ============
+    x_type1 = np.arange(n_type1)
 
-    plt.tight_layout(w_pad=3.0)
-    plt.subplots_adjust(bottom=0.22)
+    for i, cluster in enumerate(clusters):
+        cluster_data = type1_df[type1_df['cluster'] == cluster]
+        throughputs = []
+        for method in type1_present:
+            method_data = cluster_data[cluster_data['method'] == method]
+            throughputs.append(method_data['throughput_mpts'].values[0]
+                               if not method_data.empty else 0)
+
+        offset = (i - n_clusters / 2 + 0.5) * bar_width
+        color = get_color(cluster, i)
+
+        for j, (x, val, method) in enumerate(zip(x_type1, throughputs, type1_present)):
+            bar = ax1.bar(x + offset, val, bar_width * 0.9,
+                          color=color,
+                          edgecolor='black',
+                          linewidth=0.4,
+                          hatch=HATCHES.get(method),
+                          zorder=3)
+            if cluster not in cluster_handles:
+                cluster_handles[cluster] = bar[0]
+
+    ax1.set_xticks(x_type1)
+    ax1.set_xticklabels([get_method_label(m) for m in type1_present],
+                        rotation=30, ha='right', rotation_mode='anchor')
+    ax1.set_ylabel('Throughput (Mpts/s)')
+    ax1.set_title('Type-1 (spreading)', fontsize=10, fontweight='semibold', pad=8)
+
+    # Set y-axis for Type-1
+    type1_max = type1_df['throughput_mpts'].max()
+    ax1.set_ylim(0, type1_max * 1.12)
+    ax1.yaxis.set_major_locator(plt.MaxNLocator(5, integer=True))
+
+    # Subtle grid
+    ax1.grid(True, axis='y', linestyle='-', linewidth=0.3, alpha=0.4, zorder=0)
+    ax1.set_axisbelow(True)
+
+    # ============ TYPE-2 PANEL (RIGHT) ============
+    x_type2 = np.arange(n_type2)
+
+    for i, cluster in enumerate(clusters):
+        cluster_data = type2_df[type2_df['cluster'] == cluster]
+        throughputs = []
+        for method in type2_present:
+            method_data = cluster_data[cluster_data['method'] == method]
+            throughputs.append(method_data['throughput_mpts'].values[0]
+                               if not method_data.empty else 0)
+
+        offset = (i - n_clusters / 2 + 0.5) * bar_width
+        color = get_color(cluster, i)
+
+        for j, (x, val, method) in enumerate(zip(x_type2, throughputs, type2_present)):
+            bar = ax2.bar(x + offset, val, bar_width * 0.9,
+                          color=color,
+                          edgecolor='black',
+                          linewidth=0.4,
+                          hatch=HATCHES.get(method),
+                          zorder=3)
+
+    ax2.set_xticks(x_type2)
+    ax2.set_xticklabels([get_method_label(m) for m in type2_present],
+                        rotation=30, ha='right', rotation_mode='anchor')
+    ax2.set_ylabel('Throughput (Mpts/s)')
+    ax2.set_title('Type-2 (interpolation)', fontsize=10, fontweight='semibold', pad=8)
+
+    # Set y-axis for Type-2 (different scale)
+    type2_max = type2_df['throughput_mpts'].max()
+    ax2.set_ylim(0, type2_max * 1.12)
+    ax2.yaxis.set_major_locator(plt.MaxNLocator(5, integer=True))
+
+    # Subtle grid
+    ax2.grid(True, axis='y', linestyle='-', linewidth=0.3, alpha=0.4, zorder=0)
+    ax2.set_axisbelow(True)
+
+    # ============ UNIFIED LEGEND ============
+    legend_handles_list = [cluster_handles[c] for c in clusters]
+    legend_labels = list(clusters)
+
+    # Add hatching indicator for cuFINUFFT
+    hatch_patch = mpatches.Patch(facecolor='white', edgecolor='black',
+                                 hatch='///', linewidth=0.5)
+    legend_handles_list.append(hatch_patch)
+    legend_labels.append('cuFINUFFT')
+
+    # Place legend at top, spanning both panels
+    fig.legend(legend_handles_list, legend_labels,
+               loc='upper center',
+               ncol=len(legend_labels),
+               fontsize=7.5,
+               frameon=False,
+               bbox_to_anchor=(0.5, 1.04),
+               columnspacing=1.2,
+               handletextpad=0.5,
+               handlelength=1.8)
+
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.85, bottom=0.20, left=0.08, right=0.97)
 
     plt.savefig(f'{output_prefix}.pdf', facecolor='white')
     plt.savefig(f'{output_prefix}.png', dpi=300, facecolor='white')

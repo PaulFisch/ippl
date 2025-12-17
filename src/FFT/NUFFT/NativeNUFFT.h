@@ -190,7 +190,7 @@ namespace ippl {
                     fftParams.add("num_concurrent_ffts", 4);
                     PruningParams<Dim> pruning_params;
                     // Set pruning params to output the desired n_modes_, not n_grid_/2
-                    for (int d = 0; d < Dim; ++d) {
+                    for (int d = 0; d < static_cast<int>(Dim); ++d) {
                         pruning_params.n_modes[d] = n_modes_[d];
                     }
 

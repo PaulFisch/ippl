@@ -75,7 +75,6 @@ namespace ippl {
                         int idx_local[Dim];   // Local grid indices
                         real_type kernel_val = 1.0;
                         int64_t tmp          = flat;
-                        bool in_bounds       = true;
 
                         // Decode flat index to Dim-dimensional index and convert to local
                         for (int d = Dim - 1; d >= 0; --d) {

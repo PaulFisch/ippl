@@ -48,7 +48,7 @@ namespace detail {
          * @param n Number of particles to accommodate
          * @param growth_factor Factor by which to over-allocate (default 1.2)
          */
-        void ensureCapacity(size_type n, size_t n_bins = 0, double growth_factor = 1.2) {
+        void ensureCapacity(size_type n, double growth_factor = 1.2) {
             if (n <= capacity_) {
                 return;
             }
@@ -163,9 +163,9 @@ namespace detail {
          * @param n_bins Number of bins (for bin_offsets, typically n_bins + 1)
          * @param growth_factor Over-allocation factor
          */
-        void ensureCapacity(size_type n_particles, size_type n_bins = 0,
+        void ensureCapacity(size_type n_particles,
                            double growth_factor = 1.2) {
-            Base::ensureCapacity(n_particles, n_bins,  growth_factor);
+            Base::ensureCapacity(n_particles,  growth_factor);
 
             /*if (n_particles > permute_capacity_) {
                 size_type new_capacity = static_cast<size_type>(n_particles * growth_factor);

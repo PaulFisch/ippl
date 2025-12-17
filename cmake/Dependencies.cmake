@@ -344,7 +344,6 @@ if(IPPL_ENABLE_FFT AND IPPL_ENABLE_FINUFFT)
   add_compile_definitions(ENABLE_FINUFFT)
 endif()
 
-
 # ------------------------------------------------------------------------------
 # FINUFFT
 # ------------------------------------------------------------------------------
@@ -360,4 +359,37 @@ if(IPPL_ENABLE_FFT AND IPPL_ENABLE_KOKKOS_NUFFT)
   set(KOKKOS_NUFFT_ENABLE_CUDA ON CACHE BOOL "")
   FetchContent_MakeAvailable(kokkos_nufft)
   add_compile_definitions(KOKKOS_NUFFT_AVAILABLE)
+endif()
+
+# ------------------------------------------------------------------------------
+# CuFFTMp
+# ------------------------------------------------------------------------------
+if(IPPL_ENABLE_FFT AND IPPL_ENABLE_CUFFTMP)
+
+  set(NVSHMEM_HOME $ENV{NVSHMEM_HOME})
+
+  set(NVSHMEM_SEARCH_PATHS
+          ${NVSHMEM_HOME}
+          /user-environment/linux-neoverse_v2/nvshmem-3.4.5-kaifmbngwyxwhsftqk4yzhzjs43albv3/
+  )
+
+  find_library(NVSHMEM_HOST_LIBRARY
+          NAMES nvshmem_host
+          HINTS ${NVSHMEM_SEARCH_PATHS}
+          PATH_SUFFIXES lib
+  )
+
+  if(NVSHMEM_HOST_LIBRARY)
+    message(STATUS "Found NVSHMEM host library: ${NVSHMEM_HOST_LIBRARY}")
+    set(NVSHMEM_FOUND TRUE)
+  else()
+    message(FATAL_ERROR "NVSHMEM not found. Set NVSHMEM_HOME to your installation directory.")
+    set(NVSHMEM_FOUND FALSE)
+  endif()
+
+  find_library(CUFFTMP_LIBRARY
+          NAMES cufftMp
+  )
+  
+  add_compile_definitions(IPPL_ENABLE_CUFFTMP)
 endif()

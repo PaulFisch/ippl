@@ -1,0 +1,4 @@
+#ifndef IPPL_FFT_INTERFACE_H
+#define IPPL_FFT_INTERFACE_H
+
+#endif  // IPPL_FFT_INTERFACE_H

@@ -113,8 +113,11 @@ if(IPPL_ENABLE_FFT)
   if(IPPL_ENABLE_KOKKOS_NUFFT)
     target_link_libraries(ippl PUBLIC Heffte::Heffte kokkos_nufft)
   endif()
-endif()
 
+  if(IPPL_ENABLE_CUFFTMP)
+    target_link_libraries(ippl PUBLIC ${CUFFTMP_LIBRARY} ${NVSHMEM_HOST_LIBRARY})
+  endif()
+endif()
 # this alias should be created after all target properties have been set
 add_library(IPPL::ippl ALIAS ippl)
 
