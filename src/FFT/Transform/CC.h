@@ -23,14 +23,10 @@ namespace ippl {
 
 #ifdef IPPL_ENABLE_CUFFTMP
         using Backend_t = fft::CuFFTMpC2C<T, Dim, MemSpace>;
-        // cuFFTMp requires row-major (LayoutRight)
-        using TempLayout_t = Kokkos::LayoutRight;
 #else
         using Backend_t  = fft::HeffteC2C<T, Dim, MemSpace>;
-        // heFFTe works with column-major (LayoutLeft)
-        using TempLayout_t = Kokkos::LayoutLeft;
 #endif
-        using TempView_t = Kokkos::View<Complex_t***, TempLayout_t, MemSpace>;
+        using TempView_t = Kokkos::View<Complex_t***, Kokkos::LayoutLeft, MemSpace>;
 
         FFT(const Layout_t& layout, const ParameterList& params) {
             static_assert(Dim == 2 || Dim == 3, "heFFTe only supports 2D and 3D");
