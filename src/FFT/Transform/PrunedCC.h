@@ -30,15 +30,18 @@ namespace ippl {
         using ExecSpace = typename ComplexField::execution_space;
         using Layout_t  = FieldLayout<Dim>;
 
+
 #ifdef IPPL_ENABLE_CUFFTMP
         using Backend_t = fft::CuFFTMpC2C<T, Dim, MemSpace>;
+        using TempLayout_t = Kokkos::LayoutRight;
 #else
         using Backend_t = fft::HeffteC2C<T, Dim, MemSpace>;
+        using TempLayout_t = Kokkos::LayoutLeft;
 #endif
+        using TempView_t = Kokkos::View<Complex_t***, TempLayout_t, MemSpace>;
         using GPUOps     = fft::Stream<MemSpace>;
         using Stream_t   = typename GPUOps::stream_type;
         using DeviceExec = typename GPUOps::exec_space;
-        using TempView_t = Kokkos::View<Complex_t***, Kokkos::LayoutLeft, MemSpace>;
 
         FFT(const Layout_t& layoutIn, const Layout_t& layoutOut, const PruningParams<Dim>& pruning,
             const ParameterList& params)
