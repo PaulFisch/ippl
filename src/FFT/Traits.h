@@ -8,7 +8,6 @@
 #include <type_traits>
 
 namespace ippl {
-
     // Transform tags
     struct CCTransform {};
     struct RCTransform {};
@@ -130,7 +129,7 @@ namespace ippl {
             using cos1 = heffte::backend::stock_cos1;
         };
 
-// Host: FFTW > MKL > Stock
+        // Host: FFTW > MKL > Stock
 #if defined(Heffte_ENABLE_FFTW)
         template <>
         struct HeffteBackend<Kokkos::HostSpace> {
@@ -221,8 +220,8 @@ namespace ippl {
         inline constexpr double fftw_trig_scale() {
             return is_available_v<FFTW> ? 8.0 : 1.0;
         }
-
     }  // namespace fft
+
 }  // namespace ippl
 
 // Register Kokkos complex with heFFTe

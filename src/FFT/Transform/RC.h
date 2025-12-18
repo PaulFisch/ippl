@@ -26,8 +26,12 @@ public:
                                typename RealField::Mesh_t,
                                typename RealField::Centering_t,
                                ExecSpace>::uniform_type;
-    
-    using Backend_t     = fft::HeffteR2C<T, Dim, MemSpace>;
+
+#ifdef IPPL_ENABLE_CUFFTMP
+    using Backend_t = fft::CuFFTMpR2C<T, Dim, MemSpace>;
+#else
+    using Backend_t  = fft::HeffteR2C<T, Dim, MemSpace>;
+#endif
     using TempReal_t    = Kokkos::View<T***, Kokkos::LayoutLeft, MemSpace>;
     using TempComplex_t = Kokkos::View<Complex_t***, Kokkos::LayoutLeft, MemSpace>;
     

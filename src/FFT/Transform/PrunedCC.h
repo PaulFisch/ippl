@@ -30,7 +30,11 @@ namespace ippl {
         using ExecSpace = typename ComplexField::execution_space;
         using Layout_t  = FieldLayout<Dim>;
 
+#ifdef IPPL_ENABLE_CUFFTMP
+        using Backend_t = fft::CuFFTMpC2C<T, Dim, MemSpace>;
+#else
         using Backend_t  = fft::HeffteC2C<T, Dim, MemSpace>;
+#endif
         using GPUOps     = fft::Stream<MemSpace>;
         using Stream_t   = typename GPUOps::stream_type;
         using DeviceExec = typename GPUOps::exec_space;
