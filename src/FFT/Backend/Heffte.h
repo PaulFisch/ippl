@@ -104,8 +104,8 @@ namespace ippl {
             }
 
             void forward(complex_t* in, complex_t* out) {
-                heffte_->forward(in, out, workspace_.data(), heffte::scale::none);
-                applyScale<T, MemSpace>(out, T(1) / static_cast<T>(global_size_), local_size_);
+                heffte_->forward(in, out, workspace_.data(), heffte::scale::full);
+                // applyScale<T, MemSpace>(out, T(1) / static_cast<T>(global_size_), local_size_);
             }
 
             void backward(complex_t* in, complex_t* out) {
@@ -156,9 +156,9 @@ namespace ippl {
             }
 
             void forward(T* in, complex_t* out) {
-                heffte_->forward(in, out, workspace_.data(), heffte::scale::none);
-                applyScale<T, MemSpace>(out, T(1) / static_cast<T>(global_real_size_),
-                                        local_complex_size_);
+                heffte_->forward(in, out, workspace_.data(), heffte::scale::full);
+                // applyScale<T, MemSpace>(out, T(1) / static_cast<T>(global_real_size_),
+                //                         local_complex_size_);
             }
 
             void backward(complex_t* in, T* out) {
@@ -197,8 +197,7 @@ namespace ippl {
         }                                                                                         \
                                                                                                   \
         void forward(T* in, T* out) {                                                             \
-            heffte_->forward(in, out, workspace_.data(), heffte::scale::none);                    \
-            applyScaleReal<T, MemSpace>(out, T(1) / static_cast<T>(global_size_), local_size_);   \
+            heffte_->forward(in, out, workspace_.data(), heffte::scale::full);                    \
         }                                                                                         \
                                                                                                   \
         void backward(T* in, T* out) {                                                            \
