@@ -33,6 +33,23 @@ namespace detail {
 // cuFFTMp C2C Backend
 //=============================================================================
 
+    // CUDA scaling kernels (defined outside class or as static device functions)
+    static __global__ void scaleKernelFloat(cufftComplex* data, size_t n, float scale) {
+        size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (idx < n) {
+            data[idx].x *= scale;
+            data[idx].y *= scale;
+        }
+    }
+
+    static __global__ void scaleKernelDouble(cufftDoubleComplex* data, size_t n, double scale) {
+        size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (idx < n) {
+            data[idx].x *= scale;
+            data[idx].y *= scale;
+        }
+    }
+
 template <typename T, unsigned Dim, typename MemSpace>
 class CuFFTMpC2C {
 public:
@@ -262,23 +279,6 @@ private:
             scaleKernelDouble<<<numBlocks, blockSize>>>(cuda_data, count, scale);
         }
         cudaDeviceSynchronize();
-    }
-
-    // CUDA scaling kernels (defined outside class or as static device functions)
-    static __global__ void scaleKernelFloat(cufftComplex* data, size_t n, float scale) {
-        size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < n) {
-            data[idx].x *= scale;
-            data[idx].y *= scale;
-        }
-    }
-
-    static __global__ void scaleKernelDouble(cufftDoubleComplex* data, size_t n, double scale) {
-        size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < n) {
-            data[idx].x *= scale;
-            data[idx].y *= scale;
-        }
     }
 
     cufftHandle handle_ = 0;
