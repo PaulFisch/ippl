@@ -3,6 +3,10 @@
 
 #include <Kokkos_Core.hpp>
 
+#ifdef IPPL_ENABLE_CUFFTMP
+#include <cufftMp.h>
+#endif
+
 #include <heffte_fft3d.h>
 #include <heffte_fft3d_r2c.h>
 #include <type_traits>
