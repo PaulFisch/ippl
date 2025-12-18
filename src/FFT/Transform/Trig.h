@@ -2,11 +2,13 @@
 #define IPPL_FFT_TRANSFORM_TRIG_HPP
 
 #include "Utility/ParameterList.h"
+#include "Utility/ViewUtils.h"
 
 #include "Communicate/Communicator.h"
 #include "FFT/Backend/Backend.h"
 #include "FFT/Traits.h"
 #include "FFT/Transform/Common.h"
+
 
 namespace ippl {
 
@@ -73,7 +75,7 @@ namespace ippl {
 
             void ensureTemp(const Field& f) {
                 if (temp_.size() != f.getOwned().size()) {
-                    temp_ = detail::shrinkView("fft_trig_temp", f.getView(), f.getNghost());
+                    temp_ = ippl::detail::shrinkView("fft_trig_temp", f.getView(), f.getNghost());
                 }
             }
         };
