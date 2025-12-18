@@ -215,7 +215,6 @@ int main(int argc, char* argv[]) {
         Vector_t hr     = {dx, dy, dz};
         Vector_t origin = {rmin[0], rmin[1], rmin[2]};
 
-        const bool isAllPeriodic = true;
         Mesh_t mesh(domain, hr, origin);
         FieldLayout_t FL(*ippl::Comm, domain, isParallel);
         PLayout_t PL(FL, mesh);

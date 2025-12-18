@@ -363,7 +363,7 @@ public:
     ThroughputMetrics benchmark_scatter(const std::string& name,
                                          const ippl::Interpolation::ScatterConfig& cfg,
                                          const ippl::NUFFT::ESKernel<real_type>& kernel,
-                                         int nghost,
+                                         int /*nghost*/,
                                          size_t n_particles) {
         if (ippl::Comm->rank() == 0 && params_.verbose) {
             std::cout << "  Benchmarking scatter: " << name << "\n";
@@ -417,7 +417,7 @@ public:
     ThroughputMetrics benchmark_gather(const std::string& name,
                                         const ippl::Interpolation::GatherConfig& cfg,
                                         const ippl::NUFFT::ESKernel<real_type>& kernel,
-                                        int nghost,
+                                        int /*nghost*/,
                                         size_t n_particles) {
         if (ippl::Comm->rank() == 0 && params_.verbose) {
             std::cout << "  Benchmarking gather: " << name << "\n";
@@ -466,7 +466,7 @@ public:
         return m;
     }
 
-    void setup_domain(int nghost) {
+    void setup_domain(int /*nghost*/) {
         for (unsigned d = 0; d < Dim; ++d) {
             n_grid_[d] = params_.n_grid;
         }
@@ -490,7 +490,7 @@ public:
         mesh_ = std::make_unique<Mesh_t>(domain, hx_, origin_);
     }
 
-    void initialize(const ippl::NUFFT::ESKernel<real_type>& kernel, int nghost) {
+    void initialize(const ippl::NUFFT::ESKernel<real_type>& /*kernel*/, int nghost) {
         grid_ = std::make_unique<Field_t>(*mesh_, *layout_, nghost);
         playout_ = std::make_unique<PLayout_t>(*layout_, *mesh_);
         bunch_ = std::make_unique<Bunch_t>(*playout_);

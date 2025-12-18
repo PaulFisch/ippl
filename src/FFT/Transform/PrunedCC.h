@@ -163,7 +163,11 @@ namespace ippl {
                         temp(i0, i1, i2) = inView(si, sj, sk);
                     });
 
-                backends_[local]->forward(temp.data(), temp.data());
+                if (dir == 1) {
+                    backends_[local]->forward(temp.data(), temp.data());
+                } else {
+                    backends_[local]->backward(temp.data(), temp.data());
+                }
             }
 
             Kokkos::fence();
@@ -226,7 +230,6 @@ namespace ippl {
     template <typename ComplexField>
     void FFT<PrunedCCTransform, ComplexField>::backwardPruned(int dir, ComplexField& input,
                                                               ComplexField& output) {
-        static IpplTimings::TimerRef twiddleMulTimer   = IpplTimings::getTimer("TwiddleMul");
         static IpplTimings::TimerRef subIFFTTimer      = IpplTimings::getTimer("subIFFTs");
         static IpplTimings::TimerRef stridedWriteTimer = IpplTimings::getTimer("StridedWrite");
 
@@ -319,8 +322,11 @@ namespace ippl {
                         temp(i0, i1, i2) = w * input_val;
                     });
 
-                // Backward FFT
-                backends_[local]->backward(temp.data(), temp.data());
+                if (dir == -1) {
+                    backends_[local]->forward(temp.data(), temp.data());
+                } else {
+                    backends_[local]->backward(temp.data(), temp.data());
+                }
             }
 
             Kokkos::fence();

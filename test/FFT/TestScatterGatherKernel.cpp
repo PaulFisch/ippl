@@ -45,7 +45,6 @@ int main(int argc, char* argv[]) {
         using real_type        = double;
         using complex_type     = Kokkos::complex<real_type>;
         using ExecSpace        = Kokkos::DefaultExecutionSpace;
-        using MemSpace         = ExecSpace::memory_space;
 
         using Mesh_t      = ippl::UniformCartesian<real_type, Dim>;
         using Centering_t = Mesh_t::DefaultCentering;

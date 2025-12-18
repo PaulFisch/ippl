@@ -110,9 +110,9 @@ bool testPrunedCC() {
     const int N1 = pt_full[1], K1 = pt_pruned[1];
     const int N2 = pt_full[2], K2 = pt_pruned[2];
 
-    const int p0_first = lDom_pruned[0].first(), p0_last = lDom_pruned[0].last();
-    const int p1_first = lDom_pruned[1].first(), p1_last = lDom_pruned[1].last();
-    const int p2_first = lDom_pruned[2].first(), p2_last = lDom_pruned[2].last();
+    const int p0_first = lDom_pruned[0].first();
+    const int p1_first = lDom_pruned[1].first();
+    const int p2_first = lDom_pruned[2].first();
 
     const int f0_first = lDom_full[0].first(), f0_last = lDom_full[0].last();
     const int f1_first = lDom_full[1].first(), f1_last = lDom_full[1].last();
@@ -498,7 +498,7 @@ bool testPrunedCCBackward() {
         mdrange_t({nghost, nghost, nghost},
                   {view_output.extent(0) - nghost, view_output.extent(1) - nghost,
                    view_output.extent(2) - nghost}),
-        KOKKOS_LAMBDA(const int i, const int j, const int k, size_t& local_count) {
+        KOKKOS_LAMBDA(int, int, int, size_t& local_count) {
             ++local_count;
         },
         count);

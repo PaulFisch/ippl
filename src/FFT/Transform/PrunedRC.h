@@ -36,7 +36,7 @@ namespace ippl {
         using TempComplex_t = Kokkos::View<Complex_t***, Kokkos::LayoutLeft, MemSpace>;
 
         FFT(const Layout_t& layoutReal, const Layout_t& layoutComplexFull,
-            const Layout_t& layoutComplexPruned, const PruningParams<Dim>& pruning,
+            const Layout_t& /*layoutComplexPruned*/, const PruningParams<Dim>& pruning,
             const ParameterList& params)
             : pruning_(pruning) {
             static_assert(Dim == 2 || Dim == 3, "heFFTe only supports 2D and 3D");
@@ -86,11 +86,9 @@ namespace ippl {
         const auto& lDomReal   = f.getLayout().getLocalNDIndex();
         const auto& lDomPruned = g.getLayout().getLocalNDIndex();
 
-        const std::size_t N0 = lDomReal[0].length();
         const std::size_t N1 = lDomReal[1].length();
         const std::size_t N2 = lDomReal[2].length();
 
-        const std::size_t K0 = pruning_.n_modes[0];
         const std::size_t K1 = pruning_.n_modes[1];
         const std::size_t K2 = pruning_.n_modes[2];
 

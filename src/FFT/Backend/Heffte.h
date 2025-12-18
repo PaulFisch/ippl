@@ -5,9 +5,9 @@
 #include <heffte_fft3d_r2c.h>
 #include <memory>
 
-#include "Field/BareField.h"
-
 #include "Utility/ParameterList.h"
+
+#include "Field/BareField.h"
 
 #include "FFT/Traits.h"
 #include "FieldLayout/FieldLayout.h"
@@ -61,8 +61,8 @@ namespace ippl {
 
             HeffteC2C(const heffte::box3d<long long>& inbox, const heffte::box3d<long long>& outbox,
                       MPI_Comm comm, const ParameterList& params) {
-                auto opts = makeHeffteOptions<backend_t>(params);
-                heffte_   = std::make_shared<heffte_t>(inbox, outbox, comm, opts);
+                auto opts  = makeHeffteOptions<backend_t>(params);
+                heffte_    = std::make_shared<heffte_t>(inbox, outbox, comm, opts);
                 workspace_ = workspace_t(heffte_->size_workspace());
             }
 
@@ -95,8 +95,8 @@ namespace ippl {
 
             HeffteR2C(const heffte::box3d<long long>& inbox, const heffte::box3d<long long>& outbox,
                       int r2c_direction, MPI_Comm comm, const ParameterList& params) {
-                auto opts = makeHeffteOptions<backend_t>(params);
-                heffte_   = std::make_shared<heffte_t>(inbox, outbox, r2c_direction, comm, opts);
+                auto opts  = makeHeffteOptions<backend_t>(params);
+                heffte_    = std::make_shared<heffte_t>(inbox, outbox, r2c_direction, comm, opts);
                 workspace_ = workspace_t(heffte_->size_workspace());
             }
 
@@ -130,9 +130,9 @@ namespace ippl {
                                                                                                   \
         HeffteTrig(const heffte::box3d<long long>& inbox, const heffte::box3d<long long>& outbox, \
                    MPI_Comm comm, const ParameterList& params) {                                  \
-            auto opts = makeHeffteOptions<backend_t>(params);                                     \
-            heffte_   = std::make_shared<heffte_t>(inbox, outbox, comm, opts);                    \
-            workspace_ = workspace_t(heffte_->size_workspace());                                         \
+            auto opts  = makeHeffteOptions<backend_t>(params);                                    \
+            heffte_    = std::make_shared<heffte_t>(inbox, outbox, comm, opts);                   \
+            workspace_ = workspace_t(heffte_->size_workspace());                                  \
         }                                                                                         \
                                                                                                   \
         void forward(T* in, T* out) {                                                             \

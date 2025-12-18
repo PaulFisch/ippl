@@ -301,7 +301,7 @@ int main(int argc, char* argv[]) {
             printTimerSummary("Total_NUFFT_Cycle", "Full cycle (T1+T2)");
 
             // Throughput
-            const auto& totalMeasurements = IpplTimings::getMeasurements("Total_NUFFT_Cycle");
+            const auto totalMeasurements = IpplTimings::getMeasurements("Total_NUFFT_Cycle");
             if (!totalMeasurements.empty()) {
                 double sum = 0.0;
                 for (double m : totalMeasurements) sum += m;

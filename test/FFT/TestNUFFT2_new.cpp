@@ -71,8 +71,8 @@ KOKKOS_INLINE_FUNCTION ippl::Vector<int, Dim> centeredToCornerDC(const ippl::Vec
 template <typename T, class GeneratorPool, unsigned Dim>
 struct generate_random_field {
     using view_type = typename ippl::detail::ViewType<T, Dim>::view_type;
-    ippl::Vector<int, Dim> n_modes;
     view_type f;
+    ippl::Vector<int, Dim> n_modes;
 
     // The GeneratorPool
     GeneratorPool rand_pool;
@@ -294,9 +294,6 @@ int main(int argc, char* argv[]) {
                            || (g >= n_modes + n_modes / 2 && g < 2 * n_modes);
                 };
 
-                int li_in = i - local_first[0] + nghost;
-                int lj_in = j - local_first[1] + nghost;
-                int lk_in = k - local_first[2] + nghost;
 
                 if (in_bounds(i, n_modes[0]) && in_bounds(j, n_modes[1])
                     && in_bounds(k, n_modes[2])) {

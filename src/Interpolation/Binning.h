@@ -223,8 +223,6 @@ namespace ippl {
                 PermuteViewType& permute,
                 OffsetViewType& bin_offsets,
                 const size_t n_particles) {
-
-                using size_type = typename ExecSpace::memory_space::size_type;
                 using memory_space = typename ExecSpace::memory_space;
 
                 // Calculate number of bins
@@ -232,7 +230,6 @@ namespace ippl {
                 num_tiles[0] = (n_grid_local[0] + tile_size[0] - 1) / tile_size[0] + 1;
                 num_tiles[1] = (n_grid_local[1] + tile_size[1] - 1) / tile_size[1] + 1;
                 num_tiles[2] = (n_grid_local[2] + tile_size[2] - 1) / tile_size[2] + 1;
-                const size_type n_bins = num_tiles[0] * num_tiles[1] * num_tiles[2];
 
                 auto& buf_handler = ippl::detail::getDefaultSortBufferManager<memory_space>();
 

@@ -59,13 +59,13 @@ public:
         // Atomic (baseline)
         {
             auto cfg = ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
+            cfg.method = ippl::Interpolation::GatherMethod::Atomic;
             cfg.sort = false;
             configs.push_back(cfg);
         }
         {
             auto cfg = ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
+            cfg.method = ippl::Interpolation::GatherMethod::Atomic;
             cfg.sort = true;
             configs.push_back(cfg);
         }
@@ -73,7 +73,7 @@ public:
         // Tiled with different tile sizes
         for (int tile_size : {8, 12, 16, 20, 24}) {
             auto cfg = ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
+            cfg.method = ippl::Interpolation::GatherMethod::Tiled;
             cfg.tile_size_3d = tile_size;
             cfg.sort = false;
             configs.push_back(cfg);

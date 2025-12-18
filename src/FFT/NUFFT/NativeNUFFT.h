@@ -133,8 +133,6 @@ namespace ippl {
                 static IpplTimings::TimerRef initTimer = IpplTimings::getTimer("NativeNUFFT::init");
                 IpplTimings::startTimer(initTimer);
 
-                using NDIndex_t = NDIndex<Dim>;
-
                 // Create index domain for upsampled grid
                 NDIndex<Dim> domain;
                 for (unsigned d = 0; d < Dim; ++d) {
@@ -145,7 +143,6 @@ namespace ippl {
                 std::array<bool, Dim> isParallel;
                 isParallel.fill(true);
 
-                const int hw = kernel_.width() / 2;
                 // TODO(paul) we need here (W+1)/2 ghost layers, because for uneven W, in case the
                 //            point is in the upper half of the last segment, we need both the value
                 //            at the end, plus the kernel support extends w/2 into the halo.

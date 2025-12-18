@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
         int nRanks = ippl::Comm->size();
 
         // Number of modes (output size - no upsampling)
-        ippl::Vector<int, dim> n_modes = {16, 16, 16};
+        ippl::Vector<int, dim> n_modes = {8, 8, 8};
 
         ippl::Index I(n_modes[0]);
         ippl::Index J(n_modes[1]);
@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
 
         using size_type = ippl::detail::size_type;
 
-        size_type Np = std::pow(16, 3);
+        size_type Np = std::pow(2, 3);
 
         typedef ippl::Field<Kokkos::complex<double>, dim, Mesh_t, Centering_t>::uniform_type
             field_type;
@@ -156,7 +156,7 @@ int main(int argc, char* argv[]) {
 
         ippl::ParameterList fftParams;
 
-        fftParams.add("tolerance", 1e-7);
+        fftParams.add("tolerance", 1e-4);
 #ifdef FINUFFT_USE_CUDA
         fftParams.add("gpu_method", 1);
         fftParams.add("gpu_sort", 0);

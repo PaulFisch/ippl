@@ -53,7 +53,7 @@ namespace ippl {
                     const value_type& val = values(j);
 
                     // Transform from physical coordinates [-pi, pi] to grid coordinates [0, n_grid)
-                    constexpr RealType inv_two_pi = RealType(0.5) / std::numbers::pi_v<RealType>;
+                    // constexpr RealType inv_two_pi = RealType(0.5) / std::numbers::pi_v<RealType>;
 
                     real_type pos[Dim];  // Grid coordinates
                     for (unsigned d = 0; d < Dim; ++d) {

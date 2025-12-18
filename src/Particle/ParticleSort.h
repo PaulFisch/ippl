@@ -438,9 +438,6 @@ namespace ippl {
          */
         template <typename ExecSpace, typename DataView, typename IndexView>
         void applyPermutation(DataView& data, const IndexView& permute, size_t n) {
-            using value_type   = typename DataView::value_type;
-            using memory_space = typename DataView::memory_space;
-
             DataView temp("temp", n);
 
             using policy_type = Kokkos::RangePolicy<ExecSpace>;

@@ -159,7 +159,7 @@ double benchmarkType1(FFT_type& fft, Field& field, Bunch& bunch,
 
 template<typename FFT_type, typename Field, typename Bunch>
 double benchmarkType2(FFT_type& fft, Field& field, Bunch& bunch,
-                      const std::string& method, int warmup_runs = 2, int benchmark_runs = 5) {
+                      const std::string& /*method*/, int warmup_runs = 2, int benchmark_runs = 5) {
     // Warmup
     for (int i = 0; i < warmup_runs; ++i) {
         fft.transform(bunch.R, bunch.Q, field);

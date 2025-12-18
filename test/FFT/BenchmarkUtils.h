@@ -159,8 +159,8 @@ namespace ippl::benchmark {
     template <typename ExecSpace, unsigned Dim, typename real_type, typename Mesh_t,
               typename FieldLayout_t, typename PLayout_t, typename Bunch_t, typename Field_t>
     void setup_benchmark_data(const BenchmarkParams& params,
-                              const ippl::NUFFT::ESKernel<real_type>& kernel, Mesh_t& mesh,
-                              FieldLayout_t& layout, PLayout_t& playout, Bunch_t& bunch,
+                              const ippl::NUFFT::ESKernel<real_type>& /*kernel*/, Mesh_t& mesh,
+                              FieldLayout_t& layout, PLayout_t& /*playout*/, Bunch_t& bunch,
                               Field_t& grid_data, int nghost) {
         using complex_type = Kokkos::complex<real_type>;
         using RandPoolType = Kokkos::Random_XorShift64_Pool<ExecSpace>;

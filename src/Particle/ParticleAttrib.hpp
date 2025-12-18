@@ -275,7 +275,6 @@ namespace ippl {
              || config.method == Interpolation::ScatterMethod::OutputFocused)
             && Dim == 3) {
             IpplTimings::startTimer(scatterKernelSortTimer);
-            using size_type = typename execution_space::memory_space::size_type;
 
             // Prepare grid dimensions - use GLOBAL for coordinate transform, LOCAL for binning
             Kokkos::Array<int, 3> n_grid_global_arr;
@@ -369,7 +368,6 @@ namespace ippl {
         const Kernel& kernel, bool addToAttribute, const Interpolation::GatherConfig& config) {
         constexpr unsigned Dim                   = Field::dim;
         using PositionType                       = typename Field::Mesh_t::value_type;
-        using complex_type                       = typename Field::value_type;
         static IpplTimings::TimerRef gatherTimer = IpplTimings::getTimer("gather");
         IpplTimings::startTimer(gatherTimer);
 
@@ -403,7 +401,6 @@ namespace ippl {
             local_offset[d] = lDom[d].first();
         }
 
-        using policy_type       = Kokkos::RangePolicy<execution_space>;
         const size_t nParticles = *(this->localNum_mp);
 
         // Dispatch based on method
@@ -422,8 +419,6 @@ namespace ippl {
                 static IpplTimings::TimerRef gatherSortTimer =
                     IpplTimings::getTimer("gatherKernelSort");
                 IpplTimings::startTimer(gatherSortTimer);
-
-                using memory_space = typename execution_space::memory_space;
 
                 // Sort particles by Morton code
                 auto x_view = pp.getView();
@@ -451,8 +446,6 @@ namespace ippl {
                     num_tiles[d] =
                         (ngrid_local[d] + config.tile_size_3d - 1) / config.tile_size_3d + 1;
                 }
-                auto total_tiles =
-                    size_t(num_tiles[0]) * size_t(num_tiles[1]) * size_t(num_tiles[2]);
 
                 // auto &buf_handler = detail::getDefaultSortBufferManager<memory_space>();
                 // buf_handler.ensureCapacity(std::max(nParticles, total_tiles + 1));
@@ -479,7 +472,6 @@ namespace ippl {
 
                 // Dispatch to specialized kernel
                 constexpr int MaxW = 20;
-                int n0 = ngrid_global[0], n1 = ngrid_global[1], n2 = ngrid_global[2];
                 if (config.method == Interpolation::GatherMethod::Native) {
                     throw std::runtime_error("Don't call native");
                     // Interpolation::detail::CudaGatherDispatcher<1, MaxW>::template dispatch_3d<
@@ -600,7 +592,7 @@ namespace ippl {
     void ParticleAttrib<T, Properties...>::scatterPIFNUFFT(
         Field<FT, Dim, M, C>& f, Field<ST, Dim, M, C>& Sk,
         const ParticleAttrib<Vector<PT, Dim>, Properties...>& pp,
-        FFT<NUFFTransform, Field<ST, Dim, M, C>>* nufft, const MPI_Comm& spaceComm) const {
+        FFT<NUFFTransform, Field<ST, Dim, M, C>>* nufft, const MPI_Comm&) const {
         static IpplTimings::TimerRef scatterPIFNUFFTTimer =
             IpplTimings::getTimer("ScatterPIFNUFFT");
         IpplTimings::startTimer(scatterPIFNUFFTTimer);

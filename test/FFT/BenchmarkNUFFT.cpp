@@ -124,7 +124,7 @@ MemoryInfo getCudaMemoryInfo() {
     return info;
 }
 
-void printMemoryUsage(const std::string& label) {
+void printMemoryUsage(const std::string& /*label*/) {
     if (ippl::Comm->rank() == 0) {
 #ifdef KOKKOS_ENABLE_CUDA
         MemoryInfo info = getCudaMemoryInfo();
