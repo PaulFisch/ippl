@@ -23,12 +23,12 @@ namespace ippl {
     namespace fft {
 #ifdef ENABLE_FINUFFT
         template <class T>
-        struct finufftTypes;
+        struct finufftType;
 #ifdef ENABLE_GPU_NUFFT
 #ifdef KOKKOS_ENABLE_CUDA
 
         template <>
-        struct finufftTypes<float> {
+        struct finufftType<float> {
             std::function<int(int, int, int64_t*, int, int, float, cufinufftf_plan*,
                               cufinufft_opts*)>
                 makeplan = cufinufftf_makeplan;
@@ -44,7 +44,7 @@ namespace ippl {
         };
 
         template <>
-        struct finufftTypes<double> {
+        struct finufftType<double> {
             std::function<int(int, int, int64_t*, int, int, double, cufinufft_plan*,
                               cufinufft_opts*)>
                 makeplan = cufinufft_makeplan;
@@ -61,7 +61,7 @@ namespace ippl {
 #endif
 #else
         template <>
-        struct finufftTypes<float> {
+        struct finufftType<float> {
             std::function<int(int, int, int64_t*, int, int, float, finufftf_plan*, finufft_opts*)>
                 makeplan = finufftf_makeplan;
             std::function<int(finufftf_plan, int64_t, float*, float*, float*, int64_t, float*,
@@ -76,7 +76,7 @@ namespace ippl {
         };
 
         template <>
-        struct finufftTypes<double> {
+        struct finufftType<double> {
             std::function<int(int, int, int64_t*, int, int, double, finufft_plan*, finufft_opts*)>
                 makeplan = finufft_makeplan;
             std::function<int(finufft_plan, int64_t, double*, double*, double*, int64_t, double*,
@@ -115,7 +115,7 @@ namespace ippl {
         using NativeNUFFT_t = NUFFT::NativeNUFFT<Dim, T, ExecSpace>;
 
 #ifdef ENABLE_FINUFFT
-        using FinufftTypes      = fft::FinufftTypes<T>;
+        using FinufftTypes      = fft::FinufftType<T>;
         using finufft_complex_t = typename FinufftTypes::complex_type;
         using finufft_plan_t    = typename FinufftTypes::plan_type;
 #endif
