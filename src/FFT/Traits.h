@@ -190,6 +190,7 @@ namespace ippl {
 
             static void create(stream_type&) {}
             static void destroy(stream_type&) {}
+            static void sync(stream_type&) {}
             static exec_space instance(stream_type&) { return exec_space(); }
         };
 
@@ -201,6 +202,7 @@ namespace ippl {
 
             static void create(stream_type& s) { cudaStreamCreate(&s); }
             static void destroy(stream_type& s) { cudaStreamDestroy(s); }
+            static void sync(stream_type& s) { cudaStreamSynchronize(s); }
             static exec_space instance(stream_type& s) { return exec_space(s); }
         };
 #endif
@@ -213,6 +215,7 @@ namespace ippl {
 
             static void create(stream_type& s) { hipStreamCreate(&s); }
             static void destroy(stream_type& s) { hipStreamDestroy(s); }
+            static void sync(stream_type& s) { hipStreamSynchronize(s); }
             static exec_space instance(stream_type& s) { return exec_space(s); }
         };
 #endif

@@ -357,6 +357,10 @@ namespace ippl {
             }
 
             Kokkos::fence();
+            for (int local = 0; local < count; ++local) {
+                GPUOps::sync(streams_[local]);
+            }
+
             IpplTimings::stopTimer(subFFTTimer);
 
             IpplTimings::startTimer(twiddleTimer);
@@ -526,6 +530,9 @@ namespace ippl {
             }
 
             Kokkos::fence();
+            for (int local = 0; local < count; ++local) {
+                GPUOps::sync(streams_[local]);
+            }
             IpplTimings::stopTimer(subIFFTTimer);
 
             // Phase 2: Strided write to output
