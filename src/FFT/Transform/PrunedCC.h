@@ -327,6 +327,7 @@ namespace ippl {
                               << ", " << sum_before.imag() << ")" << std::endl;
                 }
 
+                GPUOps::sync(streams_[local]);
                 if (dir == 1) {
                     backends_[local]->forward(temp.data(), temp.data());
                 } else {
@@ -521,7 +522,7 @@ namespace ippl {
                         auto input_val   = inView(i0 + ngIn, i1 + ngIn, i2 + ngIn);
                         temp(i0, i1, i2) = w * input_val;
                     });
-
+                GPUOps::sync(streams_[local]);
                 if (dir == -1) {
                     backends_[local]->forward(temp.data(), temp.data());
                 } else {
