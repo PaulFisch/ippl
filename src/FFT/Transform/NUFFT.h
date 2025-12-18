@@ -115,7 +115,7 @@ namespace ippl {
         using NativeNUFFT_t = NUFFT::NativeNUFFT<Dim, T, ExecSpace>;
 
 #ifdef ENABLE_FINUFFT
-        using FinufftTypes      = fft::FinufftType<T>;
+        using FinufftTypes      = fft::finufftType<T>;
         using finufft_complex_t = typename FinufftTypes::complex_type;
         using finufft_plan_t    = typename FinufftTypes::plan_type;
 #endif
