@@ -31,7 +31,7 @@ namespace detail {
 
 // CUDA scaling kernel
 template <typename T>
-__global__ void scaleKernel(T* data, size_t n, typename T::value_type scale) {
+__global__ void scaleKernel(T* data, size_t n, double scale) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < n) {
         data[idx].x *= scale;
