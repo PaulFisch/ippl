@@ -91,147 +91,6 @@ namespace ippl {
         std::array<Stream_t, NumSubFFTs> streams_{};
     };
 
-    //-------------------------------------------------------------------------
-    // Forward Pruned C2C Implementation
-    //-------------------------------------------------------------------------
-
-    //     template <typename ComplexField>
-    //     void FFT<PrunedCCTransform, ComplexField>::forwardPruned(int dir, ComplexField& input,
-    //                                                              ComplexField& output) {
-    //         static IpplTimings::TimerRef twiddleTimer = IpplTimings::getTimer("TwiddleAdd");
-    //         static IpplTimings::TimerRef subFFTTimer  = IpplTimings::getTimer("subFFTs");
-    //
-    //         auto inView     = input.getView();
-    //         auto outView    = output.getView();
-    //         const int ngIn  = input.getNghost();
-    //         const int ngOut = output.getNghost();
-    //
-    //         const auto& lDomPruned = output.getLayout().getLocalNDIndex();
-    //         const auto& gDomFull   = input.getLayout().getDomain();
-    //         const auto& modes      = pruning_.n_modes;
-    //
-    //         // Ensure temps
-    //         for (int s = 0; s < numConcurrent_; ++s) {
-    //             if (temps_[s].size() != output.getOwned().size()) {
-    //                 temps_[s] = detail::shrinkView("pruned_temp_" + std::to_string(s), outView,
-    //                 ngOut);
-    //             }
-    //         }
-    //
-    //         Kokkos::deep_copy(outView, Complex_t(0, 0));
-    //
-    //         double scale = 1.0;
-    //         if (dir == 1) {
-    //             for (unsigned d = 0; d < Dim; ++d) {
-    //                 scale *= double(modes[d]) / double(gDomFull[d].length());
-    //             }
-    //         }
-    //
-    //         std::array<Vector<long, Dim>, NumSubFFTs> offsets;
-    //         for (int k = 0; k < NumSubFFTs; ++k) {
-    //             for (unsigned d = 0; d < Dim; ++d) {
-    //                 offsets[k][d] = (k >> d) & 1;
-    //             }
-    //         }
-    //
-    //         Vector<int, Dim> localFirst;
-    //         for (unsigned d = 0; d < Dim; ++d) {
-    //             localFirst[d] = lDomPruned[d].first();
-    //         }
-    //
-    //         auto owned           = output.getOwned();
-    //         const int numBatches = (NumSubFFTs + numConcurrent_ - 1) / numConcurrent_;
-    //
-    //         for (int batch = 0; batch < numBatches; ++batch) {
-    //             const int start = batch * numConcurrent_;
-    //             const int end   = std::min(start + numConcurrent_, NumSubFFTs);
-    //             const int count = end - start;
-    //
-    //             IpplTimings::startTimer(subFFTTimer);
-    //
-    // #pragma omp parallel for
-    //             for (int local = 0; local < count; ++local) {
-    //                 const int k = start + local;
-    //                 auto offs   = offsets[k];
-    //                 auto& temp  = temps_[local];
-    //                 auto exec   = GPUOps::instance(streams_[local]);
-    //
-    //                 Kokkos::parallel_for(
-    //                     "strided_copy_forward",
-    //                     Kokkos::MDRangePolicy<DeviceExec, Kokkos::Rank<3>>(
-    //                         exec, {0, 0, 0},
-    //                         {long(owned[0].length()), long(owned[1].length()),
-    //                          long(owned[2].length())}),
-    //                     KOKKOS_LAMBDA(int i0, int i1, int i2) {
-    //                         int si           = i0 * 2 + offs[0] + ngIn;
-    //                         int sj           = i1 * 2 + offs[1] + ngIn;
-    //                         int sk           = i2 * 2 + offs[2] + ngIn;
-    //                         temp(i0, i1, i2) = inView(si, sj, sk);
-    //                     });
-    //
-    //                 if (dir == 1) {
-    //                     backends_[local]->forward(temp.data(), temp.data());
-    //                 } else {
-    //                     backends_[local]->backward(temp.data(), temp.data());
-    //                 }
-    //             }
-    //
-    //             Kokkos::fence();
-    //             IpplTimings::stopTimer(subFFTTimer);
-    //
-    //             IpplTimings::startTimer(twiddleTimer);
-    //
-    //             for (int local = 0; local < count; ++local) {
-    //                 const int k = start + local;
-    //                 auto offs   = offsets[k];
-    //                 auto& temp  = temps_[local];
-    //
-    //                 Kokkos::parallel_for(
-    //                     "twiddle_add_forward",
-    //                     Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>(
-    //                         {ngOut, ngOut, ngOut},
-    //                         {int(outView.extent(0)) - ngOut, int(outView.extent(1)) - ngOut,
-    //                          int(outView.extent(2)) - ngOut}),
-    //                     KOKKOS_LAMBDA(int i, int j, int kk) {
-    //                         int gi = i - ngOut + localFirst[0];
-    //                         int gj = j - ngOut + localFirst[1];
-    //                         int gk = kk - ngOut + localFirst[2];
-    //
-    //                         int64_t f0 = (gi < int64_t(modes[0]) / 2)
-    //                                          ? gi
-    //                                          : int64_t(gDomFull[0].length()) - int64_t(modes[0])
-    //                                          + gi;
-    //                         int64_t f1 = (gj < int64_t(modes[1]) / 2)
-    //                                          ? gj
-    //                                          : int64_t(gDomFull[1].length()) - int64_t(modes[1])
-    //                                          + gj;
-    //                         int64_t f2 = (gk < int64_t(modes[2]) / 2)
-    //                                          ? gk
-    //                                          : int64_t(gDomFull[2].length()) - int64_t(modes[2])
-    //                                          + gk;
-    //
-    //                         Complex_t w(1.0, 0.0);
-    //                         auto twiddle = [&](int64_t freq, int64_t N) {
-    //                             double ang = -dir * 2.0 * M_PI * double(freq) / double(N);
-    //                             return Complex_t(Kokkos::cos(ang), Kokkos::sin(ang));
-    //                         };
-    //
-    //                         if (offs[0])
-    //                             w *= twiddle(f0, gDomFull[0].length());
-    //                         if (offs[1])
-    //                             w *= twiddle(f1, gDomFull[1].length());
-    //                         if (offs[2])
-    //                             w *= twiddle(f2, gDomFull[2].length());
-    //
-    //                         auto val = temp(i - ngOut, j - ngOut, kk - ngOut);
-    //                         outView(i, j, kk) += w * val * scale;
-    //                     });
-    //             }
-    //
-    //             IpplTimings::stopTimer(twiddleTimer);
-    //         }
-    //     }
-
     template <typename ComplexField>
     void FFT<PrunedCCTransform, ComplexField>::forwardPruned(int dir, ComplexField& input,
                                                              ComplexField& output) {
@@ -261,15 +120,6 @@ namespace ippl {
             for (unsigned d = 0; d < Dim; ++d) {
                 scale *= double(modes[d]) / double(gDomFull[d].length());
             }
-        }
-
-        // DEBUG: Print scale factor
-        if (ippl::Comm->rank() == 0) {
-            std::cout << "DEBUG forwardPruned: dir=" << dir << ", scale=" << scale << std::endl;
-            std::cout << "  modes: [" << modes[0] << ", " << modes[1] << ", " << modes[2] << "]"
-                      << std::endl;
-            std::cout << "  gDomFull: [" << gDomFull[0].length() << ", " << gDomFull[1].length()
-                      << ", " << gDomFull[2].length() << "]" << std::endl;
         }
 
         std::array<Vector<long, Dim>, NumSubFFTs> offsets;
@@ -313,47 +163,11 @@ namespace ippl {
                         int sk           = i2 * 2 + offs[2] + ngIn;
                         temp(i0, i1, i2) = inView(si, sj, sk);
                     });
-
-                // DEBUG: Print sum of temp before FFT (for sub-FFT 0 only)
-                if (k == 0 && ippl::Comm->rank() == 0) {
-                    Kokkos::fence();
-                    Complex_t sum_before(0, 0);
-                    auto temp_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), temp);
-                    for (size_t i = 0; i < temp_h.extent(0); ++i)
-                        for (size_t j = 0; j < temp_h.extent(1); ++j)
-                            for (size_t kk = 0; kk < temp_h.extent(2); ++kk)
-                                sum_before += temp_h(i, j, kk);
-                    std::cout << "DEBUG: Sub-FFT 0 temp sum BEFORE FFT: (" << sum_before.real()
-                              << ", " << sum_before.imag() << ")" << std::endl;
-                }
-
                 GPUOps::sync(streams_[local]);
                 if (dir == 1) {
                     backends_[local]->forward(temp.data(), temp.data());
                 } else {
                     backends_[local]->backward(temp.data(), temp.data());
-                }
-
-                // DEBUG: Print DC component after FFT (for sub-FFT 0 only)
-                if (k == 0 && ippl::Comm->rank() == 0) {
-                    Kokkos::fence();
-                    auto temp_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), temp);
-                    std::cout << "DEBUG: Sub-FFT 0 temp[0,0,0] AFTER FFT: ("
-                              << temp_h(0, 0, 0).real() << ", " << temp_h(0, 0, 0).imag() << ")"
-                              << std::endl;
-
-                    // Calculate expected DC if normalized
-                    Complex_t sum_check(0, 0);
-                    for (size_t i = 0; i < temp_h.extent(0); ++i)
-                        for (size_t j = 0; j < temp_h.extent(1); ++j)
-                            for (size_t kk = 0; kk < temp_h.extent(2); ++kk)
-                                sum_check += temp_h(i, j, kk);
-                    size_t N_pruned = temp_h.extent(0) * temp_h.extent(1) * temp_h.extent(2);
-                    std::cout << "DEBUG: Sub-FFT 0 N_pruned=" << N_pruned << std::endl;
-                    std::cout << "DEBUG: If FFT normalized: DC should equal sum_before / N_pruned"
-                              << std::endl;
-                    std::cout << "DEBUG: If FFT NOT normalized: DC should equal sum_before"
-                              << std::endl;
                 }
             }
 
@@ -411,15 +225,6 @@ namespace ippl {
             }
 
             IpplTimings::stopTimer(twiddleTimer);
-        }
-
-        // DEBUG: Print final output DC
-        if (ippl::Comm->rank() == 0) {
-            Kokkos::fence();
-            auto out_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), outView);
-            std::cout << "DEBUG: Final output[ngOut,ngOut,ngOut] = ("
-                      << out_h(ngOut, ngOut, ngOut).real() << ", "
-                      << out_h(ngOut, ngOut, ngOut).imag() << ")" << std::endl;
         }
     }
 
