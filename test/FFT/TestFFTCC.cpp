@@ -122,6 +122,7 @@
 #include "Utility/ParameterList.h"
 
 int main(int argc, char* argv[]) {
+    std::cout << "FFTCC init begin" << std::endl;
     ippl::initialize(argc, argv);
     {
         constexpr unsigned int dim = 3;
