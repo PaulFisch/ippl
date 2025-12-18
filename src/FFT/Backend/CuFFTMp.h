@@ -29,6 +29,38 @@ namespace ippl {
                     throw IpplException("cuFFTMp", msg.c_str());
                 }
             }
+
+            // Transpose kernel: LayoutLeft -> LayoutRight
+            // LayoutLeft:  src[i + j*n0 + k*n0*n1]  (i is fastest)
+            // LayoutRight: dst[k + j*n2 + i*n1*n2]  (k is fastest)
+            template <typename T>
+            __global__ void transposeL2R(T* __restrict__ dst, const T* __restrict__ src, int n0,
+                                         int n1, int n2) {
+                int i = blockIdx.x * blockDim.x + threadIdx.x;
+                int j = blockIdx.y * blockDim.y + threadIdx.y;
+                int k = blockIdx.z * blockDim.z + threadIdx.z;
+
+                if (i < n0 && j < n1 && k < n2) {
+                    size_t src_idx = i + j * n0 + k * n0 * n1;  // LayoutLeft
+                    size_t dst_idx = k + j * n2 + i * n1 * n2;  // LayoutRight
+                    dst[dst_idx]   = src[src_idx];
+                }
+            }
+
+            // Transpose kernel: LayoutRight -> LayoutLeft
+            template <typename T>
+            __global__ void transposeR2L(T* __restrict__ dst, const T* __restrict__ src, int n0,
+                                         int n1, int n2) {
+                int i = blockIdx.x * blockDim.x + threadIdx.x;
+                int j = blockIdx.y * blockDim.y + threadIdx.y;
+                int k = blockIdx.z * blockDim.z + threadIdx.z;
+
+                if (i < n0 && j < n1 && k < n2) {
+                    size_t src_idx = k + j * n2 + i * n1 * n2;  // LayoutRight
+                    size_t dst_idx = i + j * n0 + k * n0 * n1;  // LayoutLeft
+                    dst[dst_idx]   = src[src_idx];
+                }
+            }
         }  // namespace detail
 
         // CUDA scaling kernel
@@ -58,25 +90,18 @@ namespace ippl {
             static_assert(is_available_v<CuFFTMp>, "cuFFTMp not available");
 
             CuFFTMpC2C(const heffte::box3d<long long>& inbox,
-               const heffte::box3d<long long>& outbox,
-               MPI_Comm comm,
-               const ParameterList& params)
-        : comm_(MPI_COMM_WORLD /*TODO paul: I, unnicely, ignore this for now, because CuFFTMP does not support dups*/)
-    {
+                       const heffte::box3d<long long>& outbox, MPI_Comm comm,
+                       const ParameterList& params)
+                : comm_(MPI_COMM_WORLD) {
                 using detail::checkCudaError;
                 using detail::checkCufftResult;
 
-                // Create CUDA stream
                 checkCudaError(cudaStreamCreate(&stream_), "Failed to create CUDA stream");
-
-                // Create cuFFT handle
                 checkCufftResult(cufftCreate(&handle_), "Failed to create cuFFT handle");
                 checkCufftResult(cufftSetStream(handle_, stream_), "Failed to set stream");
 
-                // Determine transform type
                 cufftType type = std::is_same_v<T, float> ? CUFFT_C2C : CUFFT_Z2Z;
 
-                // Convert heffte box3d to cuFFTMp format (exclusive upper bounds)
                 for (int d = 0; d < 3; ++d) {
                     lower_in_[d]  = inbox.low[d];
                     upper_in_[d]  = inbox.high[d] + 1;
@@ -84,24 +109,16 @@ namespace ippl {
                     upper_out_[d] = outbox.high[d] + 1;
                 }
 
-                // Compute local sizes
-                std::array<long long, 3> local_in_size, local_out_size;
                 for (int d = 0; d < 3; ++d) {
-                    local_in_size[d]  = upper_in_[d] - lower_in_[d];
-                    local_out_size[d] = upper_out_[d] - lower_out_[d];
+                    local_size_[d] = upper_in_[d] - lower_in_[d];
                 }
 
-                // Row-major strides (C order)
-                std::array<long long, 3> strides_in, strides_out;
-                strides_in[2] = 1;
-                strides_in[1] = local_in_size[2];
-                strides_in[0] = local_in_size[2] * local_in_size[1];
+                // Row-major strides (required by cuFFTMp - must be decreasing)
+                std::array<long long, 3> strides;
+                strides[0] = local_size_[1] * local_size_[2];
+                strides[1] = local_size_[2];
+                strides[2] = 1;
 
-                strides_out[2] = 1;
-                strides_out[1] = local_out_size[2];
-                strides_out[0] = local_out_size[2] * local_out_size[1];
-
-                // Compute global dimensions
                 std::array<long long, 3> local_max;
                 for (int d = 0; d < 3; ++d) {
                     local_max[d] = std::max(upper_in_[d], upper_out_[d]);
@@ -113,21 +130,26 @@ namespace ippl {
                             static_cast<int>(global_size_[2])};
 
                 total_elements_ = static_cast<size_t>(n[0]) * n[1] * n[2];
-                local_elements_ = local_in_size[0] * local_in_size[1] * local_in_size[2];
+                local_elements_ = local_size_[0] * local_size_[1] * local_size_[2];
 
-                // Create plan with custom decomposition
                 checkCufftResult(cufftMpMakePlanDecomposition(
                                      handle_, 3, n, lower_in_.data(), upper_in_.data(),
-                                     strides_in.data(), lower_out_.data(), upper_out_.data(),
-                                     strides_out.data(), type, &comm_, CUFFT_COMM_MPI, &worksize_),
+                                     strides.data(), lower_out_.data(), upper_out_.data(),
+                                     strides.data(), type, &comm_, CUFFT_COMM_MPI, &worksize_),
                                  "Failed to create cuFFTMp decomposition plan");
 
-                // Allocate descriptor for input distribution
                 checkCufftResult(cufftXtMalloc(handle_, &desc_, CUFFT_XT_FORMAT_DISTRIBUTED_INPUT),
                                  "Failed to allocate descriptor");
+
+                // Allocate transpose buffer
+                checkCudaError(
+                    cudaMalloc(&transpose_buf_, local_elements_ * sizeof(cuda_complex_t)),
+                    "Failed to allocate transpose buffer");
             }
 
             ~CuFFTMpC2C() {
+                if (transpose_buf_)
+                    cudaFree(transpose_buf_);
                 if (desc_)
                     cufftXtFree(desc_);
                 if (handle_)
@@ -144,22 +166,22 @@ namespace ippl {
                 , comm_(other.comm_)
                 , stream_(other.stream_)
                 , desc_(other.desc_)
+                , transpose_buf_(other.transpose_buf_)
                 , worksize_(other.worksize_)
                 , total_elements_(other.total_elements_)
                 , local_elements_(other.local_elements_)
                 , global_size_(other.global_size_)
+                , local_size_(other.local_size_)
                 , lower_in_(other.lower_in_)
                 , upper_in_(other.upper_in_)
                 , lower_out_(other.lower_out_)
                 , upper_out_(other.upper_out_) {
-                other.handle_ = 0;
-                other.stream_ = nullptr;
-                other.desc_   = nullptr;
+                other.handle_        = 0;
+                other.stream_        = nullptr;
+                other.desc_          = nullptr;
+                other.transpose_buf_ = nullptr;
             }
 
-            /**
-             * @brief Execute forward FFT with full scaling (1/N normalization)
-             */
             void forward(complex_t* in, complex_t* out) {
                 using detail::checkCudaError;
                 using detail::checkCufftResult;
@@ -167,33 +189,23 @@ namespace ippl {
                 cuda_complex_t* desc_data =
                     static_cast<cuda_complex_t*>(desc_->descriptor->data[0]);
 
-                // Copy input data to descriptor's internal buffer
-                checkCudaError(
-                    cudaMemcpyAsync(desc_data, in, local_elements_ * sizeof(cuda_complex_t),
-                                    cudaMemcpyDeviceToDevice, stream_),
-                    "Failed to copy input to descriptor");
+                // Transpose input: LayoutLeft -> LayoutRight (into descriptor buffer)
+                launchTransposeL2R(desc_data, reinterpret_cast<cuda_complex_t*>(in));
 
-                // Execute forward transform in-place on descriptor
+                // Execute forward FFT
                 checkCufftResult(cufftXtExecDescriptor(handle_, desc_, desc_, CUFFT_FORWARD),
                                  "Forward FFT execution failed");
 
-                // Copy result from descriptor to output
-                // After forward, data is in DISTRIBUTED_OUTPUT format
-                checkCudaError(
-                    cudaMemcpyAsync(out, desc_data, local_elements_ * sizeof(cuda_complex_t),
-                                    cudaMemcpyDeviceToDevice, stream_),
-                    "Failed to copy output from descriptor");
+                // Transpose output: LayoutRight -> LayoutLeft
+                launchTransposeR2L(reinterpret_cast<cuda_complex_t*>(out), desc_data);
 
-                // Apply full scaling (1/N) to match heFFTe::scale::full
+                // Apply scaling (1/N)
                 T scale = T(1) / static_cast<T>(total_elements_);
                 applyScaling(reinterpret_cast<cuda_complex_t*>(out), local_elements_, scale);
 
                 checkCudaError(cudaStreamSynchronize(stream_), "Stream sync failed");
             }
 
-            /**
-             * @brief Execute backward FFT without scaling
-             */
             void backward(complex_t* in, complex_t* out) {
                 using detail::checkCudaError;
                 using detail::checkCufftResult;
@@ -201,29 +213,42 @@ namespace ippl {
                 cuda_complex_t* desc_data =
                     static_cast<cuda_complex_t*>(desc_->descriptor->data[0]);
 
-                // Copy input to descriptor
-                checkCudaError(
-                    cudaMemcpyAsync(desc_data, in, local_elements_ * sizeof(cuda_complex_t),
-                                    cudaMemcpyDeviceToDevice, stream_),
-                    "Failed to copy input to descriptor");
+                // Transpose input: LayoutLeft -> LayoutRight (into descriptor buffer)
+                launchTransposeL2R(desc_data, reinterpret_cast<cuda_complex_t*>(in));
 
-                // Execute backward transform
+                // Execute backward FFT
                 checkCufftResult(cufftXtExecDescriptor(handle_, desc_, desc_, CUFFT_INVERSE),
                                  "Backward FFT execution failed");
 
-                // Copy result to output
-                checkCudaError(
-                    cudaMemcpyAsync(out, desc_data, local_elements_ * sizeof(cuda_complex_t),
-                                    cudaMemcpyDeviceToDevice, stream_),
-                    "Failed to copy output from descriptor");
+                // Transpose output: LayoutRight -> LayoutLeft
+                launchTransposeR2L(reinterpret_cast<cuda_complex_t*>(out), desc_data);
 
-                // No scaling for backward (matches heffte::scale::none)
                 checkCudaError(cudaStreamSynchronize(stream_), "Stream sync failed");
             }
 
             std::size_t workspace_size() const { return worksize_; }
 
         private:
+            void launchTransposeL2R(cuda_complex_t* dst, const cuda_complex_t* src) {
+                dim3 block(8, 8, 8);
+                dim3 grid((local_size_[0] + block.x - 1) / block.x,
+                          (local_size_[1] + block.y - 1) / block.y,
+                          (local_size_[2] + block.z - 1) / block.z);
+                detail::transposeL2R<<<grid, block, 0, stream_>>>(
+                    dst, src, static_cast<int>(local_size_[0]), static_cast<int>(local_size_[1]),
+                    static_cast<int>(local_size_[2]));
+            }
+
+            void launchTransposeR2L(cuda_complex_t* dst, const cuda_complex_t* src) {
+                dim3 block(8, 8, 8);
+                dim3 grid((local_size_[0] + block.x - 1) / block.x,
+                          (local_size_[1] + block.y - 1) / block.y,
+                          (local_size_[2] + block.z - 1) / block.z);
+                detail::transposeR2L<<<grid, block, 0, stream_>>>(
+                    dst, src, static_cast<int>(local_size_[0]), static_cast<int>(local_size_[1]),
+                    static_cast<int>(local_size_[2]));
+            }
+
             void applyScaling(cuda_complex_t* data, size_t count, T scale) {
                 int blockSize = 256;
                 int numBlocks = (count + blockSize - 1) / blockSize;
@@ -232,13 +257,15 @@ namespace ippl {
 
             cufftHandle handle_ = 0;
             MPI_Comm comm_;
-            cudaStream_t stream_ = nullptr;
-            cudaLibXtDesc* desc_ = nullptr;
+            cudaStream_t stream_           = nullptr;
+            cudaLibXtDesc* desc_           = nullptr;
+            cuda_complex_t* transpose_buf_ = nullptr;
 
             size_t worksize_       = 0;
             size_t total_elements_ = 0;
             size_t local_elements_ = 0;
             std::array<long long, 3> global_size_;
+            std::array<long long, 3> local_size_;
             std::array<long long, 3> lower_in_, upper_in_;
             std::array<long long, 3> lower_out_, upper_out_;
         };
@@ -273,9 +300,8 @@ namespace ippl {
                 checkCufftResult(cufftSetStream(handle_r2c_, stream_), "Failed to set stream");
                 checkCufftResult(cufftSetStream(handle_c2r_, stream_), "Failed to set stream");
 
-                // Convert boxes (inbox = real, outbox = complex for R2C)
-                std::array<long long, 3> lower_real, upper_real, strides_real;
-                std::array<long long, 3> lower_complex, upper_complex, strides_complex;
+                std::array<long long, 3> lower_real, upper_real;
+                std::array<long long, 3> lower_complex, upper_complex;
 
                 for (int d = 0; d < 3; ++d) {
                     lower_real[d]    = inbox.low[d];
@@ -284,25 +310,23 @@ namespace ippl {
                     upper_complex[d] = outbox.high[d] + 1;
                 }
 
-                std::array<long long, 3> local_real_size, local_complex_size;
                 for (int d = 0; d < 3; ++d) {
-                    local_real_size[d]    = upper_real[d] - lower_real[d];
-                    local_complex_size[d] = upper_complex[d] - lower_complex[d];
+                    local_real_size_[d]    = upper_real[d] - lower_real[d];
+                    local_complex_size_[d] = upper_complex[d] - lower_complex[d];
                 }
 
-                // For in-place R2C, real data needs padding: last dimension stride = 2*(nz/2+1)
-                long long nz_complex     = local_complex_size[2];
-                long long nz_real_padded = 2 * nz_complex;
-
+                // Row-major strides for real data
+                std::array<long long, 3> strides_real;
+                strides_real[0] = local_real_size_[1] * local_real_size_[2];
+                strides_real[1] = local_real_size_[2];
                 strides_real[2] = 1;
-                strides_real[1] = nz_real_padded;  // Padded for in-place
-                strides_real[0] = local_real_size[1] * nz_real_padded;
 
+                // Row-major strides for complex data
+                std::array<long long, 3> strides_complex;
+                strides_complex[0] = local_complex_size_[1] * local_complex_size_[2];
+                strides_complex[1] = local_complex_size_[2];
                 strides_complex[2] = 1;
-                strides_complex[1] = local_complex_size[2];
-                strides_complex[0] = local_complex_size[1] * local_complex_size[2];
 
-                // Global dimensions
                 std::array<long long, 3> local_max;
                 for (int d = 0; d < 3; ++d) {
                     local_max[d] = std::max(upper_real[d], upper_complex[d]);
@@ -313,12 +337,12 @@ namespace ippl {
                 int n[3] = {static_cast<int>(global_size_[0]), static_cast<int>(global_size_[1]),
                             static_cast<int>(global_size_[2])};
 
-                total_elements_      = static_cast<size_t>(n[0]) * n[1] * n[2];
-                local_real_elements_ = local_real_size[0] * local_real_size[1] * local_real_size[2];
+                total_elements_ = static_cast<size_t>(n[0]) * n[1] * n[2];
+                local_real_elements_ =
+                    local_real_size_[0] * local_real_size_[1] * local_real_size_[2];
                 local_complex_elements_ =
-                    local_complex_size[0] * local_complex_size[1] * local_complex_size[2];
+                    local_complex_size_[0] * local_complex_size_[1] * local_complex_size_[2];
 
-                // R2C plan: input=real box, output=complex box
                 checkCufftResult(
                     cufftMpMakePlanDecomposition(
                         handle_r2c_, 3, n, lower_real.data(), upper_real.data(),
@@ -326,7 +350,6 @@ namespace ippl {
                         strides_complex.data(), CUFFT_R2C, &comm_, CUFFT_COMM_MPI, &worksize_),
                     "Failed to create R2C plan");
 
-                // C2R plan: same boxes (input=real, output=complex in cuFFTMp convention)
                 checkCufftResult(
                     cufftMpMakePlanDecomposition(
                         handle_c2r_, 3, n, lower_real.data(), upper_real.data(),
@@ -334,13 +357,23 @@ namespace ippl {
                         strides_complex.data(), CUFFT_C2R, &comm_, CUFFT_COMM_MPI, &worksize_),
                     "Failed to create C2R plan");
 
-                // Allocate descriptor
                 checkCufftResult(
                     cufftXtMalloc(handle_r2c_, &desc_, CUFFT_XT_FORMAT_DISTRIBUTED_INPUT),
                     "Failed to allocate R2C descriptor");
+
+                // Allocate transpose buffers
+                checkCudaError(cudaMalloc(&transpose_real_buf_, local_real_elements_ * sizeof(T)),
+                               "Failed to allocate real transpose buffer");
+                checkCudaError(cudaMalloc(&transpose_complex_buf_,
+                                          local_complex_elements_ * sizeof(cuda_complex_t)),
+                               "Failed to allocate complex transpose buffer");
             }
 
             ~CuFFTMpR2C() {
+                if (transpose_real_buf_)
+                    cudaFree(transpose_real_buf_);
+                if (transpose_complex_buf_)
+                    cudaFree(transpose_complex_buf_);
                 if (desc_)
                     cufftXtFree(desc_);
                 if (handle_r2c_)
@@ -360,22 +393,17 @@ namespace ippl {
 
                 T* desc_data = static_cast<T*>(desc_->descriptor->data[0]);
 
-                // Copy real input to descriptor
-                checkCudaError(cudaMemcpyAsync(desc_data, in, local_real_elements_ * sizeof(T),
-                                               cudaMemcpyDeviceToDevice, stream_),
-                               "Failed to copy real input");
+                // Transpose real input: LayoutLeft -> LayoutRight
+                launchTransposeRealL2R(desc_data, in);
 
-                // Execute R2C (always CUFFT_FORWARD)
                 checkCufftResult(cufftXtExecDescriptor(handle_r2c_, desc_, desc_, CUFFT_FORWARD),
                                  "R2C execution failed");
 
-                // Copy complex output
-                checkCudaError(cudaMemcpyAsync(out, desc_->descriptor->data[0],
-                                               local_complex_elements_ * sizeof(cuda_complex_t),
-                                               cudaMemcpyDeviceToDevice, stream_),
-                               "Failed to copy complex output");
+                // Transpose complex output: LayoutRight -> LayoutLeft
+                cuda_complex_t* complex_desc =
+                    static_cast<cuda_complex_t*>(desc_->descriptor->data[0]);
+                launchTransposeComplexR2L(reinterpret_cast<cuda_complex_t*>(out), complex_desc);
 
-                // Apply scaling
                 T scale = T(1) / static_cast<T>(total_elements_);
                 applyScaling(reinterpret_cast<cuda_complex_t*>(out), local_complex_elements_,
                              scale);
@@ -387,21 +415,18 @@ namespace ippl {
                 using detail::checkCudaError;
                 using detail::checkCufftResult;
 
-                // Copy complex input to descriptor
-                checkCudaError(cudaMemcpyAsync(desc_->descriptor->data[0], in,
-                                               local_complex_elements_ * sizeof(cuda_complex_t),
-                                               cudaMemcpyDeviceToDevice, stream_),
-                               "Failed to copy complex input");
+                cuda_complex_t* complex_desc =
+                    static_cast<cuda_complex_t*>(desc_->descriptor->data[0]);
 
-                // Execute C2R (always CUFFT_INVERSE)
+                // Transpose complex input: LayoutLeft -> LayoutRight
+                launchTransposeComplexL2R(complex_desc, reinterpret_cast<cuda_complex_t*>(in));
+
                 checkCufftResult(cufftXtExecDescriptor(handle_c2r_, desc_, desc_, CUFFT_INVERSE),
                                  "C2R execution failed");
 
-                // Copy real output
-                checkCudaError(cudaMemcpyAsync(out, desc_->descriptor->data[0],
-                                               local_real_elements_ * sizeof(T),
-                                               cudaMemcpyDeviceToDevice, stream_),
-                               "Failed to copy real output");
+                // Transpose real output: LayoutRight -> LayoutLeft
+                T* real_desc = static_cast<T*>(desc_->descriptor->data[0]);
+                launchTransposeRealR2L(out, real_desc);
 
                 checkCudaError(cudaStreamSynchronize(stream_), "Stream sync failed");
             }
@@ -409,6 +434,48 @@ namespace ippl {
             std::size_t workspace_size() const { return worksize_; }
 
         private:
+            void launchTransposeRealL2R(T* dst, const T* src) {
+                dim3 block(8, 8, 8);
+                dim3 grid((local_real_size_[0] + block.x - 1) / block.x,
+                          (local_real_size_[1] + block.y - 1) / block.y,
+                          (local_real_size_[2] + block.z - 1) / block.z);
+                detail::transposeL2R<<<grid, block, 0, stream_>>>(
+                    dst, src, static_cast<int>(local_real_size_[0]),
+                    static_cast<int>(local_real_size_[1]), static_cast<int>(local_real_size_[2]));
+            }
+
+            void launchTransposeRealR2L(T* dst, const T* src) {
+                dim3 block(8, 8, 8);
+                dim3 grid((local_real_size_[0] + block.x - 1) / block.x,
+                          (local_real_size_[1] + block.y - 1) / block.y,
+                          (local_real_size_[2] + block.z - 1) / block.z);
+                detail::transposeR2L<<<grid, block, 0, stream_>>>(
+                    dst, src, static_cast<int>(local_real_size_[0]),
+                    static_cast<int>(local_real_size_[1]), static_cast<int>(local_real_size_[2]));
+            }
+
+            void launchTransposeComplexL2R(cuda_complex_t* dst, const cuda_complex_t* src) {
+                dim3 block(8, 8, 8);
+                dim3 grid((local_complex_size_[0] + block.x - 1) / block.x,
+                          (local_complex_size_[1] + block.y - 1) / block.y,
+                          (local_complex_size_[2] + block.z - 1) / block.z);
+                detail::transposeL2R<<<grid, block, 0, stream_>>>(
+                    dst, src, static_cast<int>(local_complex_size_[0]),
+                    static_cast<int>(local_complex_size_[1]),
+                    static_cast<int>(local_complex_size_[2]));
+            }
+
+            void launchTransposeComplexR2L(cuda_complex_t* dst, const cuda_complex_t* src) {
+                dim3 block(8, 8, 8);
+                dim3 grid((local_complex_size_[0] + block.x - 1) / block.x,
+                          (local_complex_size_[1] + block.y - 1) / block.y,
+                          (local_complex_size_[2] + block.z - 1) / block.z);
+                detail::transposeR2L<<<grid, block, 0, stream_>>>(
+                    dst, src, static_cast<int>(local_complex_size_[0]),
+                    static_cast<int>(local_complex_size_[1]),
+                    static_cast<int>(local_complex_size_[2]));
+            }
+
             void applyScaling(cuda_complex_t* data, size_t count, T scale) {
                 int blockSize = 256;
                 int numBlocks = (count + blockSize - 1) / blockSize;
@@ -418,8 +485,10 @@ namespace ippl {
             cufftHandle handle_r2c_ = 0;
             cufftHandle handle_c2r_ = 0;
             MPI_Comm comm_;
-            cudaStream_t stream_ = nullptr;
-            cudaLibXtDesc* desc_ = nullptr;
+            cudaStream_t stream_                   = nullptr;
+            cudaLibXtDesc* desc_                   = nullptr;
+            T* transpose_real_buf_                 = nullptr;
+            cuda_complex_t* transpose_complex_buf_ = nullptr;
 
             size_t worksize_ = 0;
             int r2c_direction_;
@@ -427,6 +496,8 @@ namespace ippl {
             size_t local_real_elements_    = 0;
             size_t local_complex_elements_ = 0;
             std::array<long long, 3> global_size_;
+            std::array<long long, 3> local_real_size_;
+            std::array<long long, 3> local_complex_size_;
         };
 
     }  // namespace fft
