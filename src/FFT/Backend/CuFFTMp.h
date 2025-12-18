@@ -114,7 +114,6 @@ public:
         local_elements_ = local_in_size[0] * local_in_size[1] * local_in_size[2];
 
         // Create plan with custom decomposition
-        // cuFFTMp handles NVSHMEM initialization internally
         checkCufftResult(
             cufftMpMakePlanDecomposition(
                 handle_, 3, n,
