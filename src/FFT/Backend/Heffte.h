@@ -19,7 +19,8 @@ namespace ippl {
         inline void applyScale(Kokkos::complex<T>* data, T scale, size_t size) {
             Kokkos::View<Kokkos::complex<T>*, MemSpace> view(data, size);
             Kokkos::parallel_for(
-                "HeffteC2C_scale", Kokkos::RangePolicy<typename MemSpace::execution_space>(0, size),
+                "Heffte_scale_complex",
+                Kokkos::RangePolicy<typename MemSpace::execution_space>(0, size),
                 KOKKOS_LAMBDA(const size_t i) { view(i) *= scale; });
             Kokkos::fence();
         }
@@ -28,9 +29,24 @@ namespace ippl {
         inline void applyScaleReal(T* data, T scale, size_t size) {
             Kokkos::View<T*, MemSpace> view(data, size);
             Kokkos::parallel_for(
-                "HeffteC2C_scale", Kokkos::RangePolicy<typename MemSpace::execution_space>(0, size),
+                "Heffte_scale_real",
+                Kokkos::RangePolicy<typename MemSpace::execution_space>(0, size),
                 KOKKOS_LAMBDA(const size_t i) { view(i) *= scale; });
             Kokkos::fence();
+        }
+
+        // Helper to compute global FFT size from box coordinates
+        inline size_t computeGlobalSize(const heffte::box3d<long long>& inbox,
+                                        const heffte::box3d<long long>& outbox, MPI_Comm comm) {
+            long long local_max[3], global_max[3];
+            local_max[0] = std::max(inbox.high[0], outbox.high[0]) + 1;
+            local_max[1] = std::max(inbox.high[1], outbox.high[1]) + 1;
+            local_max[2] = std::max(inbox.high[2], outbox.high[2]) + 1;
+
+            MPI_Allreduce(local_max, global_max, 3, MPI_LONG_LONG, MPI_MAX, comm);
+
+            return static_cast<size_t>(global_max[0]) * static_cast<size_t>(global_max[1])
+                   * static_cast<size_t>(global_max[2]);
         }
 
         template <typename HeffteBackendT>
@@ -83,13 +99,13 @@ namespace ippl {
                 heffte_    = std::make_shared<heffte_t>(inbox, outbox, comm, opts);
                 workspace_ = workspace_t(heffte_->size_workspace());
 
-                // Compute total size for manual scaling
-                size_ = heffte_->size_outbox();
+                local_size_  = heffte_->size_outbox();
+                global_size_ = computeGlobalSize(inbox, outbox, comm);
             }
 
             void forward(complex_t* in, complex_t* out) {
                 heffte_->forward(in, out, workspace_.data(), heffte::scale::none);
-                applyScale<T, MemSpace>(out, T(1) / static_cast<T>(size_), size_);
+                applyScale<T, MemSpace>(out, T(1) / static_cast<T>(global_size_), local_size_);
             }
 
             void backward(complex_t* in, complex_t* out) {
@@ -101,7 +117,8 @@ namespace ippl {
         private:
             std::shared_ptr<heffte_t> heffte_;
             workspace_t workspace_;
-            size_t size_;
+            size_t local_size_;
+            size_t global_size_;
         };
 
         //=============================================================================
@@ -122,14 +139,26 @@ namespace ippl {
                 heffte_    = std::make_shared<heffte_t>(inbox, outbox, r2c_direction, comm, opts);
                 workspace_ = workspace_t(heffte_->size_workspace());
 
-                // For R2C, size is the real input size (not the complex output size)
-                real_size_    = heffte_->size_inbox();
-                complex_size_ = heffte_->size_outbox();
+                local_complex_size_ = heffte_->size_outbox();
+
+                // For R2C, normalize by the global REAL size
+                // inbox is the real box
+                long long local_max[3], global_max[3];
+                local_max[0] = inbox.high[0] + 1;
+                local_max[1] = inbox.high[1] + 1;
+                local_max[2] = inbox.high[2] + 1;
+
+                MPI_Allreduce(local_max, global_max, 3, MPI_LONG_LONG, MPI_MAX, comm);
+
+                global_real_size_ = static_cast<size_t>(global_max[0])
+                                    * static_cast<size_t>(global_max[1])
+                                    * static_cast<size_t>(global_max[2]);
             }
 
             void forward(T* in, complex_t* out) {
                 heffte_->forward(in, out, workspace_.data(), heffte::scale::none);
-                applyScale<T, MemSpace>(out, T(1) / static_cast<T>(real_size_), real_size_);
+                applyScale<T, MemSpace>(out, T(1) / static_cast<T>(global_real_size_),
+                                        local_complex_size_);
             }
 
             void backward(complex_t* in, T* out) {
@@ -139,8 +168,8 @@ namespace ippl {
         private:
             std::shared_ptr<heffte_t> heffte_;
             workspace_t workspace_;
-            size_t real_size_;
-            size_t complex_size_;
+            size_t local_complex_size_;
+            size_t global_real_size_;
         };
 
         //=============================================================================
@@ -160,15 +189,16 @@ namespace ippl {
                                                                                                   \
         HeffteTrig(const heffte::box3d<long long>& inbox, const heffte::box3d<long long>& outbox, \
                    MPI_Comm comm, const ParameterList& params) {                                  \
-            auto opts  = makeHeffteOptions<backend_t>(params);                                    \
-            heffte_    = std::make_shared<heffte_t>(inbox, outbox, comm, opts);                   \
-            workspace_ = workspace_t(heffte_->size_workspace());                                  \
-            size_      = heffte_->size_outbox();                                                  \
+            auto opts    = makeHeffteOptions<backend_t>(params);                                  \
+            heffte_      = std::make_shared<heffte_t>(inbox, outbox, comm, opts);                 \
+            workspace_   = workspace_t(heffte_->size_workspace());                                \
+            local_size_  = heffte_->size_outbox();                                                \
+            global_size_ = computeGlobalSize(inbox, outbox, comm);                                \
         }                                                                                         \
                                                                                                   \
         void forward(T* in, T* out) {                                                             \
             heffte_->forward(in, out, workspace_.data(), heffte::scale::none);                    \
-            applyScaleReal<T, MemSpace>(out, T(1) / static_cast<T>(size_), size_);                \
+            applyScaleReal<T, MemSpace>(out, T(1) / static_cast<T>(global_size_), local_size_);   \
         }                                                                                         \
                                                                                                   \
         void backward(T* in, T* out) {                                                            \
@@ -178,7 +208,8 @@ namespace ippl {
     private:                                                                                      \
         std::shared_ptr<heffte_t> heffte_;                                                        \
         workspace_t workspace_;                                                                   \
-        size_t size_;                                                                             \
+        size_t local_size_;                                                                       \
+        size_t global_size_;                                                                      \
     };
 
         IPPL_FFT_DEFINE_HEFFTE_TRIG(SineTransform, sin)
