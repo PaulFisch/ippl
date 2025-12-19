@@ -370,7 +370,10 @@ if(IPPL_ENABLE_FFT AND IPPL_ENABLE_CUFFTMP)
 
   set(NVSHMEM_SEARCH_PATHS
           ${NVSHMEM_HOME}
-          /user-environment/linux-neoverse_v2/nvshmem-3.4.5-kaifmbngwyxwhsftqk4yzhzjs43albv3/
+          /user-environment/linux-neoverse_v2/cufftmp-11.4.0.6-5s6qg4e5dg6wpdcq24d4pln3xkyz3kxe/
+          #/user-environment/linux-neoverse_v2/nvshmem-3.4.5-kaifmbngwyxwhsftqk4yzhzjs43albv3/
+          #/user-environment/linux-neoverse_v2/nvshmem-3.4.5-w3gidz3w37nko7cpgvfegoasteeomdnp/
+          #/capstor/scratch/cscs/pfischil/nvshmem_libs/
   )
 
   find_library(NVSHMEM_HOST_LIBRARY
@@ -378,6 +381,12 @@ if(IPPL_ENABLE_FFT AND IPPL_ENABLE_CUFFTMP)
           HINTS ${NVSHMEM_SEARCH_PATHS}
           PATH_SUFFIXES lib
   )
+
+  find_library(CUFFTMP_LIBRARY
+      NAMES cufftMp
+  )
+
+  include_directories(/user-environment/linux-neoverse_v2/cufftmp-11.4.0.6-5s6qg4e5dg6wpdcq24d4pln3xkyz3kxe/include/)
 
   if(NVSHMEM_HOST_LIBRARY)
     message(STATUS "Found NVSHMEM host library: ${NVSHMEM_HOST_LIBRARY}")
@@ -387,9 +396,7 @@ if(IPPL_ENABLE_FFT AND IPPL_ENABLE_CUFFTMP)
     set(NVSHMEM_FOUND FALSE)
   endif()
 
-  find_library(CUFFTMP_LIBRARY
-          NAMES cufftMp
-  )
+  link_libraries(${CUFFTMP_LIBRARY} ${NVSHMEM_HOST_LIBRARY})
   
   add_compile_definitions(IPPL_ENABLE_CUFFTMP)
 endif()
