@@ -50,9 +50,9 @@ struct generate_random {
         typename GeneratorPool::generator_type rand_gen = rand_pool.get_state();
 
         for (unsigned d = 0; d < Dim; ++d) {
-            x(i)[d] = rand_gen.drand(minU[d], maxU[d]);
+            x(i)[d] = 0.5;// rand_gen.drand(minU[d], maxU[d]);
         }
-        Q(i) = rand_gen.drand(0.0, 1.0);
+        Q(i) = 0.5;// rand_gen.drand(0.0, 1.0);
 
         // Give the state back, which will allow another thread to acquire it
         rand_pool.free_state(rand_gen);
@@ -115,7 +115,7 @@ int main(int argc, char* argv[]) {
         int nRanks = ippl::Comm->size();
 
         // Number of modes (output size - no upsampling)
-        ippl::Vector<int, dim> n_modes = {8, 8, 8};
+        ippl::Vector<int, dim> n_modes = {16, 16, 16};
 
         ippl::Index I(n_modes[0]);
         ippl::Index J(n_modes[1]);
@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
 
         using size_type = ippl::detail::size_type;
 
-        size_type Np = std::pow(2, 3);
+        size_type Np = std::pow(16, 3);
 
         typedef ippl::Field<Kokkos::complex<double>, dim, Mesh_t, Centering_t>::uniform_type
             field_type;
@@ -167,7 +167,7 @@ int main(int argc, char* argv[]) {
         fftParams.add("nthreads", 0);
 #endif
 
-        fftParams.add("use_finufft_defaults", false);
+        fftParams.add("use_finufft", true);
         fftParams.add("use_kokkos_nufft", false);
 
         fftParams.add("spread_method", "tiled");
@@ -175,7 +175,6 @@ int main(int argc, char* argv[]) {
         fftParams.add("z_tiles", 1);
         fftParams.add("sort", true);
 
-        // Key difference: use_upsampled_inputs = false
         fftParams.add("use_upsampled_inputs", false);
 
         typedef ippl::FFT<ippl::NUFFTransform, real_field_type> FFT_type;

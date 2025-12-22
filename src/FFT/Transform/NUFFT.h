@@ -1,6 +1,7 @@
 #ifndef IPPL_FFT_TRANSFORM_NUFFT_HPP
 #define IPPL_FFT_TRANSFORM_NUFFT_HPP
 
+#include <array>
 #include <cmath>
 #include <memory>
 
@@ -20,83 +21,141 @@
 #endif
 
 namespace ippl {
-    namespace fft {
-#ifdef ENABLE_FINUFFT
-        template <class T>
-        struct finufftType;
-#ifdef ENABLE_GPU_NUFFT
-#ifdef KOKKOS_ENABLE_CUDA
 
-        template <>
-        struct finufftType<float> {
-            std::function<int(int, int, int64_t*, int, int, float, cufinufftf_plan*,
-                              cufinufft_opts*)>
-                makeplan = cufinufftf_makeplan;
-            std::function<int(cufinufftf_plan, int, float*, float*, float*, int, float*, float*,
-                              float*)>
-                setpts = cufinufftf_setpts;
-            std::function<int(cufinufftf_plan, cuFloatComplex*, cuFloatComplex*)> execute =
-                cufinufftf_execute;
-            std::function<int(cufinufftf_plan)> destroy = cufinufftf_destroy;
-
-            using complexType = cuFloatComplex;
-            using plan_t      = cufinufftf_plan;
-        };
-
-        template <>
-        struct finufftType<double> {
-            std::function<int(int, int, int64_t*, int, int, double, cufinufft_plan*,
-                              cufinufft_opts*)>
-                makeplan = cufinufft_makeplan;
-            std::function<int(cufinufft_plan, int, double*, double*, double*, int, double*, double*,
-                              double*)>
-                setpts = cufinufft_setpts;
-            std::function<int(cufinufft_plan, cuDoubleComplex*, cuDoubleComplex*)> execute =
-                cufinufft_execute;
-            std::function<int(cufinufft_plan)> destroy = cufinufft_destroy;
-
-            using complexType = cuDoubleComplex;
-            using plan_t      = cufinufft_plan;
-        };
-#endif
-#else
-        template <>
-        struct finufftType<float> {
-            std::function<int(int, int, int64_t*, int, int, float, finufftf_plan*, finufft_opts*)>
-                makeplan = finufftf_makeplan;
-            std::function<int(finufftf_plan, int64_t, float*, float*, float*, int64_t, float*,
-                              float*, float*)>
-                setpts = finufftf_setpts;
-            std::function<int(finufftf_plan, std::complex<float>*, std::complex<float>*)> execute =
-                finufftf_execute;
-            std::function<int(finufftf_plan)> destroy = finufftf_destroy;
-
-            using complexType = std::complex<float>;
-            using plan_t      = finufftf_plan;
-        };
-
-        template <>
-        struct finufftType<double> {
-            std::function<int(int, int, int64_t*, int, int, double, finufft_plan*, finufft_opts*)>
-                makeplan = finufft_makeplan;
-            std::function<int(finufft_plan, int64_t, double*, double*, double*, int64_t, double*,
-                              double*, double*)>
-                setpts = finufft_setpts;
-            std::function<int(finufft_plan, std::complex<double>*, std::complex<double>*)> execute =
-                finufft_execute;
-            std::function<int(finufft_plan)> destroy = finufft_destroy;
-
-            using complexType = std::complex<double>;
-            using plan_t      = finufft_plan;
-        };
-#endif
-
-#endif
-    }  // namespace fft
-
+    // Forward declaration
     template <typename T, class... Properties>
     class ParticleAttrib;
 
+    namespace detail {
+
+#ifdef ENABLE_FINUFFT
+        /**
+         * @brief Type traits for FINUFFT backend selection
+         *
+         * Provides unified interface for CPU (finufft) and GPU (cufinufft) backends
+         */
+        template <typename T>
+        struct FinufftTraits;
+
+#ifdef ENABLE_GPU_NUFFT
+        template <>
+        struct FinufftTraits<float> {
+            using ComplexType = cuFloatComplex;
+            using PlanType    = cufinufftf_plan;
+            using OptsType    = cufinufft_opts;
+            using CountType   = int;  // cufinufft uses int for point counts
+
+            static void defaultOpts(OptsType* opts) { cufinufft_default_opts(opts); }
+
+            static int makeplan(int type, int dim, int64_t* nmodes, int iflag, int ntransf,
+                                float tol, PlanType* plan, OptsType* opts) {
+                return cufinufftf_makeplan(type, dim, nmodes, iflag, ntransf, tol, plan, opts);
+            }
+
+            static int setpts(PlanType plan, CountType M, float* x, float* y, float* z,
+                              CountType N, float* s, float* t, float* u) {
+                return cufinufftf_setpts(plan, M, x, y, z, N, s, t, u);
+            }
+
+            static int execute(PlanType plan, ComplexType* c, ComplexType* f) {
+                return cufinufftf_execute(plan, c, f);
+            }
+
+            static int destroy(PlanType plan) { return cufinufftf_destroy(plan); }
+        };
+
+        template <>
+        struct FinufftTraits<double> {
+            using ComplexType = cuDoubleComplex;
+            using PlanType    = cufinufft_plan;
+            using OptsType    = cufinufft_opts;
+            using CountType   = int;
+
+            static void defaultOpts(OptsType* opts) { cufinufft_default_opts(opts); }
+
+            static int makeplan(int type, int dim, int64_t* nmodes, int iflag, int ntransf,
+                                double tol, PlanType* plan, OptsType* opts) {
+                return cufinufft_makeplan(type, dim, nmodes, iflag, ntransf, tol, plan, opts);
+            }
+
+            static int setpts(PlanType plan, CountType M, double* x, double* y, double* z,
+                              CountType N, double* s, double* t, double* u) {
+                return cufinufft_setpts(plan, M, x, y, z, N, s, t, u);
+            }
+
+            static int execute(PlanType plan, ComplexType* c, ComplexType* f) {
+                return cufinufft_execute(plan, c, f);
+            }
+
+            static int destroy(PlanType plan) { return cufinufft_destroy(plan); }
+        };
+
+#else  // CPU FINUFFT
+
+        template <>
+        struct FinufftTraits<float> {
+            using ComplexType = std::complex<float>;
+            using PlanType    = finufftf_plan;
+            using OptsType    = finufft_opts;
+            using CountType   = int64_t;
+
+            static void defaultOpts(OptsType* opts) { finufft_default_opts(opts); }
+
+            static int makeplan(int type, int dim, int64_t* nmodes, int iflag, int ntransf,
+                                float tol, PlanType* plan, OptsType* opts) {
+                return finufftf_makeplan(type, dim, nmodes, iflag, ntransf, tol, plan, opts);
+            }
+
+            static int setpts(PlanType plan, CountType M, float* x, float* y, float* z,
+                              CountType N, float* s, float* t, float* u) {
+                return finufftf_setpts(plan, M, x, y, z, N, s, t, u);
+            }
+
+            static int execute(PlanType plan, ComplexType* c, ComplexType* f) {
+                return finufftf_execute(plan, c, f);
+            }
+
+            static int destroy(PlanType plan) { return finufftf_destroy(plan); }
+        };
+
+        template <>
+        struct FinufftTraits<double> {
+            using ComplexType = std::complex<double>;
+            using PlanType    = finufft_plan;
+            using OptsType    = finufft_opts;
+            using CountType   = int64_t;
+
+            static void defaultOpts(OptsType* opts) { finufft_default_opts(opts); }
+
+            static int makeplan(int type, int dim, int64_t* nmodes, int iflag, int ntransf,
+                                double tol, PlanType* plan, OptsType* opts) {
+                return finufft_makeplan(type, dim, nmodes, iflag, ntransf, tol, plan, opts);
+            }
+
+            static int setpts(PlanType plan, CountType M, double* x, double* y, double* z,
+                              CountType N, double* s, double* t, double* u) {
+                return finufft_setpts(plan, M, x, y, z, N, s, t, u);
+            }
+
+            static int execute(PlanType plan, ComplexType* c, ComplexType* f) {
+                return finufft_execute(plan, c, f);
+            }
+
+            static int destroy(PlanType plan) { return finufft_destroy(plan); }
+        };
+
+#endif  // ENABLE_GPU_NUFFT
+#endif  // ENABLE_FINUFFT
+
+    }  // namespace detail
+
+    /**
+     * @brief Non-Uniform FFT implementation
+     *
+     * Supports both native implementation and FINUFFT backend (CPU/GPU).
+     * Type 1: Non-uniform points -> uniform grid (spreading/adjoint)
+     * Type 2: Uniform grid -> non-uniform points (interpolation)
+     */
     template <typename RealField>
     class FFT<NUFFTransform, RealField> {
     public:
@@ -115,419 +174,92 @@ namespace ippl {
         using NativeNUFFT_t = NUFFT::NativeNUFFT<Dim, T, ExecSpace>;
 
 #ifdef ENABLE_FINUFFT
-        using FinufftTypes      = fft::finufftType<T>;
-        using finufft_complex_t = typename FinufftTypes::complex_type;
-        using finufft_plan_t    = typename FinufftTypes::plan_type;
+        using Traits_t          = detail::FinufftTraits<T>;
+        using FinufftComplex_t  = typename Traits_t::ComplexType;
+        using FinufftPlan_t     = typename Traits_t::PlanType;
+        using FinufftOpts_t     = typename Traits_t::OptsType;
+        using FinufftCount_t    = typename Traits_t::CountType;
 #endif
 
-        // View types for temporary storage
-        using view_field_type = Kokkos::View<
+    private:
+        // Configuration
+        int type_m;
+        T tol_m;
+        bool useFinufft_m;
+        bool useUpsampledInputs_m;
+
+        std::array<int64_t, 3> nModes_m{1, 1, 1};
+
+        // Native NUFFT backend
+        std::unique_ptr<NativeNUFFT_t> nativeNufft_m;
+
 #ifdef ENABLE_FINUFFT
-            finufft_complex_t***,
-#else
-            Complex_t***,
+        // FINUFFT backend
+        FinufftPlan_t finufftPlan_m{};
+
+        // Temporary buffers for FINUFFT
+        using FieldViewType    = Kokkos::View<FinufftComplex_t***, Kokkos::LayoutLeft, MemSpace>;
+        using ParticleRealView = Kokkos::View<T*, Kokkos::LayoutLeft, MemSpace>;
+        using ParticleCplxView = Kokkos::View<FinufftComplex_t*, Kokkos::LayoutLeft, MemSpace>;
+
+        FieldViewType tempField_m;
+        std::array<ParticleRealView, 3> tempR_m;
+        ParticleCplxView tempQ_m;
 #endif
-            Kokkos::LayoutLeft, MemSpace>;
 
-        using view_particle_real_type = Kokkos::View<T*, Kokkos::LayoutLeft, MemSpace>;
+    public:
+        /**
+         * @brief Construct NUFFT transform
+         *
+         * @param layout Field layout
+         * @param localNp Local number of particles
+         * @param type Transform type (1 or 2)
+         * @param params Configuration parameters
+         */
+        FFT(const Layout_t& layout, std::size_t localNp, int type, const ParameterList& params);
 
-        using view_particle_complex_type = Kokkos::View<
-#ifdef ENABLE_FINUFFT
-            finufft_complex_t*,
-#else
-            Complex_t*,
-#endif
-            Kokkos::LayoutLeft, MemSpace>;
+        ~FFT();
 
-        FFT(const Layout_t& layout, std::size_t localNp, int type, const ParameterList& params)
-            : type_(type)
-            , tol_(params.get<T>("tolerance", T(1e-6)))
-            , useFinufft_(params.get<bool>("use_finufft", false))
-            , useUpsampledInputs_(params.get<bool>("use_upsampled_inputs", false)) {
-            // Store grid dimensions
-            const auto& domain = layout.getDomain();
-            for (unsigned d = 0; d < Dim; ++d) {
-                nModes_[d] = domain[d].length();
-            }
+        // Non-copyable, non-movable (due to FINUFFT plan)
+        FFT(const FFT&)            = delete;
+        FFT& operator=(const FFT&) = delete;
+        FFT(FFT&&)                 = delete;
+        FFT& operator=(FFT&&)      = delete;
 
-            // Allocate temporary buffers
-            const auto& lDom = layout.getLocalNDIndex();
-            Kokkos::realloc(tempField_, lDom[0].length(), lDom[1].length(), lDom[2].length());
-
-            for (unsigned d = 0; d < Dim; ++d) {
-                Kokkos::realloc(tempR_[d], localNp);
-            }
-            Kokkos::realloc(tempQ_, localNp);
-
-            // Initialize the selected backend
-            initBackend(layout, params);
-        }
-
-        ~FFT() { cleanupBackend(); }
-
+        /**
+         * @brief Execute NUFFT transform
+         *
+         * Type 1: Spreads particle data Q at positions R onto field f
+         * Type 2: Interpolates field f to positions R, storing results in Q
+         */
         template <class... Properties>
         void transform(const ParticleAttrib<Vector<T, Dim>, Properties...>& R,
-                       ParticleAttrib<T, Properties...>& Q, ComplexField& f) {
-            if constexpr (fft::is_available_v<fft::Finufft>) {
-                if (useFinufft_) {
-                    transformFinufft(R, Q, f);
-                    return;
-                }
-            }
+                       ParticleAttrib<T, Properties...>& Q, ComplexField& f);
 
-            transformNative(R, Q, f);
-        }
-
-        // private:
-        int type_;
-        T tol_;
-        bool useFinufft_;
-        bool useUpsampledInputs_;
-
-        std::array<int64_t, 3> nModes_{1, 1, 1};
-
-        // Temporary buffers
-        view_field_type tempField_;
-        std::array<view_particle_real_type, 3> tempR_;
-        view_particle_complex_type tempQ_;
-
-        // Native NUFFT implementation
-        std::unique_ptr<NativeNUFFT_t> nativeNufft_;
-
-#ifdef ENABLE_FINUFFT
-        finufft_plan_t finufftPlan_{};
-        int finufftError_ = 0;
-#endif
-
-        //=====================================================================
-        // Backend Initialization
-        //=====================================================================
-
-        void initBackend(const Layout_t& layout, const ParameterList& params) {
-            if constexpr (fft::is_available_v<fft::Finufft>) {
-                if (useFinufft_) {
-                    initFinufft(params);
-                    return;
-                }
-            }
-
-            // Default: Native NUFFT
-            initNative(layout, params);
-        }
-
-        void initNative(const Layout_t& layout, const ParameterList& params) {
-            Vector<std::size_t, Dim> nModesVec;
-            for (unsigned d = 0; d < Dim; ++d) {
-                nModesVec[d] = nModes_[d];
-            }
-
-            typename NativeNUFFT_t::Config cfg;
-            cfg.tol   = tol_;
-            cfg.sigma = params.get<T>("sigma", T(2.0));
-
-            // Get default scatter/gather configs for execution space
-            cfg.scatter_config = Interpolation::ScatterConfig::get_default<ExecSpace>();
-            cfg.gather_config  = Interpolation::GatherConfig::get_default<ExecSpace>();
-
-            // Configure spread method
-            std::string spreadMethod = params.get<std::string>("spread_method", "none");
-            if (spreadMethod == "atomic") {
-                cfg.scatter_config.method = Interpolation::ScatterMethod::Atomic;
-            } else if (spreadMethod == "output_focused") {
-                cfg.scatter_config.method = Interpolation::ScatterMethod::OutputFocused;
-            } else if (spreadMethod == "tiled") {
-                cfg.scatter_config.method = Interpolation::ScatterMethod::Tiled;
-            }
-
-            // Configure gather method
-            std::string gatherMethod = params.get<std::string>("gather_method", "none");
-            if (gatherMethod == "tiled") {
-                cfg.gather_config.method = Interpolation::GatherMethod::Tiled;
-            } else if (gatherMethod == "native") {
-                cfg.gather_config.method = Interpolation::GatherMethod::Native;
-            } else if (gatherMethod == "atomic") {
-                cfg.gather_config.method = Interpolation::GatherMethod::Atomic;
-            } else if (gatherMethod == "atomic_sort") {
-                cfg.gather_config.method = Interpolation::GatherMethod::AtomicSort;
-            }
-
-            // Optional tuning parameters
-            if (params.contains("tile_size_3d")) {
-                cfg.scatter_config.tile_size_3d = params.get<int>("tile_size_3d");
-            }
-            if (params.contains("z_tiles")) {
-                cfg.scatter_config.z_tiles = params.get<int>("z_tiles");
-            }
-            if (params.contains("team_size")) {
-                cfg.scatter_config.team_size = params.get<int>("team_size");
-                cfg.gather_config.team_size  = params.get<int>("team_size");
-            }
-
-            nativeNufft_ = std::make_unique<NativeNUFFT_t>(nModesVec, useUpsampledInputs_, cfg);
-            nativeNufft_->initialize(layout, MPI_COMM_WORLD);
-        }
-
-        void initFinufft([[maybe_unused]] const ParameterList& params) {
-#ifdef ENABLE_FINUFFT
-#ifdef ENABLE_GPU_NUFFT
-            cufinufft_opts opts;
-            cufinufft_default_opts(&opts);
-
-            opts.gpu_method      = params.get<int>("gpu_method", opts.gpu_method);
-            opts.gpu_sort        = params.get<int>("gpu_sort", opts.gpu_sort);
-            opts.gpu_kerevalmeth = params.get<int>("gpu_kerevalmeth", opts.gpu_kerevalmeth);
-            opts.gpu_binsizex    = params.get<int>("gpu_binsizex", opts.gpu_binsizex);
-            opts.gpu_binsizey    = params.get<int>("gpu_binsizey", opts.gpu_binsizey);
-            opts.gpu_binsizez    = params.get<int>("gpu_binsizez", opts.gpu_binsizez);
-            opts.gpu_maxsubprobsize =
-                params.get<int>("gpu_maxsubprobsize", opts.gpu_maxsubprobsize);
-            opts.gpu_maxbatchsize = 0;  // Default, ignored for ntransf=1
-#else
-            finufft_opts opts;
-            finufft_default_opts(&opts);
-
-            opts.spread_sort = params.get<int>("spread_sort", opts.spread_sort);
-            opts.spread_kerevalmeth =
-                params.get<int>("spread_kerevalmeth", opts.spread_kerevalmeth);
-            opts.nthreads = params.get<int>("nthreads", opts.nthreads);
-#endif
-
-            int iflag = (type_ == 1) ? 1 : -1;
-            int dim   = static_cast<int>(Dim);
-
-            finufftError_ = FinufftTypes::makeplan()(type_, dim, nModes_.data(), iflag, 1, tol_,
-                                                     &finufftPlan_, &opts);
-
-            if (finufftError_ != 0) {
-                throw IpplException("FFT<NUFFTransform>", "FINUFFT makeplan failed");
-            }
-#endif
-        }
-
-        void cleanupBackend() {
-#ifdef ENABLE_FINUFFT
-            if (useFinufft_ && finufftPlan_) {
-                FinufftTypes::destroy()(finufftPlan_);
-                finufftPlan_ = nullptr;
-            }
-#endif
-            // nativeNufft_ cleaned up automatically by unique_ptr
-        }
-
-        //=====================================================================
-        // Native NUFFT Transform
-        //=====================================================================
-
+        // These must be public due to NVCC extended lambda restrictions
         template <class... Properties>
         void transformNative(const ParticleAttrib<Vector<T, Dim>, Properties...>& R,
-                             ParticleAttrib<T, Properties...>& Q, ComplexField& f) {
-            const auto localNp = R.getParticleCount();
-            const auto& layout = f.getLayout();
-            const auto& mesh   = f.get_mesh();
-            const auto& dx     = mesh.getMeshSpacing();
-            const auto& domain = layout.getDomain();
+                             ParticleAttrib<T, Properties...>& Q, ComplexField& f);
 
-            Vector<T, Dim> Len;
-            for (unsigned d = 0; d < Dim; ++d) {
-                Len[d] = dx[d] * domain[d].length();
-            }
-
-            constexpr T twoPi = 2.0 * M_PI;
-            auto Rview        = R.getView();
-
-            if (type_ == 1) {
-                // Type 1: Particles -> Grid (spreading/adjoint)
-
-                // Scale positions to [0, 2π)
-                Kokkos::parallel_for(
-                    "NUFFT_native_scale_to_2pi_type1", localNp, KOKKOS_LAMBDA(std::size_t i) {
-                        for (unsigned d = 0; d < Dim; ++d) {
-                            Rview(i)[d] *= (twoPi / Len[d]);
-                        }
-                    });
-
-                // Execute native type 1 transform
-                nativeNufft_->type1(R, Q, f, useUpsampledInputs_);
-
-                // Scale positions back
-                Kokkos::parallel_for(
-                    "NUFFT_native_scale_back_type1", localNp, KOKKOS_LAMBDA(std::size_t i) {
-                        for (unsigned d = 0; d < Dim; ++d) {
-                            Rview(i)[d] *= (Len[d] / twoPi);
-                        }
-                    });
-
-            } else if (type_ == 2) {
-                // Type 2: Grid -> Particles (interpolation)
-
-                // Scale positions to [0, 2π)
-                Kokkos::parallel_for(
-                    "NUFFT_native_scale_to_2pi_type2", localNp, KOKKOS_LAMBDA(std::size_t i) {
-                        for (unsigned d = 0; d < Dim; ++d) {
-                            Rview(i)[d] *= (twoPi / Len[d]);
-                        }
-                    });
-
-                // Execute native type 2 transform
-                nativeNufft_->type2(f, R, Q, useUpsampledInputs_);
-
-                // Scale positions back
-                Kokkos::parallel_for(
-                    "NUFFT_native_scale_back_type2", localNp, KOKKOS_LAMBDA(std::size_t i) {
-                        for (unsigned d = 0; d < Dim; ++d) {
-                            Rview(i)[d] *= (Len[d] / twoPi);
-                        }
-                    });
-
-            } else {
-                throw IpplException("FFT<NUFFTransform>", "Only type 1 and type 2 NUFFT supported");
-            }
-        }
-
-        //=====================================================================
-        // FINUFFT Transform
-        //=====================================================================
-
-        template <class... Properties>
-        void transformFinufft(
-            [[maybe_unused]] const ParticleAttrib<Vector<T, Dim>, Properties...>& R,
-            [[maybe_unused]] ParticleAttrib<T, Properties...>& Q,
-            [[maybe_unused]] ComplexField& f) {
 #ifdef ENABLE_FINUFFT
-            const auto localNp = R.getParticleCount();
-            const auto& layout = f.getLayout();
-            const auto& mesh   = f.get_mesh();
-            const auto& dx     = mesh.getMeshSpacing();
-            const auto& domain = layout.getDomain();
-            const int nghost   = f.getNghost();
-
-            Vector<T, Dim> Len;
-            for (unsigned d = 0; d < Dim; ++d) {
-                Len[d] = dx[d] * domain[d].length();
-            }
-
-            constexpr T twoPi = 2.0 * M_PI;
-
-            auto fview = f.getView();
-            auto Rview = R.getView();
-            auto Qview = Q.getView();
-
-            // Ensure temp buffers are allocated
-            const auto& lDom      = layout.getLocalNDIndex();
-            std::size_t fieldSize = lDom[0].length() * lDom[1].length() * lDom[2].length();
-
-            if (tempField_.size() != fieldSize) {
-                Kokkos::realloc(tempField_, lDom[0].length(), lDom[1].length(), lDom[2].length());
-            }
-
-            if (tempQ_.extent(0) < localNp) {
-                Kokkos::realloc(tempQ_, localNp);
-            }
-
-            for (unsigned d = 0; d < Dim; ++d) {
-                if (tempR_[d].extent(0) < localNp) {
-                    Kokkos::realloc(tempR_[d], localNp);
-                }
-            }
-
-            auto tempField = tempField_;
-            auto tempQ     = tempQ_;
-            auto tempRx    = tempR_[0];
-            auto tempRy    = tempR_[1];
-            auto tempRz    = tempR_[2];
-
-            // Copy field data to FINUFFT temp buffer
-            using mdrange_type = Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>;
-            Kokkos::parallel_for(
-                "FINUFFT_copy_field_to_temp",
-                mdrange_type({nghost, nghost, nghost},
-                             {int(fview.extent(0)) - nghost, int(fview.extent(1)) - nghost,
-                              int(fview.extent(2)) - nghost}),
-                KOKKOS_LAMBDA(int i, int j, int k) {
-#ifdef ENABLE_GPU_NUFFT
-                    tempField(i - nghost, j - nghost, k - nghost).x = fview(i, j, k).real();
-                    tempField(i - nghost, j - nghost, k - nghost).y = fview(i, j, k).imag();
-#else
-                    tempField(i - nghost, j - nghost, k - nghost).real(fview(i, j, k).real());
-                    tempField(i - nghost, j - nghost, k - nghost).imag(fview(i, j, k).imag());
+        template <class... Properties>
+        void transformFinufft(const ParticleAttrib<Vector<T, Dim>, Properties...>& R,
+                              ParticleAttrib<T, Properties...>& Q, ComplexField& f);
 #endif
-                });
 
-            // Copy particle data to FINUFFT temp buffers
-            Kokkos::parallel_for(
-                "FINUFFT_copy_particles_to_temp", localNp, KOKKOS_LAMBDA(std::size_t i) {
-                    // Scale positions to [0, 2π)
-                    tempRx(i) = Rview(i)[0] * (twoPi / Len[0]);
-                    tempRy(i) = Rview(i)[1] * (twoPi / Len[1]);
-                    tempRz(i) = Rview(i)[2] * (twoPi / Len[2]);
+    private:
+        void initBackend(const Layout_t& layout, const ParameterList& params);
+        void initNative(const Layout_t& layout, const ParameterList& params);
+        void cleanupBackend();
 
-#ifdef ENABLE_GPU_NUFFT
-                    tempQ(i).x = Qview(i);
-                    tempQ(i).y = 0.0;
-#else
-                    tempQ(i).real(Qview(i));
-                    tempQ(i).imag(0.0);
+#ifdef ENABLE_FINUFFT
+        void initFinufft(const ParameterList& params);
+        void allocateFinufftBuffers(const Layout_t& layout, std::size_t localNp);
 #endif
-                });
-
-            Kokkos::fence();
-
-            // Set points
-            finufftError_ =
-                FinufftTypes::setpts()(finufftPlan_, localNp, tempRx.data(), tempRy.data(),
-                                       tempRz.data(), 0, nullptr, nullptr, nullptr);
-
-            if (finufftError_ != 0) {
-                throw IpplException("FFT<NUFFTransform>", "FINUFFT setpts failed");
-            }
-
-            // Execute transform
-            finufftError_ = FinufftTypes::execute()(finufftPlan_, tempQ.data(), tempField.data());
-
-            if (finufftError_ != 0) {
-                throw IpplException("FFT<NUFFTransform>", "FINUFFT execute failed");
-            }
-
-            Kokkos::fence();
-
-            // Copy results back
-            if (type_ == 1) {
-                // Type 1: Copy field data back
-                Kokkos::parallel_for(
-                    "FINUFFT_copy_field_from_temp",
-                    mdrange_type({nghost, nghost, nghost},
-                                 {int(fview.extent(0)) - nghost, int(fview.extent(1)) - nghost,
-                                  int(fview.extent(2)) - nghost}),
-                    KOKKOS_LAMBDA(int i, int j, int k) {
-#ifdef ENABLE_GPU_NUFFT
-                        fview(i, j, k).real() = tempField(i - nghost, j - nghost, k - nghost).x;
-                        fview(i, j, k).imag() = tempField(i - nghost, j - nghost, k - nghost).y;
-#else
-                        fview(i, j, k).real() =
-                            tempField(i - nghost, j - nghost, k - nghost).real();
-                        fview(i, j, k).imag() =
-                            tempField(i - nghost, j - nghost, k - nghost).imag();
-#endif
-                    });
-
-            } else if (type_ == 2) {
-                // Type 2: Copy particle data back
-                Kokkos::parallel_for(
-                    "FINUFFT_copy_particles_from_temp", localNp, KOKKOS_LAMBDA(std::size_t i) {
-#ifdef ENABLE_GPU_NUFFT
-                        Qview(i) = tempQ(i).x;
-#else
-                        Qview(i) = tempQ(i).real();
-#endif
-                    });
-            }
-#else
-            throw IpplException("FFT<NUFFTransform>",
-                                "FINUFFT requested but not available (ENABLE_FINUFFT not set)");
-#endif
-        }
     };
 
 }  // namespace ippl
 
-#endif
+#include "FFT/Transform/NUFFT.hpp"
+
+#endif  // IPPL_FFT_TRANSFORM_NUFFT_HPP
