@@ -33,7 +33,7 @@ namespace NUFFT {
         auto h_weights = Kokkos::create_mirror_view(Kokkos::HostSpace(), weights);
 
         for (int i = 0; i < n; ++i) {
-            T x = std::cos(M_PI * (i + 0.75) / (n + 0.5));
+            T x = std::cos(Kokkos::numbers::pi_v<T> * (i + 0.75) / (n + 0.5));
             T pp, delta;
 
             do {

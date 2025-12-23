@@ -171,7 +171,7 @@ int main(int argc, char* argv[]) {
         fftParams.add("nthreads", 0);
 #endif
 
-        fftParams.add("use_finufft", true);
+        fftParams.add("use_finufft", false);
         fftParams.add("use_kokkos_nufft", false);
 
         fftParams.add("spread_method", "tiled");

@@ -56,6 +56,7 @@ namespace Interpolation {
 #endif
 
 #ifdef KOKKOS_ENABLE_CUDA
+
     template <>
     inline GatherConfig GatherConfig::get_default<Kokkos::Cuda>() {
         GatherConfig config;

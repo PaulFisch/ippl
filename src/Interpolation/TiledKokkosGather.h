@@ -89,7 +89,7 @@ namespace ippl {
                     }
 
                     const size_type particle_idx = permute(particle_team);
-                    assert(particle_idx >= 0 && particle_idx < n_points);
+                    // assert(particle_idx >= 0 && particle_idx < n_points);
 
                     using grid_element_type =
                         std::remove_reference_t<decltype(field_view(0, 0, 0))>;

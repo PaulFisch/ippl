@@ -76,7 +76,7 @@ namespace nufft {
         auto h_weights = Kokkos::create_mirror_view(Kokkos::HostSpace(), weights);
 
         for (int i = 0; i < n; ++i) {
-            RealType x = std::cos(M_PI * (i + 0.75) / (n + 0.5));
+            RealType x = std::cos(Kokkos::numbers::pi_v<RealType> * (i + 0.75) / (n + 0.5));
             RealType pp, delta;
 
             do {
@@ -125,7 +125,7 @@ namespace nufft {
 
         gauss_legendre<ExecSpace>(q, nodes, weights);
 
-        const RealType alpha = M_PI * kernel.width() / n_grid;
+        const RealType alpha = Kokkos::numbers::pi_v<RealType> * kernel.width() / n_grid;
         const RealType beta = kernel.beta();
 
         const int64_t l_n_modes = n_modes;

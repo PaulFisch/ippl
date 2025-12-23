@@ -156,7 +156,7 @@ namespace ippl {
                 Vector<T, Dim> origin, hx;
                 for (unsigned d = 0; d < Dim; ++d) {
                     origin[d] = 0;
-                    T extent  = T(2.0) * M_PI;
+                    T extent  = T(2.0) * Kokkos::numbers::pi_v<T>;
                     hx[d]     = extent / n_grid_[d];
                 }
 

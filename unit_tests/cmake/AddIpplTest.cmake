@@ -28,7 +28,7 @@
 set(IPPL_DEFAULT_TEST_PROCS "2" CACHE STRING "Default MPI ranks per unit test")
 
 function(add_ippl_test TEST_NAME)
-  set(options NO_MPI REQUIRE_MPI RUN_SERIAL USE_GTEST_MAIN)
+  set(options NO_MPI REQUIRE_MPI RUN_SERIAL USE_GTEST_MAIN LINK_FINUFFT)
   set(oneValueArgs NUM_PROCS TIMEOUT WORKING_DIRECTORY)
   set(multiValueArgs LABELS ARGS MPI_ARGS SOURCES LAUNCH PROPERTIES)
   cmake_parse_arguments(TEST "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -55,6 +55,10 @@ function(add_ippl_test TEST_NAME)
 
   if(TARGET ippl::test_support)
     target_link_libraries(${TEST_NAME} PRIVATE ippl::test_support)
+  endif()
+
+  if(IPPL_ENABLE_FINUFFT)
+    target_link_libraries(${TEST_NAME} PUBLIC finufft cufinufft)
   endif()
 
   target_include_directories(${TEST_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

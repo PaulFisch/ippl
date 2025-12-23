@@ -27,7 +27,7 @@ namespace Interpolation {
         // Tile size for tiled methods (per dimension)
         int tile_size_1d = 512;
         int tile_size_2d = 32;
-        int tile_size_3d = 16;
+        int tile_size_3d = 3;
 
         // Z-dimension splitting for 3D tiled scatter (reduces shared memory)
         int z_tiles = 2;

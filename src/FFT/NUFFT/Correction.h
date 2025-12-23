@@ -40,7 +40,7 @@ namespace ippl {
 
             gaussLegendre<memory_space, T>(q, nodes, weights);
 
-            const T alpha = M_PI * kernel.width() / n_grid;
+            const T alpha = Kokkos::numbers::pi_v<T> * kernel.width() / n_grid;
             const T beta  = kernel.beta();
             const int w   = kernel.width();
 
@@ -125,7 +125,7 @@ namespace ippl {
                     {local_first[0], local_first[1], local_first[2]},
                     {local_last[0] + 1, local_last[1] + 1, local_last[2] + 1}),
                 KOKKOS_LAMBDA(int gi, int gj, int gk) {
-                    auto in_bounds = [&](double g, double n) {
+                    auto in_bounds = [&](int g, int n) {
                         return (g >= 0 && g < n / 2) || (g >= n + n / 2 && g < 2 * n);
                     };
 
@@ -226,7 +226,7 @@ namespace ippl {
                     {local_first[0], local_first[1], local_first[2]},
                     {local_last[0] + 1, local_last[1] + 1, local_last[2] + 1}),
                 KOKKOS_LAMBDA(int gi, int gj, int gk) {
-                    auto in_bounds = [&](double g, double n_modes) {
+                    auto in_bounds = [&](int g, int n_modes) {
                         return (g >= 0 && g < n_modes / 2)
                                || (g >= n_modes + n_modes / 2 && g < 2 * n_modes);
                     };
