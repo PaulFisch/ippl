@@ -21,8 +21,7 @@ namespace ippl {
                 : Rview_m(Rview)
                 , scale_m(scale) {}
 
-            KOKKOS_INLINE_FUNCTION
-            void operator()(std::size_t i) const {
+            KOKKOS_INLINE_FUNCTION void operator()(std::size_t i) const {
                 for (unsigned d = 0; d < Dim; ++d) {
                     Rview_m(i)[d] *= scale_m[d];
                 }
@@ -45,8 +44,8 @@ namespace ippl {
             int nx_m, ny_m, nz_m;
             bool applyShift_m;
 
-            CopyFieldToTempFunctor(FieldView fview, TempFieldView tempField, int nghost,
-                                   int nx = 0, int ny = 0, int nz = 0, bool applyShift = false)
+            CopyFieldToTempFunctor(FieldView fview, TempFieldView tempField, int nghost, int nx = 0,
+                                   int ny = 0, int nz = 0, bool applyShift = false)
                 : fview_m(fview)
                 , tempField_m(tempField)
                 , nghost_m(nghost)
@@ -55,8 +54,7 @@ namespace ippl {
                 , nz_m(nz)
                 , applyShift_m(applyShift) {}
 
-            KOKKOS_INLINE_FUNCTION
-            void operator()(int i, int j, int k) const {
+            KOKKOS_INLINE_FUNCTION void operator()(int i, int j, int k) const {
                 int li = i - nghost_m;
                 int lj = j - nghost_m;
                 int lk = k - nghost_m;
@@ -94,8 +92,8 @@ namespace ippl {
             int nghost_m;
             int nx_m, ny_m, nz_m;
 
-            CopyFieldFromTempFunctor(FieldView fview, TempFieldView tempField, int nghost,
-                                     int nx, int ny, int nz)
+            CopyFieldFromTempFunctor(FieldView fview, TempFieldView tempField, int nghost, int nx,
+                                     int ny, int nz)
                 : fview_m(fview)
                 , tempField_m(tempField)
                 , nghost_m(nghost)
@@ -103,8 +101,7 @@ namespace ippl {
                 , ny_m(ny)
                 , nz_m(nz) {}
 
-            KOKKOS_INLINE_FUNCTION
-            void operator()(int i, int j, int k) const {
+            KOKKOS_INLINE_FUNCTION void operator()(int i, int j, int k) const {
                 // Local indices (without ghost)
                 int li = i - nghost_m;
                 int lj = j - nghost_m;
@@ -151,8 +148,7 @@ namespace ippl {
                 , tempQ_m(tempQ)
                 , scale_m(scale) {}
 
-            KOKKOS_INLINE_FUNCTION
-            void operator()(std::size_t i) const {
+            KOKKOS_INLINE_FUNCTION void operator()(std::size_t i) const {
                 tempRx_m(i) = Rview_m(i)[0] * scale_m[0];
                 tempRy_m(i) = Rview_m(i)[1] * scale_m[1];
                 tempRz_m(i) = Rview_m(i)[2] * scale_m[2];
@@ -179,8 +175,7 @@ namespace ippl {
                 : Qview_m(Qview)
                 , tempQ_m(tempQ) {}
 
-            KOKKOS_INLINE_FUNCTION
-            void operator()(std::size_t i) const {
+            KOKKOS_INLINE_FUNCTION void operator()(std::size_t i) const {
 #ifdef ENABLE_GPU_NUFFT
                 Qview_m(i) = tempQ_m(i).x;
 #else
@@ -301,11 +296,10 @@ namespace ippl {
 #endif
     }
 
-#ifdef ENABLE_FINUFFT
-
     template <typename RealField>
     void FFT<NUFFTransform, RealField>::allocateFinufftBuffers(const Layout_t& layout,
                                                                std::size_t localNp) {
+#ifdef ENABLE_FINUFFT
         const auto& lDom = layout.getLocalNDIndex();
         Kokkos::realloc(tempField_m, lDom[0].length(), lDom[1].length(), lDom[2].length());
 
@@ -313,10 +307,14 @@ namespace ippl {
             Kokkos::realloc(tempR_m[d], localNp);
         }
         Kokkos::realloc(tempQ_m, localNp);
+#else
+        throw std::runtime_error("FINUFFT is not activated. Rebuild with -DIPPL_ENABLE_FINUFFT=ON");
+#endif
     }
 
     template <typename RealField>
     void FFT<NUFFTransform, RealField>::initFinufft(const ParameterList& params) {
+#ifdef ENABLE_FINUFFT
         FinufftOpts_t opts;
         Traits_t::defaultOpts(&opts);
 
@@ -344,9 +342,10 @@ namespace ippl {
         if (err != 0) {
             throw IpplException("FFT<NUFFTransform>", "FINUFFT makeplan failed");
         }
-    }
-
+#else
+        throw std::runtime_error("FINUFFT is not activated. Rebuild with -DIPPL_ENABLE_FINUFFT=ON");
 #endif  // ENABLE_FINUFFT
+    }
 
     //=========================================================================
     // Transform Dispatch
@@ -355,8 +354,8 @@ namespace ippl {
     template <typename RealField>
     template <class... Properties>
     void FFT<NUFFTransform, RealField>::transform(
-        const ParticleAttrib<Vector<T, Dim>, Properties...>& R,
-        ParticleAttrib<T, Properties...>& Q, ComplexField& f) {
+        const ParticleAttrib<Vector<T, Dim>, Properties...>& R, ParticleAttrib<T, Properties...>& Q,
+        ComplexField& f) {
         if constexpr (fft::is_available_v<fft::Finufft>) {
             if (useFinufft_m) {
                 transformFinufft(R, Q, f);
@@ -374,8 +373,8 @@ namespace ippl {
     template <typename RealField>
     template <class... Properties>
     void FFT<NUFFTransform, RealField>::transformNative(
-        const ParticleAttrib<Vector<T, Dim>, Properties...>& R,
-        ParticleAttrib<T, Properties...>& Q, ComplexField& f) {
+        const ParticleAttrib<Vector<T, Dim>, Properties...>& R, ParticleAttrib<T, Properties...>& Q,
+        ComplexField& f) {
         const auto localNp = R.getParticleCount();
         const auto& layout = f.getLayout();
         const auto& mesh   = f.get_mesh();
@@ -417,14 +416,12 @@ namespace ippl {
     //=========================================================================
     // FINUFFT Transform
     //=========================================================================
-
-#ifdef ENABLE_FINUFFT
-
     template <typename RealField>
     template <class... Properties>
     void FFT<NUFFTransform, RealField>::transformFinufft(
-        const ParticleAttrib<Vector<T, Dim>, Properties...>& R,
-        ParticleAttrib<T, Properties...>& Q, ComplexField& f) {
+        const ParticleAttrib<Vector<T, Dim>, Properties...>& R, ParticleAttrib<T, Properties...>& Q,
+        ComplexField& f) {
+#ifdef ENABLE_FINUFFT
         const auto localNp = R.getParticleCount();
         const auto& layout = f.getLayout();
         const auto& mesh   = f.get_mesh();
@@ -445,9 +442,9 @@ namespace ippl {
 
         // Ensure temp buffers are large enough
         const auto& lDom = layout.getLocalNDIndex();
-        if (tempField_m.extent(0) != static_cast<std::size_t>(lDom[0].length()) ||
-            tempField_m.extent(1) != static_cast<std::size_t>(lDom[1].length()) ||
-            tempField_m.extent(2) != static_cast<std::size_t>(lDom[2].length())) {
+        if (tempField_m.extent(0) != static_cast<std::size_t>(lDom[0].length())
+            || tempField_m.extent(1) != static_cast<std::size_t>(lDom[1].length())
+            || tempField_m.extent(2) != static_cast<std::size_t>(lDom[2].length())) {
             Kokkos::realloc(tempField_m, lDom[0].length(), lDom[1].length(), lDom[2].length());
         }
 
@@ -483,12 +480,12 @@ namespace ippl {
         int nz         = lDom[2].length();
         bool needShift = (type_m == 2);  // Type 2 needs ifftshift on input
 
-        Kokkos::parallel_for("FINUFFT_copy_field_to_temp",
-                             mdrange_type({nghost, nghost, nghost},
-                                          {static_cast<int>(fview.extent(0)) - nghost,
-                                           static_cast<int>(fview.extent(1)) - nghost,
-                                           static_cast<int>(fview.extent(2)) - nghost}),
-                             CopyToTemp(fview, tempField, nghost, nx, ny, nz, needShift));
+        Kokkos::parallel_for(
+            "FINUFFT_copy_field_to_temp",
+            mdrange_type({nghost, nghost, nghost}, {static_cast<int>(fview.extent(0)) - nghost,
+                                                    static_cast<int>(fview.extent(1)) - nghost,
+                                                    static_cast<int>(fview.extent(2)) - nghost}),
+            CopyToTemp(fview, tempField, nghost, nx, ny, nz, needShift));
 
         // Copy particle data to FINUFFT buffers
         using CopyParticles =
@@ -535,10 +532,11 @@ namespace ippl {
             Kokkos::parallel_for("FINUFFT_copy_particles_from_temp", localNp,
                                  CopyBack(Qview, tempQ));
         }
-    }
+#else
+        throw std::runtime_error("FINUFFT is not activated. Rebuild with -DIPPL_ENABLE_FINUFFT=ON");
 
 #endif  // ENABLE_FINUFFT
-
+    }
 }  // namespace ippl
 
 #endif  // IPPL_FFT_TRANSFORM_NUFFT_IMPL_HPP

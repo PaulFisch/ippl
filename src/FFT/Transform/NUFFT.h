@@ -241,21 +241,16 @@ namespace ippl {
         void transformNative(const ParticleAttrib<Vector<T, Dim>, Properties...>& R,
                              ParticleAttrib<T, Properties...>& Q, ComplexField& f);
 
-#ifdef ENABLE_FINUFFT
         template <class... Properties>
         void transformFinufft(const ParticleAttrib<Vector<T, Dim>, Properties...>& R,
                               ParticleAttrib<T, Properties...>& Q, ComplexField& f);
-#endif
-
     private:
         void initBackend(const Layout_t& layout, const ParameterList& params);
         void initNative(const Layout_t& layout, const ParameterList& params);
         void cleanupBackend();
 
-#ifdef ENABLE_FINUFFT
         void initFinufft(const ParameterList& params);
         void allocateFinufftBuffers(const Layout_t& layout, std::size_t localNp);
-#endif
     };
 
 }  // namespace ippl
