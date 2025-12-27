@@ -14,7 +14,8 @@ namespace Interpolation {
     enum class ScatterMethod {
         Atomic,        // Simple atomic operations
         Tiled,         // Tiled for cache locality with shared memory optimization
-        OutputFocused
+        OutputFocused,
+        OutputFocusedZBatch
     };
 
     /**

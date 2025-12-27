@@ -54,7 +54,7 @@ public:
         const T pi = Kokkos::numbers::pi_v<T>;
         for (unsigned d = 0; d < Dim; ++d) {
             origin[d]   = 0.0;
-            extent[d]   = 2.0 * pi;  // [0, 2π] domain for NUFFT
+            extent[d]   = 2.0 * pi;
             gridSize[d] = 32;
         }
     }
@@ -244,12 +244,11 @@ public:
         fieldScatter.accumulateHalo();
 
         // Perform gather with kernel: G * fieldGather -> q_gather
+        bunch->Q_gather = complex_type(0.0, 0.0);
         bunch->Q_gather.gather(fieldGather, bunch->R, kernel, false, gatherCfg);
 
         // Compute left inner product: <S*q, g> = <fieldScatter, fieldGather>
-        complex_type leftIP =
-            ippl::test::computeFieldInnerProductComplex(fieldScatter, fieldGather);
-
+        complex_type leftIP = ippl::innerProduct(fieldScatter, fieldGather);
         // Compute right inner product: <q, G*g> = <q_scatter, q_gather>
         complex_type rightIP = ippl::test::computeParticleInnerProductComplex(
             *bunch, bunch->Q_scatter, bunch->Q_gather);

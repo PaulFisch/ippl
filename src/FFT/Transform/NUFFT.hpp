@@ -258,6 +258,8 @@ namespace ippl {
             cfg.scatter_config.method = Interpolation::ScatterMethod::OutputFocused;
         } else if (spreadMethod == "tiled") {
             cfg.scatter_config.method = Interpolation::ScatterMethod::Tiled;
+        } else if (spreadMethod == "output_focused_zbatched") {
+            cfg.scatter_config.method = Interpolation::ScatterMethod::OutputFocusedZBatch;
         }
 
         std::string gatherMethod = params.get<std::string>("gather_method", "none");

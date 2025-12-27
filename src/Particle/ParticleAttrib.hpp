@@ -26,6 +26,7 @@
 #include "Interpolation/AtomicSortGather.h"
 #include "Interpolation/Binning.h"
 #include "Interpolation/OutputFocusedScatter.h"
+#include "Interpolation/OutputFocusedScatter_zbatched.h"
 #include "Interpolation/ScatterConfig.h"
 #include "Interpolation/TiledGather.h"
 #include "Interpolation/TiledKokkosGather.h"
@@ -272,7 +273,8 @@ namespace ippl {
 
         // Dispatch based on spread method
         if ((config.method == Interpolation::ScatterMethod::Tiled
-             || config.method == Interpolation::ScatterMethod::OutputFocused)
+             || config.method == Interpolation::ScatterMethod::OutputFocused
+             || config.method == Interpolation::ScatterMethod::OutputFocusedZBatch)
             && Dim == 3) {
             IpplTimings::startTimer(scatterKernelSortTimer);
 
@@ -286,6 +288,9 @@ namespace ippl {
                 n_grid_local_arr[d]  = ngrid_local[d];
                 local_offset_arr[d]  = local_offset[d];
                 tile_size_arr[d]     = config.tile_size_3d;
+                if (config.method == Interpolation::ScatterMethod::OutputFocusedZBatch && d == 2) {
+                    tile_size_arr[d] = 2;
+                }
             }
 
             auto pp_view = pp.getView();
@@ -332,6 +337,13 @@ namespace ippl {
                     n_grid_local_arr, local_offset_arr, num_tiles, config.tile_size_3d,
                     config.tile_size_3d, config.tile_size_3d, config.z_tiles, nghost, inv_hw,
                     kernel, config.team_size);
+            } else if (config.method == Interpolation::ScatterMethod::OutputFocusedZBatch) {
+                Interpolation::detail::OutputFocusedScatterZLoopDispatcher<1,1, MaxW>::template dispatch_3d<PositionType, execution_space, Kernel, T,
+                                   view_type, decltype(pp_view), decltype(permute),
+                                   decltype(bin_offsets)>(w, config.z_tiles, bin_offsets, permute, pp_view, dview_m, full_view, n_grid_global_arr,
+    n_grid_local_arr, local_offset_arr, num_tiles, config.tile_size_3d,
+    config.tile_size_3d, 2, nghost, inv_hw,
+    kernel, config.team_size);
             }
             Kokkos::fence();
             IpplTimings::stopTimer(scatterKernelTimer);

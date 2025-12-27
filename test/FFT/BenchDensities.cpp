@@ -473,6 +473,27 @@ int main(int argc, char* argv[]) {
                     }
                 }
 
+                // ZBatched
+                {
+                    ippl::ParameterList fftParams;
+                    fftParams.add("tolerance", tol);
+                    fftParams.add("use_finufft_defaults", false);
+                    fftParams.add("use_kokkos_nufft", false);
+                    fftParams.add("spread_method", "output_focused_zbatched");
+                    fftParams.add("tile_size_3d", 16);
+                    fftParams.add("z_tiles", 1);
+
+                    auto fft = std::make_unique<FFT_type>(layout, nloc, 1, fftParams);
+                    double time_ms = benchmarkType1(*fft, field, bunch, warmup_runs, benchmark_runs);
+                    double throughput = Np / time_ms * 1000.0 / 1e6;
+
+                    results.push_back({density, Np, n_modes, 1, "Native_OutputFocusedZBatch", time_ms, throughput});
+                    if (ippl::Comm->rank() == 0) {
+                        std::cout << "  Type1 OutputFocusedZBatch:        " << std::fixed << std::setprecision(3)
+                                  << time_ms << " ms (" << throughput << " Mpts/s)\n";
+                    }
+                }
+
 #ifdef ENABLE_FINUFFT
                 // cuFINUFFT
                 {
