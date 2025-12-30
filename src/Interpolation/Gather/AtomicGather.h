@@ -97,8 +97,10 @@ namespace ippl::Interpolation::detail {
         }
 
         void run(size_t n_particles) {
-            Kokkos::parallel_for("AtomicGather(Add)",
-                                 Kokkos::RangePolicy<execution_space>(0, n_particles), *this);
+            auto policy             = Kokkos::RangePolicy<execution_space>(0, n_particles);
+            auto const policy_tuned = Kokkos::Experimental::prefer(
+                policy, Kokkos::Experimental::DesiredOccupancy{Kokkos::AUTO});
+            Kokkos::parallel_for("AtomicGather(Add)", policy, *this);
         }
     };
 }  // namespace ippl::Interpolation::detail
