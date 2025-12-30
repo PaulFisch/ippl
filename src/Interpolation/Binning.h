@@ -6,7 +6,6 @@
 #include <Kokkos_Sort.hpp>
 
 #include "CoordinateTransform.h"
-#include "InterpolationUtil.h"
 #include "Particle/ParticleLayout.h"
 #include "Particle/SortBuffer.h"
 
