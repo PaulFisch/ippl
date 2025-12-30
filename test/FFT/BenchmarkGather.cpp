@@ -60,13 +60,11 @@ public:
         {
             auto cfg = ippl::Interpolation::GatherConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::GatherMethod::Atomic;
-            cfg.sort = false;
             configs.push_back(cfg);
         }
         {
             auto cfg = ippl::Interpolation::GatherConfig<Dim>::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::GatherMethod::Atomic;
-            cfg.sort = true;
+            cfg.method = ippl::Interpolation::GatherMethod::AtomicSort;
             configs.push_back(cfg);
         }
 
