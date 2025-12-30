@@ -54,33 +54,33 @@ public:
 
         // Define configurations to benchmark
         // Note: Gather only supports Atomic and Tiled methods
-        std::vector<ippl::Interpolation::GatherConfig> configs;
+        std::vector<ippl::Interpolation::GatherConfig<Dim>> configs;
 
         // Atomic (baseline)
         {
-            auto cfg = ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
+            auto cfg = ippl::Interpolation::GatherConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::GatherMethod::Atomic;
             cfg.sort = false;
             configs.push_back(cfg);
         }
         {
-            auto cfg = ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
+            auto cfg = ippl::Interpolation::GatherConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::GatherMethod::Atomic;
             cfg.sort = true;
             configs.push_back(cfg);
         }
 
-        // Tiled with different tile sizes
-        for (int tile_size : {8, 12, 16, 20, 24}) {
-            auto cfg = ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::GatherMethod::Tiled;
-            cfg.tile_size_3d = tile_size;
-            cfg.sort = false;
-            configs.push_back(cfg);
-
-            cfg.sort = true;
-            configs.push_back(cfg);
-        }
+        // // Tiled with different tile sizes
+        // for (int tile_size : {8, 12, 16, 20, 24}) {
+        //     auto cfg = ippl::Interpolation::GatherConfig<Dim>::get_default<ExecSpace>();
+        //     cfg.method = ippl::Interpolation::GatherMethod::Tiled;
+        //     cfg.tile_size_3d = tile_size;
+        //     cfg.sort = false;
+        //     configs.push_back(cfg);
+        //
+        //     cfg.sort = true;
+        //     configs.push_back(cfg);
+        // }
 
         // Run benchmarks and collect results
         benchmark::print_subheader("Results");
@@ -145,7 +145,7 @@ private:
             params_, kernel_, *mesh_, *layout_, *playout_, *bunch_, *grid_input_, nghost_);
     }
 
-    benchmark::TimingStats benchmark_config(const ippl::Interpolation::GatherConfig& cfg) {
+    benchmark::TimingStats benchmark_config(const ippl::Interpolation::GatherConfig<Dim>& cfg) {
         benchmark::Timer timer;
         std::vector<double> times;
 
@@ -173,7 +173,7 @@ private:
         return benchmark::compute_stats(times);
     }
 
-    void print_summary(const std::vector<ippl::Interpolation::GatherConfig>& configs,
+    void print_summary(const std::vector<ippl::Interpolation::GatherConfig<Dim>>& configs,
                        const std::vector<benchmark::TimingStats>& results) {
         if (ippl::Comm->rank() != 0) return;
 
