@@ -5,7 +5,11 @@
 
 #include <Kokkos_Complex.hpp>
 
-#include "InterpolationUtil.h"
+#include "../InterpolationTypes.h"
+
+#include "../CoordinateTransform.h"
+#include "../InterpolationUtil.h"
+#include "../KernelEvaluator.h"
 
 namespace ippl {
     namespace Interpolation {
@@ -43,7 +47,7 @@ namespace ippl {
                 // Input data
                 std::decay_t<BinOffsetsType> bin_offsets;
                 std::decay_t<PermuteType> permute;
-                std::decay_t<PositionViewType> x;  // Particle positions in coordinates [-pi, pi]
+                std::decay_t<PositionViewType> x;  // Particle positions in PHYSICAL coordinates
                 Kokkos::View<value_type*, memory_space> values;  // Values to scatter
                 std::decay_t<GridViewType> grid;                               // Output grid
 
@@ -56,6 +60,10 @@ namespace ippl {
                 int nghost;        // ghost cell offset for field
                 real_type inv_hw;  // 1 / half_width for kernel scaling
                 std::decay_t<KernelType> kernel;
+
+                // Mesh information for coordinate transformation
+                Kokkos::Array<real_type, 3> origin_;   // Physical origin from mesh
+                Kokkos::Array<real_type, 3> invdx_;    // Inverse mesh spacing (1/dx)
 
                 // Compile-time constants
                 static constexpr int w         = W;
@@ -141,25 +149,35 @@ namespace ippl {
                         const size_type j    = permute(i);
                         const value_type val = values(j);
 
-                        real_type s[3];
-                        int idx[3];
+                        // Create coordinate transform with mesh information
+                        ippl::Vector<real_type, 3> origin_vec, invdx_vec;
+                        ippl::Vector<int, 3> n_grid_vec;
+                        for (unsigned d = 0; d < 3; ++d) {
+                            origin_vec[d] = origin_[d];
+                            invdx_vec[d] = invdx_[d];
+                            n_grid_vec[d] = n_grid[d];
+                        }
+                        CoordinateTransform<real_type, 3> transform(origin_vec, invdx_vec, n_grid_vec);
+
+                        real_type grid_pos[3];
+                        int stencil_base[3];
 
                         for (int d = 0; d < 3; ++d) {
-                            // Convert physical position to global grid coordinates
-                            real_type s_global = scale_to_grid_indices(get_component(x, j, d), n_grid[d]);
-                            int global_idx = grid_point_to_grid_idx(s_global, n_grid[d], w);
-
-                            // Convert to local coordinates (preserving fractional part for kernel evaluation)
-                            s[d] = s_global - static_cast<real_type>(local_offset[d]);
-                            idx[d] = global_idx - local_offset[d] - half_left;
+                            // Transform from physical coordinates to grid coordinates
+                            grid_pos[d] = transform.toGridCoordinate(get_component(x, j, d), d);
+                            stencil_base[d] = transform.getStencilBase(grid_pos[d], W);
                         }
 
+                        // Precompute kernel values using KernelEvaluator
+                        KernelEvaluator<W, 3, std::decay_t<KernelType>, real_type> keval;
+                        keval.evaluate(grid_pos, stencil_base, inv_hw, kernel);
+
+                        // Copy kernel values to shared memory for team-parallel access
                         Kokkos::parallel_for(Kokkos::TeamThreadRange(team, 3 * W), [&](int flat_w) {
                             int d = flat_w / w;
                             int k = flat_w % w;
 
-                            kernel_vals[W * d + k] =
-                                kernel((s[d] - static_cast<real_type>(idx[d] + k)) * inv_hw);
+                            kernel_vals[W * d + k] = keval.getValue(d, k);
                         });
 
                         team.team_barrier();
@@ -169,9 +187,14 @@ namespace ippl {
                                 const real_type kernel_val =
                                     kernel_vals[wx] * kernel_vals[W + wy] * kernel_vals[2 * W + wz];
 
-                                const int point_tile_x = idx[0] + half_left - tile_x0;
-                                const int point_tile_y = idx[1] + half_left - tile_y0;
-                                const int point_tile_z = idx[2] + half_left - tile_z0;
+                                // Convert stencil_base from global to local coordinates
+                                const int local_stencil_x = stencil_base[0] + half_left - local_offset[0];
+                                const int local_stencil_y = stencil_base[1] + half_left - local_offset[1];
+                                const int local_stencil_z = stencil_base[2] + half_left - local_offset[2];
+
+                                const int point_tile_x = local_stencil_x - tile_x0;
+                                const int point_tile_y = local_stencil_y - tile_y0;
+                                const int point_tile_z = local_stencil_z - tile_z0;
 
                                 assert(point_tile_x >= 0);
                                 assert(point_tile_y >= 0);
@@ -258,7 +281,9 @@ namespace ippl {
                     Kokkos::Array<int, 3> local_offset,
                     Kokkos::Array<int, 3> num_tiles,
                     int tile_size_x, int tile_size_y, int tile_size_z, int z_tiles, int nghost,
-                    RealType inv_hw, const KernelType& kernel, int team_size) {
+                    RealType inv_hw, const KernelType& kernel, int team_size,
+                    Kokkos::Array<RealType, 3> origin,
+                    Kokkos::Array<RealType, 3> invdx) {
                     if constexpr (W <= MaxW) {
                         if (w == W) {
                             // Use generic Kokkos functor for other execution spaces
@@ -271,7 +296,8 @@ namespace ippl {
                                         values,       grid,         n_grid,
                                         n_grid_local, local_offset, num_tiles,
                                         tile_size_x,  tile_size_y,  tile_size_z,
-                                        nghost,       inv_hw,       kernel};
+                                        nghost,       inv_hw,       kernel,
+                                        origin,       invdx};
 
                             // Calculate scratch memory size
                             const size_t hist_size = functor.hist_size_x() * functor.hist_size_y()
@@ -305,7 +331,7 @@ namespace ippl {
                                 PositionViewType, PermuteViewType, BinOffsetsViewType>(
                                 w, bin_offsets, permute, x, values, grid, n_grid, n_grid_local,
                                 local_offset, num_tiles, tile_size_x, tile_size_y, tile_size_z,
-                                z_tiles, nghost, inv_hw, kernel, team_size);
+                                z_tiles, nghost, inv_hw, kernel, team_size, origin, invdx);
                         }
                     } else {
                         throw std::runtime_error("Kernel width exceeds maximum supported width");

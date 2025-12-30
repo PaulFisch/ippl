@@ -3,6 +3,7 @@
 //   Norms and a scalar product for fields
 //
 
+#include "Utility/TypeUtils.h"
 namespace ippl {
     /*!
      * Computes the inner product of two fields
@@ -24,11 +25,23 @@ namespace ippl {
         ippl::parallel_reduce(
             "Field::innerProduct(Field&, Field&)", f1.getFieldRangePolicy(),
             KOKKOS_LAMBDA(const index_array_type& args, T& val) {
-                val += apply(view1, args) * apply(view2, args);
+                (void)view1;
+                (void)view2;
+                if constexpr (is_complex_v<T>) {
+                    val += apply(view1, args) * Kokkos::conj(apply(view2, args));
+                } else {
+                    val += apply(view1, args) * apply(view2, args);
+                }
             },
             Kokkos::Sum<T>(sum));
         T globalSum = 0;
-        layout.comm.allreduce(sum, globalSum, 1, std::plus<T>());
+        if (is_complex_v<T>) {
+            using real_type = std::decay_t<decltype(T{}.real())>;
+            layout.comm.allreduce(sum.real(), globalSum.real(), 1, std::plus<real_type>{});
+            layout.comm.allreduce(sum.imag(), globalSum.imag(), 1, std::plus<real_type>{});
+        } else {
+            layout.comm.allreduce(sum, globalSum, 1, std::plus<T>());
+        }
         return globalSum;
     }
 

@@ -1,0 +1,218 @@
+#ifndef IPPL_SCATTER_CONFIG_H
+#define IPPL_SCATTER_CONFIG_H
+
+#include <array>
+
+namespace ippl {
+    namespace Interpolation {
+
+        /**
+         * @brief Scattering/gathering method for particle-grid interpolation
+         */
+        enum class ScatterMethod {
+            Atomic,
+            Tiled,
+            OutputFocused,
+            OutputFocusedZBatch
+        };
+
+        /**
+         * @brief Configuration for scatter/gather operations
+         */
+        template <unsigned Dim>
+        struct ScatterConfig {
+            ScatterMethod method = ScatterMethod::Atomic;
+            bool sort            = false;
+
+            // Tile size per dimension
+            std::array<int, Dim> tile_size;
+
+            // Team size for team-based methods
+            int team_size = 16;
+
+            /**
+             * @brief Default constructor - initializes tile sizes based on Dim
+             */
+            ScatterConfig() {
+                if constexpr (Dim == 1) {
+                    tile_size.fill(512);
+                } else if constexpr (Dim == 2) {
+                    tile_size.fill(32);
+                } else {
+                    tile_size.fill(8);
+                }
+            }
+
+            /**
+             * @brief Constructor with uniform tile size for all dimensions
+             */
+            explicit ScatterConfig(int uniform_tile_size)
+                : ScatterConfig() {
+                tile_size.fill(uniform_tile_size);
+            }
+
+            /**
+             * @brief Constructor with per-dimension tile sizes
+             */
+            explicit ScatterConfig(std::array<int, Dim> tile_sizes)
+                : ScatterConfig() {
+                tile_size = tile_sizes;
+            }
+
+            /**
+             * @brief Get tile size as Vector for use in kernels
+             */
+            Vector<int, Dim> get_tile_size() const {
+                Vector<int, Dim> result;
+                for (unsigned d = 0; d < Dim; ++d) {
+                    result[d] = tile_size[d];
+                }
+                return result;
+            }
+
+            /**
+             * @brief Set uniform tile size for all dimensions
+             */
+            ScatterConfig& set_tile_size(int uniform_size) {
+                tile_size.fill(uniform_size);
+                return *this;
+            }
+
+            /**
+             * @brief Set tile size per dimension
+             */
+            ScatterConfig& set_tile_size(std::array<int, Dim> sizes) {
+                tile_size = sizes;
+                return *this;
+            }
+
+            /**
+             * @brief Set tile size for a specific dimension
+             */
+            ScatterConfig& set_tile_size(unsigned dim, int size) {
+                tile_size[dim] = size;
+                return *this;
+            }
+
+            bool do_binning() const {
+                return !(method == ScatterMethod::Atomic && sort == false);
+            }
+
+            /**
+             * @brief Get default configuration for an execution space
+             */
+            template <typename ExecSpace>
+            static ScatterConfig get_default();
+        };
+
+        // Helper to define defaults for execution space + dimension combinations
+        namespace detail {
+            template <unsigned Dim, typename ExecSpace, typename = void>
+            struct ScatterConfigDefault {
+                static ScatterConfig<Dim> get() {
+                    ScatterConfig<Dim> config;
+                    config.method = ScatterMethod::Atomic;
+                    config.sort   = false;
+                    return config;
+                }
+            };
+
+#ifdef KOKKOS_ENABLE_SERIAL
+            template <unsigned Dim>
+            struct ScatterConfigDefault<Dim, Kokkos::Serial> {
+                static ScatterConfig<Dim> get() {
+                    ScatterConfig<Dim> config;
+                    config.method = ScatterMethod::Atomic;
+                    config.sort   = false;
+                    return config;
+                }
+            };
+#endif
+
+#ifdef KOKKOS_ENABLE_CUDA
+            template <unsigned Dim>
+            struct ScatterConfigDefault<Dim, Kokkos::Cuda> {
+                static ScatterConfig<Dim> get() {
+                    ScatterConfig<Dim> config;
+                    config.method    = ScatterMethod::OutputFocused;
+                    config.sort      = true;
+                    config.team_size = 32;
+
+                    if constexpr (Dim == 1) {
+                        config.tile_size = {512};
+                    } else if constexpr (Dim == 2) {
+                        config.tile_size = {16, 16};
+                    } else if constexpr (Dim == 3) {
+                        config.tile_size = {4, 4, 4};
+                    }
+                    return config;
+                }
+            };
+#endif
+
+#ifdef KOKKOS_ENABLE_OPENMP
+            template <unsigned Dim>
+            struct ScatterConfigDefault<Dim, Kokkos::OpenMP> {
+                static ScatterConfig<Dim> get() {
+                    ScatterConfig<Dim> config;
+                    config.method    = ScatterMethod::Atomic;
+                    config.sort      = false;
+                    config.team_size = 4;
+
+                    if constexpr (Dim == 1) {
+                        config.tile_size = {256};
+                    } else if constexpr (Dim == 2) {
+                        config.tile_size = {16, 16};
+                    } else if constexpr (Dim == 3) {
+                        config.tile_size = {9, 9, 9};
+                    }
+                    return config;
+                }
+            };
+#endif
+
+#ifdef KOKKOS_ENABLE_HIP
+            template <unsigned Dim>
+            struct ScatterConfigDefault<Dim, Kokkos::HIP> {
+                static ScatterConfig<Dim> get() {
+                    ScatterConfig<Dim> config;
+                    config.method    = ScatterMethod::Tiled;
+                    config.sort      = true;
+                    config.team_size = 64;
+
+                    if constexpr (Dim == 1) {
+                        config.tile_size = {512};
+                    } else if constexpr (Dim == 2) {
+                        config.tile_size = {16, 16};
+                    } else if constexpr (Dim == 3) {
+                        config.tile_size = {6, 6, 6};
+                    }
+                    return config;
+                }
+            };
+#endif
+
+#ifdef KOKKOS_ENABLE_THREADS
+            template <unsigned Dim>
+            struct ScatterConfigDefault<Dim, Kokkos::Threads> {
+                static ScatterConfig<Dim> get() {
+                    ScatterConfig<Dim> config;
+                    config.method = ScatterMethod::Atomic;
+                    config.sort   = true;
+                    return config;
+                }
+            };
+#endif
+        }  // namespace detail
+
+        // Implementation of get_default using the helper
+        template <unsigned Dim>
+        template <typename ExecSpace>
+        ScatterConfig<Dim> ScatterConfig<Dim>::get_default() {
+            return detail::ScatterConfigDefault<Dim, ExecSpace>::get();
+        }
+
+    }  // namespace Interpolation
+}  // namespace ippl
+
+#endif  // IPPL_SCATTER_CONFIG_H

@@ -19,11 +19,11 @@
 
 #include "Field/Field.h"
 
+#include "../../Interpolation/Scatter/ScatterConfig.h"
 #include "Correction.h"
 #include "FFT/FFT.h"
 #include "FFT/NUFFT/ESKernel.h"
 #include "FFT/NUFFT/NUFFTUtilities.h"
-#include "Interpolation/ScatterConfig.h"
 #include "Particle/ParticleAttrib.h"
 
 namespace ippl {
@@ -65,8 +65,8 @@ namespace ippl {
             struct Config {
                 T tol   = T(1e-6);  // Error tolerance
                 T sigma = T(2.0);   // Upsampling factor
-                Interpolation::ScatterConfig scatter_config;
-                Interpolation::GatherConfig gather_config;
+                Interpolation::ScatterConfig<Dim> scatter_config;
+                Interpolation::GatherConfig<Dim> gather_config;
             };
 
             struct TimingInfo {
@@ -249,11 +249,11 @@ namespace ippl {
                 Kokkos::fence();
                 IpplTimings::stopTimer(scatterTimer);
 
-                static IpplTimings::TimerRef accumulateHaloTimer = IpplTimings::getTimer("accumulateHaloNUFFT1");
-                IpplTimings::startTimer(accumulateHaloTimer);
-                // Step 1.5: Accumulate ghost cells from scatter
-                grid_field_->accumulateHalo();
-                IpplTimings::stopTimer(accumulateHaloTimer);
+                // static IpplTimings::TimerRef accumulateHaloTimer = IpplTimings::getTimer("accumulateHaloNUFFT1");
+                // IpplTimings::startTimer(accumulateHaloTimer);
+                // // Step 1.5: Accumulate ghost cells from scatter
+                // grid_field_->accumulateHalo();
+                // IpplTimings::stopTimer(accumulateHaloTimer);
 
                 static IpplTimings::TimerRef fftTimer = IpplTimings::getTimer("FFTNUFFT1");
                 IpplTimings::startTimer(fftTimer);
@@ -322,11 +322,11 @@ namespace ippl {
                 // ============================================================
                 // Step 2.5: Fill ghost cells for gather
                 // ============================================================
-                static IpplTimings::TimerRef FillHaloTimer = IpplTimings::getTimer("FillHaloNUFFT2");
-                IpplTimings::startTimer(FillHaloTimer);
-                grid_field_->fillHalo();
-                Kokkos::fence();
-                IpplTimings::stopTimer(FillHaloTimer);
+                // static IpplTimings::TimerRef FillHaloTimer = IpplTimings::getTimer("FillHaloNUFFT2");
+                // IpplTimings::startTimer(FillHaloTimer);
+                // grid_field_->fillHalo();
+                // Kokkos::fence();
+                // IpplTimings::stopTimer(FillHaloTimer);
 
                 // ============================================================
                 // Step 3: Gather/interpolate at particle positions

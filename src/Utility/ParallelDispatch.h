@@ -98,6 +98,11 @@ namespace ippl {
         throw IpplException("detail::createRangePolicy", "Unreachable state");
     }
 
+    template <int... Is, typename F>
+    KOKKOS_FORCEINLINE_FUNCTION void for_constexpr(std::integer_sequence<int, Is...>, F&& f) {
+        (f.template operator()<Is>(), ...);
+    }
+
     namespace detail {
         /*!
          * Recursively templated struct for defining tuples with arbitrary
@@ -180,8 +185,8 @@ namespace ippl {
         };
         template <typename T>
         concept HasMemberValueType = requires() {
-                                         { typename T::value_type() };
-                                     };
+            { typename T::value_type() };
+        };
         template <typename T>
         struct ExtractReducerReturnType {
             using type = T;

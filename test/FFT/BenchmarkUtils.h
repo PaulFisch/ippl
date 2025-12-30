@@ -13,9 +13,9 @@
 #include <string>
 #include <vector>
 
+#include "../../src/Interpolation/Scatter/ScatterConfig.h"
 #include "FFT/NUFFT/ESKernel.h"
 #include "FFT/NUFFT/NUFFTUtilities.h"
-#include "Interpolation/ScatterConfig.h"
 
 namespace ippl::benchmark {
 

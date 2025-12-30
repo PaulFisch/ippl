@@ -21,16 +21,18 @@
 #include "Utility/IpplTimings.h"
 
 #include "FFT/FFT.h"
-#include "Interpolation/AtomicGather.h"
-#include "Interpolation/AtomicScatter.h"
-#include "Interpolation/AtomicSortGather.h"
 #include "Interpolation/Binning.h"
-#include "Interpolation/OutputFocusedScatter.h"
-#include "Interpolation/OutputFocusedScatter_zbatched.h"
-#include "Interpolation/ScatterConfig.h"
-#include "Interpolation/TiledGather.h"
-#include "Interpolation/TiledKokkosGather.h"
-#include "Interpolation/TiledScatter.h"
+#include "Interpolation/Gather/AtomicGather.h"
+#include "Interpolation/Gather/AtomicSortGather.h"
+#include "Interpolation/Gather/Gather.h"
+#include "Interpolation/Gather/TiledGather.h"
+#include "Interpolation/Gather/TiledKokkosGather.h"
+#include "Interpolation/Scatter/AtomicScatter.h"
+#include "Interpolation/Scatter/OutputFocusedScatter.h"
+#include "Interpolation/Scatter/OutputFocusedScatter_zbatched.h"
+#include "Interpolation/Scatter/Scatter.h"
+#include "Interpolation/Scatter/ScatterConfig.h"
+#include "Interpolation/Scatter/TiledScatter.h"
 #include "Particle/ParticleSort.h"
 #include "Particle/SortBuffer.h"
 
@@ -236,140 +238,9 @@ namespace ippl {
     template <typename Field, typename P2, typename Kernel>
     void ParticleAttrib<T, Properties...>::scatter_kernel(
         Field& f, const ParticleAttrib<Vector<P2, Field::dim>, Properties...>& pp,
-        const Kernel& kernel, const Interpolation::ScatterConfig& config) const {
-        constexpr unsigned Dim = Field::dim;
-        using PositionType     = typename Field::Mesh_t::value_type;
-
-        static IpplTimings::TimerRef scatterKernelTimer = IpplTimings::getTimer("scatterKernel");
-        static IpplTimings::TimerRef scatterKernelSortTimer =
-            IpplTimings::getTimer("scatterKernelSort");
-        IpplTimings::startTimer(scatterKernelTimer);
-
-        using view_type     = typename Field::view_type;
-        view_type full_view = f.getView();
-        const int nghost    = f.getNghost();
-
-        const FieldLayout<Dim>& layout = f.getLayout();
-        const NDIndex<Dim>& lDom       = layout.getLocalNDIndex();
-        const NDIndex<Dim>& gDom       = layout.getDomain();
-
-        const int w = kernel.width();
-        // const int hw              = w / 2;
-        // const bool odd            = (w & 1);
-        const PositionType inv_hw = PositionType(2.0) / w;
-
-        // Use GLOBAL grid dimensions for coordinate scaling
-        Vector<int, Dim> ngrid_global;
-        Vector<int, Dim> ngrid_local;
-        Vector<int, Dim> local_offset;
-        for (unsigned d = 0; d < Dim; ++d) {
-            ngrid_global[d] = gDom[d].length();
-            ngrid_local[d]  = lDom[d].length();
-            local_offset[d] = lDom[d].first();
-        }
-
-        using policy_type       = Kokkos::RangePolicy<execution_space>;
-        const size_t nParticles = *(this->localNum_mp);
-
-        // Dispatch based on spread method
-        if ((config.method == Interpolation::ScatterMethod::Tiled
-             || config.method == Interpolation::ScatterMethod::OutputFocused
-             || config.method == Interpolation::ScatterMethod::OutputFocusedZBatch)
-            && Dim == 3) {
-            IpplTimings::startTimer(scatterKernelSortTimer);
-
-            // Prepare grid dimensions - use GLOBAL for coordinate transform, LOCAL for binning
-            Kokkos::Array<int, 3> n_grid_global_arr;
-            Kokkos::Array<int, 3> n_grid_local_arr;
-            Kokkos::Array<int, 3> local_offset_arr;
-            Kokkos::Array<int, 3> tile_size_arr;
-            for (unsigned d = 0; d < 3; ++d) {
-                n_grid_global_arr[d] = ngrid_global[d];
-                n_grid_local_arr[d]  = ngrid_local[d];
-                local_offset_arr[d]  = local_offset[d];
-                tile_size_arr[d]     = config.tile_size_3d;
-                if (config.method == Interpolation::ScatterMethod::OutputFocusedZBatch && d == 2) {
-                    tile_size_arr[d] = 2;
-                }
-            }
-
-            auto pp_view = pp.getView();
-
-            // Calculate number of tiles (based on LOCAL grid)
-            Kokkos::Array<int, 3> num_tiles;
-            for (unsigned d = 0; d < 3; ++d) {
-                num_tiles[d] = (ngrid_local[d] + config.tile_size_3d - 1) / config.tile_size_3d + 1;
-            }
-            auto total_tiles = static_cast<size_t>(num_tiles[0]) * static_cast<size_t>(num_tiles[1]) * static_cast<size_t>(num_tiles[2]);
-
-            // Sort particles by tile (using local binning)
-
-            // Kokkos::View<size_type*, typename execution_space::memory_space> permute;
-            // Kokkos::View<size_type*, typename execution_space::memory_space> bin_offsets;
-            auto& buf_handler = detail::getDefaultSortBufferManager<memory_space>();
-            buf_handler.ensureCapacity(std::max(nParticles + 1, total_tiles + 1));
-            Kokkos::fence();
-            auto& permute     = buf_handler.indices();
-            auto& bin_offsets = buf_handler.indicesSorted();
-
-            Interpolation::detail::bin_sort_3d<PositionType, decltype(pp_view), execution_space>(
-                pp_view, n_grid_global_arr, n_grid_local_arr, local_offset_arr, tile_size_arr, w,
-                permute, bin_offsets, nParticles);
-            Kokkos::fence();
-            IpplTimings::stopTimer(scatterKernelSortTimer);
-
-            // Dispatch to templated scatter functor based on kernel width
-            constexpr int MaxW = 20;
-            if (config.method == Interpolation::ScatterMethod::Tiled) {
-                Interpolation::detail::ScatterDispatcher<1, MaxW>::template dispatch_3d<
-                    PositionType, execution_space, Kernel, T, view_type, decltype(pp_view),
-                    decltype(permute), decltype(bin_offsets)>(
-                    w, bin_offsets, permute, pp_view, dview_m, full_view, n_grid_global_arr,
-                    n_grid_local_arr, local_offset_arr, num_tiles, config.tile_size_3d,
-                    config.tile_size_3d, config.tile_size_3d, config.z_tiles, nghost, inv_hw,
-                    kernel, config.team_size);
-            } else if (config.method == Interpolation::ScatterMethod::OutputFocused) {
-                Interpolation::detail::OutputFocusedScatterDispatcher<
-                    1, MaxW>::template dispatch_3d<PositionType, execution_space, Kernel, T,
-                                                   view_type, decltype(pp_view), decltype(permute),
-                                                   decltype(bin_offsets)>(
-                    w, bin_offsets, permute, pp_view, dview_m, full_view, n_grid_global_arr,
-                    n_grid_local_arr, local_offset_arr, num_tiles, config.tile_size_3d,
-                    config.tile_size_3d, config.tile_size_3d, config.z_tiles, nghost, inv_hw,
-                    kernel, config.team_size);
-            } else if (config.method == Interpolation::ScatterMethod::OutputFocusedZBatch) {
-                Interpolation::detail::OutputFocusedScatterZLoopDispatcher<1,1, MaxW>::template dispatch_3d<PositionType, execution_space, Kernel, T,
-                                   view_type, decltype(pp_view), decltype(permute),
-                                   decltype(bin_offsets)>(w, config.z_tiles, bin_offsets, permute, pp_view, dview_m, full_view, n_grid_global_arr,
-    n_grid_local_arr, local_offset_arr, num_tiles, config.tile_size_3d,
-    config.tile_size_3d, 2, nghost, inv_hw,
-    kernel, config.team_size);
-            }
-            Kokkos::fence();
-            IpplTimings::stopTimer(scatterKernelTimer);
-            return;
-        }
-
-        // Fall back to atomic implementation using generic functor
-        auto pp_view = pp.getView();
-
-        // Use AtomicScatterFunctor with T (real values) scattering to complex field
-        Interpolation::detail::AtomicScatterFunctor<Dim, PositionType, execution_space, Kernel, T,
-                                                    view_type, decltype(pp_view)>
-            scatter_functor{.x            = pp_view,
-                            .values       = dview_m,
-                            .grid         = full_view,
-                            .n_grid       = {ngrid_global[0], ngrid_global[1], ngrid_global[2]},
-                            .n_grid_local = {ngrid_local[0], ngrid_local[1], ngrid_local[2]},
-                            .local_offset = {local_offset[0], local_offset[1], local_offset[2]},
-                            .w            = w,
-                            .nghost       = nghost,
-                            .inv_hw       = inv_hw,
-                            .kernel       = kernel};
-
-        Kokkos::parallel_for("atomic_scatter", policy_type(0, nParticles), scatter_functor);
-        Kokkos::fence();
-        IpplTimings::stopTimer(scatterKernelTimer);
+        const Kernel& kernel, const Interpolation::ScatterConfig<Field::dim>& config) const {
+        auto scatter_impl = Scatter<Kernel, Field::dim>(kernel, config);
+        scatter_impl(f, pp, *this);
     }
 
     // Kernel-based gather (new generalized interface)
@@ -377,192 +248,13 @@ namespace ippl {
     template <typename Field, typename P2, typename Kernel>
     void ParticleAttrib<T, Properties...>::gather(
         Field& f, const ParticleAttrib<Vector<P2, Field::dim>, Properties...>& pp,
-        const Kernel& kernel, bool addToAttribute, const Interpolation::GatherConfig& config) {
-        constexpr unsigned Dim                   = Field::dim;
-        using PositionType                       = typename Field::Mesh_t::value_type;
-        static IpplTimings::TimerRef gatherTimer = IpplTimings::getTimer("gather");
-        IpplTimings::startTimer(gatherTimer);
+        const Kernel& kernel, bool addToAttribute, const Interpolation::GatherConfig<Field::dim>& config) {
+        constexpr unsigned Dim = Field::dim;
+        auto modified_config             = config;
+        modified_config.add_to_attribute = addToAttribute;
+        auto gather_impl                 = ippl::Gather<Kernel, Dim>(kernel, modified_config);
 
-        static IpplTimings::TimerRef fillHaloTimer = IpplTimings::getTimer("fillHalo");
-        IpplTimings::startTimer(fillHaloTimer);
-        f.fillHalo();
-        IpplTimings::stopTimer(fillHaloTimer);
-
-        static IpplTimings::TimerRef gatherKernelTimer = IpplTimings::getTimer("gatherKernel");
-        IpplTimings::startTimer(gatherKernelTimer);
-
-        using view_type     = typename Field::view_type;
-        view_type full_view = f.getView();
-        const int nghost    = f.getNghost();
-
-        const FieldLayout<Dim>& layout = f.getLayout();
-        const NDIndex<Dim>& lDom       = layout.getLocalNDIndex();
-        const NDIndex<Dim>& gDom       = layout.getDomain();
-
-        const int w               = kernel.width();
-        const int hw              = w / 2;
-        const PositionType inv_hw = PositionType(2.0) / w;
-
-        // Use GLOBAL grid dimensions for coordinate scaling
-        Vector<int, Dim> ngrid_global;
-        Vector<int, Dim> ngrid_local;
-        Vector<int, Dim> local_offset;
-        for (unsigned d = 0; d < Dim; ++d) {
-            ngrid_global[d] = gDom[d].length();
-            ngrid_local[d]  = lDom[d].length();
-            local_offset[d] = lDom[d].first();
-        }
-
-        const size_t nParticles = *(this->localNum_mp);
-
-        // Dispatch based on method
-        if constexpr (Dim == 3) {
-            if (config.method == Interpolation::GatherMethod::Native
-                || config.method == Interpolation::GatherMethod::Tiled
-                || config.method == Interpolation::GatherMethod::AtomicSort) {
-                // Verify field has sufficient ghost cells for kernel width
-                if (nghost < hw) {
-                    throw std::runtime_error("Field ghost cells (nghost=" + std::to_string(nghost)
-                                             + ") insufficient for kernel width ("
-                                             + std::to_string(w)
-                                             + "). Need nghost >= " + std::to_string(hw));
-                }
-
-                static IpplTimings::TimerRef gatherSortTimer =
-                    IpplTimings::getTimer("gatherKernelSort");
-                IpplTimings::startTimer(gatherSortTimer);
-
-                // Sort particles by Morton code
-                auto x_view = pp.getView();
-                // Kokkos::View<size_t*, memory_space> permute("permute", nParticles);
-                // detail::SortBufferManager<memory_space>& buf_manager =
-                //     detail::getDefaultSortBufferManager<memory_space>();
-                // buf_manager.ensureCapacity(nParticles);
-                // auto& permute = buf_manager.indicesSorted();
-
-                Vector<PositionType, 3> origin;
-                Vector<PositionType, 3> invdx;
-                Vector<size_t, 3> ngrid_vec;
-                for (unsigned d = 0; d < 3; ++d) {
-                    origin[d]    = -M_PI;
-                    invdx[d]     = ngrid_global[d] / (PositionType(2.0) * M_PI);
-                    ngrid_vec[d] = ngrid_global[d];
-                }
-
-                auto permute = detail::sortParticles<3, execution_space, PositionType>(
-                    x_view, origin, invdx, ngrid_vec, nParticles);
-
-                // Kokkos::fence();
-                Kokkos::Array<size_type, 3> num_tiles;
-                for (unsigned d = 0; d < 3; ++d) {
-                    num_tiles[d] =
-                        (ngrid_local[d] + config.tile_size_3d - 1) / config.tile_size_3d + 1;
-                }
-
-                // auto &buf_handler = detail::getDefaultSortBufferManager<memory_space>();
-                // buf_handler.ensureCapacity(std::max(nParticles, total_tiles + 1));
-                // auto& permute = buf_handler.indices();
-                // auto& bin_offsets = buf_handler.indicesSorted();
-                // Kokkos::Array<int, 3> n_grid_global_arr;
-                // Kokkos::Array<int, 3> n_grid_local_arr;
-                // Kokkos::Array<int, 3> local_offset_arr;
-                // Kokkos::Array<int, 3> tile_size_arr;
-                // for (unsigned d = 0; d < 3; ++d) {
-                //     n_grid_global_arr[d] = ngrid_global[d];
-                //     n_grid_local_arr[d]  = ngrid_local[d];
-                //     local_offset_arr[d]  = local_offset[d];
-                //     tile_size_arr[d]     = config.tile_size_3d;
-                // }
-                //
-                // Interpolation::detail::bin_sort_3d<PositionType, decltype(x_view),
-                // execution_space>(
-                //     x_view, n_grid_global_arr, n_grid_local_arr, local_offset_arr,
-                //     tile_size_arr, w, permute, bin_offsets, nParticles);
-                Kokkos::fence();
-
-                IpplTimings::stopTimer(gatherSortTimer);
-
-                // Dispatch to specialized kernel
-                constexpr int MaxW = 20;
-                if (config.method == Interpolation::GatherMethod::Native) {
-                    throw std::runtime_error("Don't call native");
-                    // Interpolation::detail::CudaGatherDispatcher<1, MaxW>::template dispatch_3d<
-                    //     PositionType, decltype(x_view), decltype(permute), decltype(full_view),
-                    //     Kernel, T>(w, nParticles, x_view, permute, full_view, dview_m, nghost,
-                    //                ngrid_global, ngrid_local, local_offset, inv_hw, kernel,
-                    //                addToAttribute);
-                } else if (config.method == Interpolation::GatherMethod::Tiled) {
-                    Interpolation::detail::TiledGatherDispatcher<1, MaxW>::template dispatch_3d<
-                        PositionType, execution_space, Kernel, T, decltype(full_view),
-                        decltype(x_view), decltype(permute)>(
-                        w, nParticles, x_view, permute, full_view, dview_m, nghost, ngrid_global,
-                        ngrid_local, local_offset, inv_hw, kernel, addToAttribute,
-                        config.team_size);
-                } else if (config.method == Interpolation::GatherMethod::AtomicSort) {
-                    // Interpolation::detail::AtomicSortGatherFunctor<
-                    //     3, PositionType, execution_space, Kernel, T, view_type,
-                    //     decltype(pp.getView()), decltype(permute)>
-                    //     gather_functor{
-                    //         .x            = pp.getView(),
-                    //         .grid         = full_view,
-                    //         .permute      = permute,
-                    //         .values       = dview_m,
-                    //         .n_grid       = {ngrid_global[0], ngrid_global[1],
-                    //         ngrid_global[2]}, .n_grid_local = {ngrid_local[0],
-                    //         ngrid_local[1], ngrid_local[2]}, .local_offset =
-                    //         {local_offset[0], local_offset[1], local_offset[2]}, .w = w,
-                    //         .nghost       = nghost,
-                    //         .inv_hw       = inv_hw,
-                    //         .add_to_attribute = addToAttribute,
-                    //         .kernel           = kernel};
-                    Interpolation::detail::dispatch_gather_3d<PositionType, execution_space, Kernel,
-                                                              T, view_type, decltype(pp.getView()),
-                                                              decltype(permute), decltype(dview_m)>(
-                        pp.getView(), full_view, permute, dview_m, ngrid_global, ngrid_local,
-                        local_offset, w, nghost, inv_hw, addToAttribute, kernel, nParticles);
-                    // Kokkos::parallel_for("atomic_gather", policy_type(0, nParticles),
-                    //                      gather_functor);
-                }
-
-                Kokkos::fence();
-            } else {
-                // Atomic method (default) - use generic functor
-                // Pass position view directly - no copy needed
-                auto pp_view = pp.getView();
-
-                // Use AtomicGatherFunctor - value_type is T (real), will extract real part from
-                // complex grid
-                Interpolation::detail::dispatch_gather_3d_nosort<
-                    PositionType, execution_space, Kernel, T, view_type, decltype(pp.getView()),
-                    decltype(dview_m)>(pp.getView(), full_view, dview_m, ngrid_global, ngrid_local,
-                                       local_offset, w, nghost, inv_hw, addToAttribute, kernel,
-                                       nParticles);
-                // Interpolation::detail::AtomicGatherFunctor<3, PositionType, execution_space,
-                // Kernel,
-                //                                            T, view_type, decltype(pp_view)>
-                //     gather_functor{
-                //         .x                = pp_view,
-                //         .grid             = full_view,
-                //         .values           = dview_m,
-                //         .n_grid           = {ngrid_global[0], ngrid_global[1], ngrid_global[2]},
-                //         .n_grid_local     = {ngrid_local[0], ngrid_local[1], ngrid_local[2]},
-                //         .local_offset     = {local_offset[0], local_offset[1], local_offset[2]},
-                //         .w                = w,
-                //         .nghost           = nghost,
-                //         .inv_hw           = inv_hw,
-                //         .add_to_attribute = addToAttribute,
-                //         .kernel           = kernel};
-                //
-                // Kokkos::parallel_for("atomic_gather", policy_type(0, nParticles),
-                // gather_functor);
-            }
-        } else {
-            // Currently not implemented
-        }
-
-        Kokkos::fence();
-        IpplTimings::stopTimer(gatherKernelTimer);
-        IpplTimings::stopTimer(gatherTimer);
+        gather_impl(f, pp, *this);
     }
 
     template <typename T, class... Properties>

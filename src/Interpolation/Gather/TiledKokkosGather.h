@@ -5,7 +5,11 @@
 
 #include <Kokkos_Complex.hpp>
 
-#include "InterpolationUtil.h"
+#include "../InterpolationTypes.h"
+
+#include "../CoordinateTransform.h"
+#include "../InterpolationUtil.h"
+#include "../KernelEvaluator.h"
 
 namespace ippl {
     namespace Interpolation {
@@ -47,7 +51,7 @@ namespace ippl {
                                                        Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
                 // Input
-                std::decay_t<PositionViewType> x;  // particle positions in physical coordinates [-pi, pi]
+                std::decay_t<PositionViewType> x;  // particle positions in PHYSICAL coordinates
                 std::decay_t<PermuteViewType> permute;
                 std::decay_t<FieldViewType> field_view;  // grid with ghosts (LOCAL view)
 
@@ -63,6 +67,10 @@ namespace ippl {
                 real_type inv_hw;              // 1 / half-width
                 std::decay_t<KernelType> kernel;
                 bool add_to_attribute;
+
+                // Mesh information for coordinate transformation
+                Vector<real_type, 3> origin;   // Physical origin from mesh
+                Vector<real_type, 3> invdx;    // Inverse mesh spacing (1/dx)
 
                 // Compile-time constants
                 static constexpr int w  = W;
@@ -98,15 +106,21 @@ namespace ippl {
                     constexpr bool value_is_complex =
                         std::is_same_v<ValueType, Kokkos::complex<real_type>>;
 
+                    // Set up coordinate transformation with mesh information
+                    CoordinateTransform<real_type, 3> transform(origin, invdx, n_grid_global);
+
                     real_type pos[3];
                     int idx0_global[3];
 
                     for (int d = 0; d < 3; ++d) {
                         const real_type phys = get_component(x, particle_idx, d);
-                        pos[d]               = scale_to_grid_indices(phys, n_grid_global[d]);
-                        idx0_global[d] =
-                            grid_point_to_grid_idx(pos[d], n_grid_global[d], w) - (w - 1) / 2;
+                        pos[d] = transform.toGridCoordinate(phys, d);
+                        idx0_global[d] = transform.getStencilBase(pos[d], W);
                     }
+
+                    // Precompute kernel values using KernelEvaluator
+                    KernelEvaluator<W, 3, std::decay_t<KernelType>, real_type> keval;
+                    keval.evaluate(pos, idx0_global, inv_hw, kernel);
 
                     // Allocate scratch for kernel_x, kernel_y, kernel_z (3*W entries)
                     scratch_real_view ker(team.team_scratch(0), 3 * W);
@@ -114,14 +128,11 @@ namespace ippl {
                     real_type* kernel_y = &ker(W);
                     real_type* kernel_z = &ker(2 * W);
 
-                    // Let one thread per team precompute kernel values into scratch
+                    // Copy precomputed kernel values to scratch memory for team-parallel access
                     Kokkos::parallel_for(Kokkos::TeamThreadRange(team, W), [&](int i) {
-                        kernel_x[i] =
-                            kernel((pos[0] - static_cast<real_type>(idx0_global[0] + i)) * inv_hw);
-                        kernel_y[i] =
-                            kernel((pos[1] - static_cast<real_type>(idx0_global[1] + i)) * inv_hw);
-                        kernel_z[i] =
-                            kernel((pos[2] - static_cast<real_type>(idx0_global[2] + i)) * inv_hw);
+                        kernel_x[i] = keval.getValue(0, i);
+                        kernel_y[i] = keval.getValue(1, i);
+                        kernel_z[i] = keval.getValue(2, i);
                     });
 
                     // Team-parallel reduction over W^3 stencil
@@ -209,7 +220,10 @@ namespace ippl {
                     Kokkos::View<ValueType*, typename ExecSpace::memory_space> output, int nghost,
                     Vector<int, 3> n_grid_global, Vector<int, 3> n_grid_local,
                     Vector<int, 3> local_offset, RealType inv_hw, const KernelType& kernel,
-                    bool add_to_attribute, int team_size = get_default_team_size()) {
+                    bool add_to_attribute,
+                    Vector<RealType, 3> origin,
+                    Vector<RealType, 3> invdx,
+                    int team_size = get_default_team_size()) {
                     if constexpr (W <= MaxW) {
                         if (w == W) {
                             using functor_type =
@@ -220,7 +234,7 @@ namespace ippl {
                             functor_type functor{
                                 x,      permute,         field_view,   output,       n_points,
                                 nghost, n_grid_global,   n_grid_local, local_offset, inv_hw,
-                                kernel, add_to_attribute};
+                                kernel, add_to_attribute, origin,       invdx};
 
                             using team_policy = Kokkos::TeamPolicy<ExecSpace>;
                             team_policy policy(n_points, team_size);
@@ -241,7 +255,7 @@ namespace ippl {
                                 PositionViewType, PermuteViewType>(
                                 w, n_points, x, permute, field_view, output, nghost, n_grid_global,
                                 n_grid_local, local_offset, inv_hw, kernel, add_to_attribute,
-                                team_size);
+                                origin, invdx, team_size);
                         }
                     } else {
                         throw std::runtime_error("Kernel width exceeds maximum supported width");

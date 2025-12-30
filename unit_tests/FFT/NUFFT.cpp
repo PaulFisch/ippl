@@ -282,7 +282,7 @@ TYPED_TEST_SUITE(NUFFT1Test, Tests);
 
 TYPED_TEST(NUFFT1Test, BasicCorrectness_SmallGrid_NoUpsampling) {
     std::array<size_t, TestFixture::dim> gridSize;
-    gridSize.fill(8);
+    gridSize.fill(16);
 
     this->setupGrid(gridSize);
     this->setupParticles(512);
@@ -300,7 +300,7 @@ TYPED_TEST(NUFFT1Test, BasicCorrectness_SmallGrid_NoUpsampling) {
 
 TYPED_TEST(NUFFT1Test, BasicCorrectness_SmallGrid_WithUpsampling) {
     std::array<size_t, TestFixture::dim> gridSize;
-    gridSize.fill(8);
+    gridSize.fill(16);
 
     this->setupGrid(gridSize);
     this->setupParticles(512);
@@ -352,7 +352,7 @@ TYPED_TEST(NUFFT1Test, BasicCorrectness_MediumGrid_WithUpsampling) {
     this->runType1Test(params, testMode, 1e-7);
 }
 
-TYPED_TEST(NUFFT1Test, SpreadMethod_Atomic) {
+TYPED_TEST(NUFFT1Test, SpreadMethod_Atomictile_x) {
     std::array<size_t, TestFixture::dim> gridSize;
     gridSize.fill(16);
 
@@ -482,7 +482,7 @@ TYPED_TEST(NUFFT1Test, FINUFFT_NoUpsampling) {
 
 // TYPED_TEST(NUFFT1Test, DebugMode_DetailedOutput) {
 //     std::array<size_t, TestFixture::dim> gridSize;
-//     gridSize.fill(8);
+//     gridSize.fill(16);
 //
 //     this->setupGrid(gridSize);
 //     this->setupParticles(8);
@@ -812,7 +812,7 @@ TYPED_TEST_SUITE(NUFFT2Test, Tests);
 
 TYPED_TEST(NUFFT2Test, BasicCorrectness_SmallGrid_NoUpsampling) {
     std::array<size_t, TestFixture::dim> gridSize;
-    gridSize.fill(8);
+    gridSize.fill(16);
 
     this->setupGrid(gridSize);
     this->setupParticles(512);

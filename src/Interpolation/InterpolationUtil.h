@@ -89,6 +89,32 @@ namespace ippl::Interpolation::detail {
         return grid_point_to_grid_idx(sx, n_grid, w);
     }
 
+    // =========================================================================
+    // Dimension-Agnostic Helper Functions
+    // =========================================================================
+    // Note: For stencil iteration, use iterateStencil<W, Dim>() from StencilHelper.h
+
+    /**
+     * @brief Device-friendly grid access helper that avoids template lambdas
+     *
+     * This function provides dimension-agnostic grid access using if constexpr
+     * instead of template lambdas, which may not work correctly on all GPU backends.
+     *
+     * @tparam Dim Spatial dimension (1, 2, or 3)
+     * @tparam GridViewType Type of the grid view
+     * @param grid The grid to access
+     * @param indices Array of indices to access
+     * @return Reference to the grid element at the given indices
+     */
+    // Grid accessor that expands indices for any dimension
+    template <unsigned Dim, typename GridView>
+    KOKKOS_INLINE_FUNCTION
+    auto accessGrid(const GridView& grid, const int* idx) {
+        return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            return grid(idx[Is]...);
+        }(std::make_index_sequence<Dim>{});
+    }
+
 }  // namespace ippl::Interpolation::detail
 
 #endif  // IPPL_INTERPOLATION_UTIL_H

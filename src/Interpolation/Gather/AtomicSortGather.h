@@ -2,9 +2,15 @@
 #define IPPL_ATOMIC_SORT_GATHER_3D_H
 
 #include <Kokkos_Core.hpp>
+
 #include <Kokkos_Complex.hpp>
 
-#include "InterpolationUtil.h"
+#include "../InterpolationTypes.h"
+
+#include "../CoordinateTransform.h"
+#include "../InterpolationUtil.h"
+#include "../KernelEvaluator.h"
+#include "../StencilHelper.h"
 
 namespace ippl {
     namespace Interpolation {
@@ -24,23 +30,22 @@ namespace ippl {
              * @tparam PermuteViewType The type of the permutation view
              */
             template <int W,
+                      unsigned Dim,
                       typename RealType,
                       typename ExecSpace,
                       typename KernelType,
                       typename ValueType,
                       typename GridViewType,
                       typename PositionViewType =
-                          Kokkos::View<ippl::Vector<RealType, 3>*,
+                          Kokkos::View<ippl::Vector<RealType, Dim>*,
                                        typename ExecSpace::memory_space>,
                       typename PermuteViewType =
                           Kokkos::View<std::size_t*, typename ExecSpace::memory_space>>
-            struct AtomicSortGatherFunctor3D {
+            struct AtomicSortGatherFunctor {
                 using real_type    = RealType;
                 using value_type   = ValueType;
                 using memory_space = typename ExecSpace::memory_space;
                 using size_type    = typename memory_space::size_type;
-
-                static constexpr int Dim = 3;
 
                 // Input data
                 const std::decay_t<PositionViewType> x;       // particle positions in PHYSICAL coordinates
@@ -59,64 +64,66 @@ namespace ippl {
                 const bool add_to_attribute;           // if true, add to existing values; otherwise overwrite
                 const std::decay_t<KernelType> kernel;
 
+                // Mesh information for coordinate transformation
+                const Vector<real_type, Dim> origin;   // Physical origin from mesh
+                const Vector<real_type, Dim> invdx;    // Inverse mesh spacing (1/dx)
+
                 KOKKOS_INLINE_FUNCTION void operator()(const size_type j_sorted) const {
                     // Map sorted index -> actual particle index
                     const size_type p = permute(j_sorted);
 
+                    // Set up coordinate transformation with mesh information
+                    CoordinateTransform<real_type, Dim> transform(origin, invdx, n_grid);
+
                     // Transform from physical coordinates to grid coordinates
                     real_type pos[Dim];
-                    for (int d = 0; d < Dim; ++d) {
-                        pos[d] = scale_to_grid_indices(x(p)[d], n_grid[d]);
-                    }
-
-                    // Compute base grid indices
                     int idx0[Dim];
                     for (int d = 0; d < Dim; ++d) {
-                        idx0[d] = grid_point_to_grid_idx(pos[d], n_grid[d], W) - (W - 1) / 2;
+                        pos[d] = transform.toGridCoordinate(x(p)[d], d);
+                        idx0[d] = transform.getStencilBase(pos[d], W);
                     }
 
-                    // Precompute kernel values in each cardinal direction
-                    real_type kernel_x[W];
-                    real_type kernel_y[W];
-                    real_type kernel_z[W];
-
-                    for (int i = 0; i < W; ++i) {
-                        kernel_x[i] = kernel((pos[0] - static_cast<real_type>(idx0[0] + i)) * inv_hw);
-                        kernel_y[i] = kernel((pos[1] - static_cast<real_type>(idx0[1] + i)) * inv_hw);
-                        kernel_z[i] = kernel((pos[2] - static_cast<real_type>(idx0[2] + i)) * inv_hw);
-                    }
+                    // Precompute kernel values using KernelEvaluator
+                    KernelEvaluator<W, Dim, std::decay_t<KernelType>, real_type> keval;
+                    keval.evaluate(pos, idx0, inv_hw, kernel);
 
                     // Convert base indices to local coordinates
-                    const int base_i = idx0[0] - local_offset[0] + nghost;
-                    const int base_j = idx0[1] - local_offset[1] + nghost;
-                    const int base_k = idx0[2] - local_offset[2] + nghost;
+                    int base_idx_local[Dim];
+                    for (unsigned d = 0; d < Dim; ++d) {
+                        base_idx_local[d] = idx0[d] - local_offset[d] + nghost;
+                    }
 
 #ifndef NDEBUG
                     // Check bounds in debug mode
-                    assert(base_i >= 0 && base_i + W <= n_grid_local[0] + 2 * nghost);
-                    assert(base_j >= 0 && base_j + W <= n_grid_local[1] + 2 * nghost);
-                    assert(base_k >= 0 && base_k + W <= n_grid_local[2] + 2 * nghost);
+                    for (unsigned d = 0; d < Dim; ++d) {
+                        assert(base_idx_local[d] >= 0 &&
+                               base_idx_local[d] + W <= n_grid_local[d] + 2 * nghost);
+                    }
 #endif
 
-                    // Result type matches what we read from the grid
-                    using grid_element_type = std::remove_reference_t<decltype(grid(0, 0, 0))>;
+                    // Determine grid element type from grid view
+                    using grid_element_type = std::remove_reference_t<
+                        decltype(accessGrid<Dim>(grid, base_idx_local))>;
+
                     grid_element_type result(0);
 
-                    // Gather with precomputed kernel values
-                    for (int k = 0; k < W; ++k) {
-                        const real_type kz = kernel_z[k];
-                        const int gk = base_k + k;
-
-                        for (int j = 0; j < W; ++j) {
-                            const real_type kyz = kernel_y[j] * kz;
-                            const int gj = base_j + j;
-
-                            for (int i = 0; i < W; ++i) {
-                                const real_type kernel_val = kernel_x[i] * kyz;
-                                result += grid(base_i + i, gj, gk) * kernel_val;
-                            }
+                    // Gather with precomputed kernel values using iterateStencil
+                    iterateStencil<W, Dim>([&](const int* stencil_offset) {
+                        // Compute kernel weight
+                        real_type kernel_val = 1.0;
+                        for (unsigned d = 0; d < Dim; ++d) {
+                            kernel_val *= keval.getValue(d, stencil_offset[d]);
                         }
-                    }
+
+                        // Access grid with dimension-agnostic helper
+                        int idx[Dim];
+                        for (unsigned d = 0; d < Dim; ++d) {
+                            idx[d] = base_idx_local[d] + stencil_offset[d];
+                        }
+                        auto grid_val = accessGrid<Dim>(grid, idx);
+
+                        result += grid_val * kernel_val;
+                    });
 
                     // Write result to output, extracting real part if needed
                     constexpr bool val_is_complex =
@@ -143,9 +150,12 @@ namespace ippl {
             };
 
             /**
-             * @brief Dispatcher for 3D gather with runtime kernel width
+             * @brief Dispatcher for gather with runtime kernel width
+             *
+             * @tparam Dim Spatial dimension (1, 2, 3, or higher)
              */
-            template <typename RealType,
+            template <unsigned Dim,
+                      typename RealType,
                       typename ExecSpace,
                       typename KernelType,
                       typename ValueType,
@@ -153,32 +163,34 @@ namespace ippl {
                       typename PositionViewType,
                       typename PermuteViewType,
                       typename OutputViewType>
-            void dispatch_gather_3d(
+            void dispatch_gather(
                 const PositionViewType& x,
                 const GridViewType& grid,
                 const PermuteViewType& permute,
                 const OutputViewType& values,
-                const Vector<int, 3>& n_grid,
-                const Vector<int, 3>& n_grid_local,
-                const Vector<int, 3>& local_offset,
+                const Vector<int, Dim>& n_grid,
+                const Vector<int, Dim>& n_grid_local,
+                const Vector<int, Dim>& local_offset,
                 int w,
                 int nghost,
                 RealType inv_hw,
                 bool add_to_attribute,
                 const KernelType& kernel,
-                size_t n_particles) {
+                size_t n_particles,
+                const Vector<RealType, Dim>& origin,
+                const Vector<RealType, Dim>& invdx) {
 
                 auto create_and_run = [&]<int W>() {
-                    AtomicSortGatherFunctor3D<W, RealType, ExecSpace, KernelType, ValueType,
-                                              GridViewType, PositionViewType, PermuteViewType>
+                    AtomicSortGatherFunctor<W, Dim, RealType, ExecSpace, KernelType, ValueType,
+                                            GridViewType, PositionViewType, PermuteViewType>
                         functor{x, grid, permute, values, n_grid, n_grid_local, local_offset,
-                                nghost, inv_hw, add_to_attribute, kernel};
+                                nghost, inv_hw, add_to_attribute, kernel, origin, invdx};
 
                     // (paul) Remove the fences here with caution. HIP gives invalid memory
                     //         access errors with the current rocm (old) 6.0.2
                     Kokkos::fence();
                     Kokkos::parallel_for(
-                        "AtomicSortGather3D",
+                        "AtomicSortGather",
                         Kokkos::RangePolicy<ExecSpace>(0, n_particles),
                         functor);
                     Kokkos::fence();
@@ -201,8 +213,40 @@ namespace ippl {
                     case 14: create_and_run.template operator()<14>(); break;
 
                     default:
-                        Kokkos::abort("AtomicSortGatherFunctor3D: unsupported kernel width");
+                        Kokkos::abort("AtomicSortGatherFunctor: unsupported kernel width");
                 }
+            }
+
+            // Backward compatibility alias for 3D
+            template <typename RealType,
+                      typename ExecSpace,
+                      typename KernelType,
+                      typename ValueType,
+                      typename GridViewType,
+                      typename PositionViewType,
+                      typename PermuteViewType,
+                      typename OutputViewType>
+            void dispatch_gather_3d(
+                const PositionViewType& x,
+                const GridViewType& grid,
+                const PermuteViewType& permute,
+                const OutputViewType& values,
+                const Vector<int, 3>& n_grid,
+                const Vector<int, 3>& n_grid_local,
+                const Vector<int, 3>& local_offset,
+                int w,
+                int nghost,
+                RealType inv_hw,
+                bool add_to_attribute,
+                const KernelType& kernel,
+                size_t n_particles,
+                const Vector<RealType, 3>& origin,
+                const Vector<RealType, 3>& invdx) {
+                dispatch_gather<3, RealType, ExecSpace, KernelType, ValueType,
+                               GridViewType, PositionViewType, PermuteViewType, OutputViewType>(
+                    x, grid, permute, values, n_grid, n_grid_local, local_offset,
+                    w, nghost, inv_hw, add_to_attribute, kernel, n_particles,
+                    origin, invdx);
             }
 
         }  // namespace detail

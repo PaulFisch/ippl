@@ -433,6 +433,15 @@ namespace ippl {
             runner(all_spaces{});
         }
     }  // namespace detail
+
+    template <typename T>
+    struct is_complex : std::false_type {};
+
+    template <typename T>
+    struct is_complex<Kokkos::complex<T>> : std::true_type {};
+
+    template <typename T>
+    inline constexpr bool is_complex_v = is_complex<T>::value;
 }  // namespace ippl
 
 #endif

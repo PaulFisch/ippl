@@ -5,9 +5,9 @@
 #include <iostream>
 #include <random>
 
+#include "../../src/Interpolation/Scatter/ScatterConfig.h"
 #include "FFT/NUFFT/ESKernel.h"
 #include "FFT/NUFFT/NUFFTUtilities.h"
-#include "Interpolation/ScatterConfig.h"
 
 // Kokkos random number generator
 #include <Kokkos_Random.hpp>
@@ -210,18 +210,18 @@ int main(int argc, char* argv[]) {
         bunch.update();
 
         // ---------------- Scatter configs: Atomic & Tiled -------------------
-        ippl::Interpolation::ScatterConfig cfg_atomic =
-            ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
+        ippl::Interpolation::ScatterConfig<3> cfg_atomic =
+            ippl::Interpolation::ScatterConfig<3>::get_default<ExecSpace>();
         cfg_atomic.method = ippl::Interpolation::ScatterMethod::Atomic;
         cfg_atomic.sort   = true;
 
-        ippl::Interpolation::ScatterConfig cfg_tiled =
-            ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
+        ippl::Interpolation::ScatterConfig<3> cfg_tiled =
+            ippl::Interpolation::ScatterConfig<3>::get_default<ExecSpace>();
         cfg_tiled.method = ippl::Interpolation::ScatterMethod::Tiled;
         cfg_tiled.sort   = true;
 
-        ippl::Interpolation::ScatterConfig cfg_outputfocused =
-            ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
+        ippl::Interpolation::ScatterConfig<3> cfg_outputfocused =
+            ippl::Interpolation::ScatterConfig<3>::get_default<ExecSpace>();
         cfg_tiled.method = ippl::Interpolation::ScatterMethod::OutputFocused;
         cfg_tiled.sort   = true;
 
@@ -238,7 +238,7 @@ int main(int argc, char* argv[]) {
         // ====================================================================
         // 1) Adjointness test for Atomic and Tiled
         // ====================================================================
-        auto run_adjointness = [&](const ippl::Interpolation::ScatterConfig& cfg,
+        auto run_adjointness = [&](const ippl::Interpolation::ScatterConfig<3>& cfg,
                                    const ippl::Interpolation::GatherConfig& cfg_gather,
                                    const char* label, real_type& rel_err_out) {
             // Scatter: grid_scattered_atomic used as scratch here
@@ -246,7 +246,7 @@ int main(int argc, char* argv[]) {
             grid_scattered          = complex_type(0.0, 0.0);
 
             bunch.Q_scatter.scatter_kernel(grid_scattered, bunch.R, kernel, cfg);
-            grid_scattered.accumulateHalo();
+            // grid_scattered.accumulateHalo();
 
             // Gather: reuse Q_gather as destination
             bunch.Q_gather = complex_type(0.0, 0.0);
@@ -335,8 +335,8 @@ int main(int argc, char* argv[]) {
         bunch.Q_scatter.scatter_kernel(grid_scattered_atomic, bunch.R, kernel, cfg_atomic);
         bunch.Q_scatter.scatter_kernel(grid_scattered_tiled, bunch.R, kernel, cfg_tiled);
 
-        grid_scattered_atomic.accumulateHalo();
-        grid_scattered_tiled.accumulateHalo();
+        // grid_scattered_atomic.accumulateHalo();
+        // grid_scattered_tiled.accumulateHalo();
 
         auto gA_view = grid_scattered_atomic.getView();
         auto gT_view = grid_scattered_tiled.getView();

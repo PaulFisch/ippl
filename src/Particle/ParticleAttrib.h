@@ -18,10 +18,10 @@
 
 #include "Expression/IpplExpressions.h"
 
+#include "../Interpolation/Gather/GatherConfig.h"
+#include "../Interpolation/Scatter/ScatterConfig.h"
 #include "FFT/FFT.h"
 #include "Interpolation/CIC.h"
-#include "Interpolation/GatherConfig.h"
-#include "Interpolation/ScatterConfig.h"
 #include "Particle/ParticleAttribBase.h"
 #include "Particle/SortBuffer.h"
 
@@ -196,7 +196,7 @@ namespace ippl {
         void scatter_kernel(
             Field& f, const ParticleAttrib<Vector<P2, Field::dim>, Properties...>& pp,
             const Kernel& kernel,
-            const Interpolation::ScatterConfig& config = Interpolation::ScatterConfig()) const;
+            const Interpolation::ScatterConfig<Field::dim>& config = Interpolation::ScatterConfig<Field::dim>()) const;
 
         /**
          * @brief Gather field data using a higher-order kernel
@@ -216,7 +216,7 @@ namespace ippl {
         template <typename Field, typename P2, typename Kernel>
         void gather(Field& f, const ParticleAttrib<Vector<P2, Field::dim>, Properties...>& pp,
                     const Kernel& kernel, bool addToAttribute = false,
-                    const Interpolation::GatherConfig& config = Interpolation::GatherConfig());
+                    const Interpolation::GatherConfig<Field::dim>& config = Interpolation::GatherConfig<Field::dim>());
 
         template <unsigned Dim, class M, class C, typename P2, typename P3, typename P4>
         void scatterPIFNUFFT(Field<P2, Dim, M, C>& f, Field<P3, Dim, M, C>& Sk,
@@ -261,6 +261,18 @@ namespace ippl {
         view_type dview_m;
         view_type buf_m;
     };
+
+    namespace detail {
+        template <typename Attrib>
+        struct AttribTraits;
+
+        template <typename T, class... Props>
+        struct AttribTraits<ParticleAttrib<T, Props...>> {
+            using value_type = T;
+            using view_type =
+                std::decay_t<decltype(std::declval<ParticleAttrib<T, Props...>>().getView())>;
+        };
+    }  // namespace detail
 }  // namespace ippl
 
 #include "Particle/ParticleAttrib.hpp"

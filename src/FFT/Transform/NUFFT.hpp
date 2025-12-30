@@ -248,8 +248,8 @@ namespace ippl {
         cfg.tol   = tol_m;
         cfg.sigma = params.get<T>("sigma", T(2.0));
 
-        cfg.scatter_config = Interpolation::ScatterConfig::get_default<ExecSpace>();
-        cfg.gather_config  = Interpolation::GatherConfig::get_default<ExecSpace>();
+        cfg.scatter_config = Interpolation::ScatterConfig<Dim>::template get_default<ExecSpace>();
+        cfg.gather_config  = Interpolation::GatherConfig<Dim>::template get_default<ExecSpace>();
 
         std::string spreadMethod = params.get<std::string>("spread_method", "none");
         if (spreadMethod == "atomic") {
@@ -274,10 +274,10 @@ namespace ippl {
         }
 
         if (params.contains("tile_size_3d")) {
-            cfg.scatter_config.tile_size_3d = params.get<int>("tile_size_3d");
+            cfg.scatter_config.tile_size.fill(params.get<int>("tile_size_3d"));
         }
         if (params.contains("z_tiles")) {
-            cfg.scatter_config.z_tiles = params.get<int>("z_tiles");
+            // cfg.scatter_config.z_tiles = params.get<int>("z_tiles");
         }
         if (params.contains("team_size")) {
             cfg.scatter_config.team_size = params.get<int>("team_size");

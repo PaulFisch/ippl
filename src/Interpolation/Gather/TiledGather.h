@@ -5,7 +5,7 @@
 
 #include <Kokkos_Complex.hpp>
 
-#include "InterpolationUtil.h"
+#include "../InterpolationUtil.h"
 
 namespace ippl {
     namespace Interpolation {
