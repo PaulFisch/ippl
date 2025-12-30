@@ -298,16 +298,16 @@ namespace ippl::benchmark {
         }
     }
 
-    inline std::string config_label(const ippl::Interpolation::ScatterConfig& cfg) {
+    inline std::string config_label(const ippl::Interpolation::ScatterConfig<3>& cfg) {
         std::string label = scatter_method_name(cfg.method);
         if (cfg.method == ippl::Interpolation::ScatterMethod::Tiled
             || cfg.method == ippl::Interpolation::ScatterMethod::OutputFocused) {
-            label += " (tile=" + std::to_string(cfg.tile_size_3d) + ")";
+            label += " (tile=" + std::to_string(cfg.tile_size[0]) + ")";
         }
         return label;
     }
 
-    inline std::string config_label(const ippl::Interpolation::GatherConfig& cfg) {
+    inline std::string config_label(const ippl::Interpolation::GatherConfig<3>& cfg) {
         std::string label = gather_method_name(cfg.method);
         if (cfg.method == ippl::Interpolation::GatherMethod::AtomicSort) {
             label += " [sorted]";
