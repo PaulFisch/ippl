@@ -127,7 +127,7 @@ namespace ippl::Interpolation::detail {
             return tile_base;
         }
 
-        static constexpr size_t stencil_total() {
+        KOKKOS_INLINE_FUNCTION static constexpr size_t stencil_total() {
             size_t n = 1;
             for (unsigned d = 0; d < Dim; ++d)
                 n *= static_cast<size_t>(W);
