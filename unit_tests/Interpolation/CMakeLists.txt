@@ -3,3 +3,4 @@ message(STATUS "Adding unit tests found in ${_relPath}")
 
 add_ippl_test(KernelGatherScatterTest)
 add_ippl_test(Test2DGather)
+add_ippl_test(Binning)

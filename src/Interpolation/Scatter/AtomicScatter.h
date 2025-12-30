@@ -8,9 +8,9 @@
 
 namespace ippl::Interpolation::detail {
 
-    template <int W, class Types, bool UseSorting = false>
+    template <int W, class Types, class Policy>
     struct AtomicScatter {
-        static constexpr bool requires_binning = UseSorting;
+        static constexpr bool requires_binning = Policy::requires_binning;
         static constexpr unsigned Dim          = Types::Dim;
 
         using RealType        = Types::RealType;
@@ -20,7 +20,7 @@ namespace ippl::Interpolation::detail {
 
         struct Arguments : ScatterArgumentsBase<Arguments, Types> {
             using PermuteView = Kokkos::View<uint64_t*, memory_space>;
-            PermuteView permute;  // Only used when UseSorting = true
+            PermuteView permute;  // only used when Policy::use_sorting = true
 
             template <class Field, class Positions, class Values, class Kernel>
             static Arguments create(Field& field, const Positions& pos, const Values& vals,
@@ -28,7 +28,7 @@ namespace ippl::Interpolation::detail {
                                     const BinningResult<Dim, memory_space>& binning = {}) {
                 Arguments a;
                 a.initBase(field, pos, vals, k);
-                if constexpr (UseSorting) {
+                if constexpr (Policy::use_sorting) {
                     a.permute = binning.permute;
                 }
                 return a;
@@ -43,10 +43,12 @@ namespace ippl::Interpolation::detail {
         };
 
         KOKKOS_INLINE_FUNCTION void operator()(size_t j) const {
-            using grid_value_t = typename decltype(args.grid)::non_const_value_type;
+            using grid_value_t = decltype(args.grid)::non_const_value_type;
 
-            // Potentially read permutation
-            const size_t p = UseSorting ? args.permute(j) : j;
+            size_t p = j;
+            if constexpr (Policy::use_sorting) {
+                p = args.permute(j);
+            }
 
             const auto val = args.values(p);
             auto grid      = args.grid;
@@ -54,7 +56,6 @@ namespace ippl::Interpolation::detail {
             CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx, args.n_grid};
             Stencil stencil{};
 
-            // Build stencil
             for_constexpr(std::make_integer_sequence<int, Dim>{}, [&]<int d> {
                 const RealType g_pos = transform.toGridCoordinate(args.x(p)[d], d);
                 const int idx0       = transform.getStencilBase(g_pos, W);
@@ -67,7 +68,6 @@ namespace ippl::Interpolation::detail {
                 }
             });
 
-            // Scatter recursion
             auto rec = [&]<unsigned D>(auto&& self, RealType wprod, auto... idx) {
                 const int bD   = stencil.base[D];
                 const auto& kD = stencil.kw[D];

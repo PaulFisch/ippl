@@ -288,7 +288,7 @@ public:
 
         // Atomic scatter (unsorted) - baseline
         {
-            auto cfg = ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
+            auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
             auto metrics = benchmark_scatter("Atomic", cfg, kernel, nghost, n_particles);
             results.push_back(metrics);
@@ -296,16 +296,16 @@ public:
 
         // Tiled scatter (Sorted Spread with Shared Memory)
         {
-            auto cfg = ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
+            auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
-            cfg.tile_size_3d = 4;
+            cfg.tile_size.fill(4);
             auto metrics = benchmark_scatter("Tiled", cfg, kernel, nghost, n_particles);
             results.push_back(metrics);
         }
 
         // OutputFocused scatter (Grid-Parallel)
         {
-            auto cfg = ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
+            auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
             int tile_size = 2;
             std::array<int, 10> tile_sizes = {
@@ -314,7 +314,7 @@ public:
             if (w < 10) {
                 tile_size = tile_sizes[w];
             }
-            cfg.tile_size_3d = tile_size;
+            cfg.tile_size.fill(tile_size);
             auto metrics = benchmark_scatter("GridParallel", cfg, kernel, nghost, n_particles);
             results.push_back(metrics);
         }
@@ -323,36 +323,17 @@ public:
 
         // Direct gather (unsorted)
         {
-            auto cfg = ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
+            auto cfg = ippl::Interpolation::GatherConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::GatherMethod::Atomic;
-            cfg.sort = false;
             auto metrics = benchmark_gather("Direct", cfg, kernel, nghost, n_particles);
             results.push_back(metrics);
         }
 
         // Sorted gather
         {
-            auto cfg = ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
+            auto cfg = ippl::Interpolation::GatherConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::GatherMethod::AtomicSort;
             auto metrics = benchmark_gather("Sorted", cfg, kernel, nghost, n_particles);
-            results.push_back(metrics);
-        }
-
-        // Team-Parallel gather (Tiled)
-        {
-            auto cfg = ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::GatherMethod::Tiled;
-            cfg.tile_size_3d = 3;
-            auto metrics = benchmark_gather("TeamParallel", cfg, kernel, nghost, n_particles);
-            results.push_back(metrics);
-        }
-
-        // Team-Parallel gather (Native)
-        {
-            auto cfg = ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::GatherMethod::Native;
-            cfg.tile_size_3d = 3;
-            auto metrics = benchmark_gather("Native", cfg, kernel, nghost, n_particles);
             results.push_back(metrics);
         }
 
@@ -361,7 +342,7 @@ public:
     }
 
     ThroughputMetrics benchmark_scatter(const std::string& name,
-                                         const ippl::Interpolation::ScatterConfig& cfg,
+                                         const ippl::Interpolation::ScatterConfig<Dim>& cfg,
                                          const ippl::NUFFT::ESKernel<real_type>& kernel,
                                          int /*nghost*/,
                                          size_t n_particles) {
@@ -415,7 +396,7 @@ public:
     }
 
     ThroughputMetrics benchmark_gather(const std::string& name,
-                                        const ippl::Interpolation::GatherConfig& cfg,
+                                        const ippl::Interpolation::GatherConfig<Dim>& cfg,
                                         const ippl::NUFFT::ESKernel<real_type>& kernel,
                                         int /*nghost*/,
                                         size_t n_particles) {
