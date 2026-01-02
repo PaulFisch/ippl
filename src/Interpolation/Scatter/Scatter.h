@@ -174,7 +174,7 @@ namespace ippl {
             if (!tuner.is_initialized()) {
                 const size_t max_scratch = team_policy(1, config_m.team_size).scratch_size_max(0);
 
-                std::vector<int> candidates = {1, 2, 4, 8, 16, 32, 64, 128};
+                std::vector<int> candidates = {1, 2, 3, 4, 8, 16, 32};
 
                 auto scratch_calc = [](const Vector<int, Dim>& tile) {
                     return Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(tile);
