@@ -57,11 +57,11 @@ public:
         std::vector<ippl::Interpolation::GatherConfig<Dim>> configs;
 
         // Atomic (baseline)
-        {
-            auto cfg = ippl::Interpolation::GatherConfig<Dim>::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::GatherMethod::Atomic;
-            configs.push_back(cfg);
-        }
+        // {
+        //     auto cfg = ippl::Interpolation::GatherConfig<Dim>::get_default<ExecSpace>();
+        //     cfg.method = ippl::Interpolation::GatherMethod::Atomic;
+        //     configs.push_back(cfg);
+        // }
         {
             auto cfg = ippl::Interpolation::GatherConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::GatherMethod::AtomicSort;
@@ -186,7 +186,7 @@ private:
 
         std::vector<MethodBest> methods = {
             {"Atomic", std::numeric_limits<double>::max(), ""},
-            {"Tiled", std::numeric_limits<double>::max(), ""}
+            // {"Tiled", std::numeric_limits<double>::max(), ""}
         };
 
         for (size_t i = 0; i < configs.size(); ++i) {
