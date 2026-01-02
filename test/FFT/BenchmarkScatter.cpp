@@ -55,18 +55,18 @@ public:
         std::vector<ippl::Interpolation::ScatterConfig<Dim>> configs;
 
         // Atomic (baseline)
-        // {
-        //     auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-        //     cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
-        //     cfg.sort = false;
-        //     configs.push_back(cfg);
-        // }
-        // {
-        //     auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-        //     cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
-        //     cfg.sort = true;
-        //     configs.push_back(cfg);
-        // }
+        {
+            auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
+            cfg.sort   = false;
+            configs.push_back(cfg);
+        }
+        {
+            auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
+            cfg.sort   = true;
+            configs.push_back(cfg);
+        }
         //
         // // Tiled with different tile sizes
         // for (int tile_size : {8, 12, 16, 20, 24}) {
@@ -86,22 +86,11 @@ public:
             auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
             // cfg.tile_size_3d = tile_size;
-            cfg.sort          = false;
             cfg.enable_tuning = params_.tuning;
-            configs.push_back(cfg);
-
             cfg.sort = true;
+
             configs.push_back(cfg);
         }
-
-        // Atomic (sorted)
-        {
-            auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
-            cfg.sort = true;
-            configs.push_back(cfg);
-        }
-
         // Run benchmarks and collect results
         benchmark::print_subheader("Results");
 
@@ -207,9 +196,9 @@ private:
         };
 
         std::vector<MethodBest> methods = {
-            {"OutputFocused", std::numeric_limits<double>::max(), ""},
             {"Atomic", std::numeric_limits<double>::max(), ""},
             {"AtomicSort", std::numeric_limits<double>::max(), ""},
+            {"OutputFocused", std::numeric_limits<double>::max(), ""},
             // {"Tiled", std::numeric_limits<double>::max(), ""},
         };
 
