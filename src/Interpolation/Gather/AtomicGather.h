@@ -100,7 +100,7 @@ namespace ippl::Interpolation::detail {
             auto policy             = Kokkos::RangePolicy<execution_space>(0, n_particles);
             auto const policy_tuned = Kokkos::Experimental::prefer(
                 policy, Kokkos::Experimental::DesiredOccupancy{Kokkos::AUTO});
-            Kokkos::parallel_for("AtomicGather(Add)", policy, *this);
+            Kokkos::parallel_for("AtomicGather(Add)", policy_tuned, *this);
         }
     };
 }  // namespace ippl::Interpolation::detail
