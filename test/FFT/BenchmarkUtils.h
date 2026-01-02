@@ -87,6 +87,7 @@ namespace ippl::benchmark {
         int benchmark_runs      = 20;
         double kernel_tol       = 1e-6;
         bool verbose            = false;
+        bool tuning             = false;
     };
 
     inline void print_header(const std::string& title) {
@@ -336,6 +337,8 @@ namespace ippl::benchmark {
                 params.kernel_tol = std::stod(argv[++i]);
             } else if (arg == "-v" || arg == "--verbose") {
                 params.verbose = true;
+            } else if (arg == "--tune") {
+                params.tuning = true;
             } else if (arg == "--help" || arg == "-h") {
                 if (ippl::Comm->rank() == 0) {
                     std::cout << "Usage: " << argv[0] << " [options]\n"

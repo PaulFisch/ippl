@@ -87,6 +87,7 @@ public:
             cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
             // cfg.tile_size_3d = tile_size;
             cfg.sort = false;
+            cfg.enable_tuning = params_.tuning;
             configs.push_back(cfg);
 
             cfg.sort = true;
