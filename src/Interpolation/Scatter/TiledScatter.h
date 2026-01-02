@@ -249,12 +249,20 @@ namespace ippl::Interpolation::detail {
             });
         }
 
-        void run(size_t) {
-            using grid_value_t  = typename decltype(args.grid)::non_const_value_type;
-            constexpr bool cplx = std::is_same_v<grid_value_t, Kokkos::complex<RealType>>;
+        template <bool IsComplex>
+        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size) {
+            size_t n = 1;
+            for (unsigned d = 0; d < Dim; ++d)
+                n *= static_cast<size_t>(tile_size[d] + W);
+            const size_t scratch = (IsComplex ? 2 : 1) * n * sizeof(RealType);
 
-            const size_t total   = hist_total();
-            const size_t scratch = (cplx ? 2 : 1) * total * sizeof(RealType);
+            return scratch;
+        }
+
+        void run(size_t) {
+            using grid_value_t   = typename decltype(args.grid)::non_const_value_type;
+            constexpr bool cplx  = std::is_same_v<grid_value_t, Kokkos::complex<RealType>>;
+            const size_t scratch = compute_scratch_size<cplx>(args.tile_size);
 
             size_t n_tiles = 1;
             for (unsigned d = 0; d < Dim; ++d)

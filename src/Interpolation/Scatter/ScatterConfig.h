@@ -23,6 +23,7 @@ namespace ippl {
         struct ScatterConfig {
             ScatterMethod method = ScatterMethod::Atomic;
             bool sort            = false;
+            bool enable_tuning = false;
 
             // Tile size per dimension
             std::array<int, Dim> tile_size;
@@ -76,6 +77,12 @@ namespace ippl {
             ScatterConfig& set_tile_size(int uniform_size) {
                 tile_size.fill(uniform_size);
                 return *this;
+            }
+
+            void set_tile_size(const Vector<int, Dim>& tile) {
+                for (unsigned d = 0; d < Dim; ++d) {
+                    tile_size[d] = tile[d];
+                }
             }
 
             /**

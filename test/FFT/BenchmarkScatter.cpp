@@ -11,11 +11,11 @@
  *   -v, --verbose   Verbose output
  */
 
-#include "BenchmarkUtils.h"
-
 #include <cmath>
 #include <complex>
 #include <vector>
+
+#include "BenchmarkUtils.h"
 
 using namespace ippl;
 
@@ -27,21 +27,20 @@ template <typename ExecSpace>
 class ScatterBenchmark {
 public:
     static constexpr unsigned Dim = 3;
-    using real_type    = double;
-    using complex_type = Kokkos::complex<real_type>;
-    using MemSpace     = typename ExecSpace::memory_space;
+    using real_type               = double;
+    using complex_type            = Kokkos::complex<real_type>;
+    using MemSpace                = typename ExecSpace::memory_space;
 
-    using Mesh_t       = ippl::UniformCartesian<real_type, Dim>;
-    using Centering_t  = typename Mesh_t::DefaultCentering;
-    using Field_t      = ippl::Field<complex_type, Dim, Mesh_t, Centering_t>;
-    using PLayout_t    = ippl::ParticleSpatialLayout<real_type, Dim>;
-    using Bunch_t      = benchmark::BenchmarkBunch<PLayout_t>;
+    using Mesh_t      = ippl::UniformCartesian<real_type, Dim>;
+    using Centering_t = typename Mesh_t::DefaultCentering;
+    using Field_t     = ippl::Field<complex_type, Dim, Mesh_t, Centering_t>;
+    using PLayout_t   = ippl::ParticleSpatialLayout<real_type, Dim>;
+    using Bunch_t     = benchmark::BenchmarkBunch<PLayout_t>;
 
     ScatterBenchmark(const benchmark::BenchmarkParams& params)
         : params_(params)
         , kernel_(params.kernel_tol)
-        , nghost_((kernel_.width()) / 2 + 1)
-    {
+        , nghost_((kernel_.width()) / 2 + 1) {
         setup_domain();
     }
 
@@ -53,39 +52,40 @@ public:
         initialize();
 
         // Define configurations to benchmark
-        std::vector<ippl::Interpolation::ScatterConfig> configs;
+        std::vector<ippl::Interpolation::ScatterConfig<Dim>> configs;
 
         // Atomic (baseline)
-        {
-            auto cfg = ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
-            cfg.sort = false;
-            configs.push_back(cfg);
-        }
-        {
-            auto cfg = ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
-            cfg.sort = true;
-            configs.push_back(cfg);
-        }
-
-        // Tiled with different tile sizes
-        for (int tile_size : {8, 12, 16, 20, 24}) {
-            auto cfg = ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
-            cfg.tile_size_3d = tile_size;
-            cfg.sort = false;
-            configs.push_back(cfg);
-
-            cfg.sort = true;
-            configs.push_back(cfg);
-        }
+        // {
+        //     auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+        //     cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
+        //     cfg.sort = false;
+        //     configs.push_back(cfg);
+        // }
+        // {
+        //     auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+        //     cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
+        //     cfg.sort = true;
+        //     configs.push_back(cfg);
+        // }
+        //
+        // // Tiled with different tile sizes
+        // for (int tile_size : {8, 12, 16, 20, 24}) {
+        //     auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+        //     cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
+        //     cfg.tile_size_3d = tile_size;
+        //     cfg.sort = false;
+        //     configs.push_back(cfg);
+        //
+        //     cfg.sort = true;
+        //     configs.push_back(cfg);
+        // }
 
         // OutputFocused with different tile sizes
-        for (int tile_size : {8, 12, 16, 20, 24}) {
-            auto cfg = ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
+        // for (int tile_size : {8, 12, 16, 20, 24}) {
+        {
+            auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
-            cfg.tile_size_3d = tile_size;
+            // cfg.tile_size_3d = tile_size;
             cfg.sort = false;
             configs.push_back(cfg);
 
@@ -97,12 +97,9 @@ public:
         benchmark::print_subheader("Results");
 
         if (ippl::Comm->rank() == 0) {
-            std::cout << std::left << std::setw(25) << "Configuration"
-                      << std::right << std::setw(14) << "Mean"
-                      << std::setw(14) << "Stddev"
-                      << std::setw(14) << "Min"
-                      << std::setw(14) << "Max"
-                      << std::setw(14) << "Median" << "\n";
+            std::cout << std::left << std::setw(25) << "Configuration" << std::right
+                      << std::setw(14) << "Mean" << std::setw(14) << "Stddev" << std::setw(14)
+                      << "Min" << std::setw(14) << "Max" << std::setw(14) << "Median" << "\n";
             std::cout << std::string(95, '-') << "\n";
         }
 
@@ -132,12 +129,12 @@ private:
         std::array<bool, Dim> isParallel;
         isParallel.fill(true);
 
-        layout_ = std::make_unique<ippl::FieldLayout<Dim>>(
-            MPI_COMM_WORLD, domain, isParallel, true);
+        layout_ =
+            std::make_unique<ippl::FieldLayout<Dim>>(MPI_COMM_WORLD, domain, isParallel, true);
 
         for (unsigned d = 0; d < Dim; ++d) {
             origin_[d] = 0.0;
-            hx_[d] = 2.0 * M_PI / static_cast<real_type>(n_grid_[d]);
+            hx_[d]     = 2.0 * M_PI / static_cast<real_type>(n_grid_[d]);
         }
 
         mesh_ = std::make_unique<Mesh_t>(domain, hx_, origin_);
@@ -148,7 +145,7 @@ private:
         grid_output_ = std::make_unique<Field_t>(*mesh_, *layout_, nghost_);
 
         playout_ = std::make_unique<PLayout_t>(*layout_, *mesh_);
-        bunch_ = std::make_unique<Bunch_t>(*playout_);
+        bunch_   = std::make_unique<Bunch_t>(*playout_);
         bunch_->setParticleBC(ippl::BC::PERIODIC);
 
         // Setup benchmark data
@@ -156,7 +153,7 @@ private:
             params_, kernel_, *mesh_, *layout_, *playout_, *bunch_, *grid_output_, nghost_);
     }
 
-    benchmark::TimingStats benchmark_config(const ippl::Interpolation::ScatterConfig& cfg) {
+    benchmark::TimingStats benchmark_config(const ippl::Interpolation::ScatterConfig<Dim>& cfg) {
         benchmark::Timer timer;
         std::vector<double> times;
 
@@ -186,9 +183,10 @@ private:
         return benchmark::compute_stats(times);
     }
 
-    void print_summary(const std::vector<ippl::Interpolation::ScatterConfig>& configs,
+    void print_summary(const std::vector<ippl::Interpolation::ScatterConfig<Dim>>& configs,
                        const std::vector<benchmark::TimingStats>& results) {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
 
         benchmark::print_subheader("Performance Summary by Method");
 
@@ -201,16 +199,16 @@ private:
 
         std::vector<MethodBest> methods = {
             {"Atomic", std::numeric_limits<double>::max(), ""},
-            {"Tiled", std::numeric_limits<double>::max(), ""},
-            {"OutputFocused", std::numeric_limits<double>::max(), ""}
+            // {"Tiled", std::numeric_limits<double>::max(), ""},
+            // {"OutputFocused", std::numeric_limits<double>::max(), ""}
         };
 
         for (size_t i = 0; i < configs.size(); ++i) {
-            const auto& cfg = configs[i];
+            const auto& cfg   = configs[i];
             const auto& stats = results[i];
-            int idx = static_cast<int>(cfg.method);
+            int idx           = static_cast<int>(cfg.method);
             if (stats.mean_ms < methods[idx].best_time) {
-                methods[idx].best_time = stats.mean_ms;
+                methods[idx].best_time   = stats.mean_ms;
                 methods[idx].best_config = benchmark::config_label(cfg);
             }
         }
@@ -220,9 +218,8 @@ private:
         for (const auto& m : methods) {
             if (m.best_time < std::numeric_limits<double>::max()) {
                 double speedup = baseline / m.best_time;
-                std::cout << "  " << std::left << std::setw(15) << m.name
-                          << ": " << std::fixed << std::setprecision(3)
-                          << std::setw(10) << m.best_time << " ms"
+                std::cout << "  " << std::left << std::setw(15) << m.name << ": " << std::fixed
+                          << std::setprecision(3) << std::setw(10) << m.best_time << " ms"
                           << " (speedup: " << std::setprecision(2) << speedup << "x)"
                           << " - " << m.best_config << "\n";
             }

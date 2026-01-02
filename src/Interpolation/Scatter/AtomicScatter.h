@@ -35,6 +35,11 @@ namespace ippl::Interpolation::detail {
             }
         };
 
+        template <bool IsComplex>
+        static size_t compute_scratch_size(const Vector<int, Dim>& /*tile_size*/) {
+            return 0;
+        }
+
         Arguments args;
 
         struct Stencil {
