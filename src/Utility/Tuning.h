@@ -18,14 +18,20 @@ public:
     using TileConfig = TileType;
 
 private:
-    size_t variable_id_  = 0;
+    // Tuning parameters (following Kokkos convention)
+    static constexpr double tuning_min  = 0.0;
+    static constexpr double tuning_max  = 1.0;
+    static constexpr double tuning_step = 0.05;  // 20 steps per dimension
+
+    std::array<size_t, Dim> variable_ids_{};
     size_t context_id_   = 0;
-    size_t default_index_ = 0;
     bool initialized_    = false;
     bool context_active_ = false;
 
-    std::vector<TileConfig> valid_configs_;
-    std::vector<int64_t> config_indices_;
+    std::vector<int> candidates_;
+    TileConfig default_tile_;
+    size_t max_scratch_ = 0;
+    std::function<size_t(const TileConfig&)> scratch_calc_;
 
 public:
     TileSizeTuner() = default;
@@ -38,44 +44,29 @@ public:
                     const TileConfig& default_tile) {
         if (initialized_) return;
 
-        generate_valid_configs(candidates, max_scratch, std::forward<ScratchCalculator>(calc));
+        candidates_    = candidates;
+        max_scratch_   = max_scratch;
+        scratch_calc_  = std::forward<ScratchCalculator>(calc);
+        default_tile_  = default_tile;
 
-        if (valid_configs_.empty()) {
-            // Try smallest possible configuration
-            TileConfig min_tile;
-            for (unsigned d = 0; d < Dim; ++d) {
-                min_tile[d] = candidates.front();
-            }
-            if (calc(min_tile) <= max_scratch) {
-                valid_configs_.push_back(min_tile);
-            }
-        }
-
-        if (valid_configs_.empty()) {
-            Kokkos::abort("TileSizeTuner: No valid tile configuration fits in scratch!");
-        }
-
-        default_index_ = find_closest_config(default_tile);
-
-        config_indices_.resize(valid_configs_.size());
-        for (size_t i = 0; i < valid_configs_.size(); ++i) {
-            config_indices_[i] = static_cast<int64_t>(i);
-        }
+        // Sort candidates for consistent mapping
+        std::sort(candidates_.begin(), candidates_.end());
 
 #if IPPL_TUNING_ENABLED
         if (Kokkos::Tools::Experimental::have_tuning_tool()) {
             using namespace Kokkos::Tools::Experimental;
 
-            VariableInfo info;
-            info.type          = ValueType::kokkos_value_int64;
-            info.category      = StatisticalCategory::kokkos_value_categorical;
-            info.valueQuantity = CandidateValueType::kokkos_value_set;
+            for (unsigned d = 0; d < Dim; ++d) {
+                VariableInfo info;
+                info.type          = ValueType::kokkos_value_double;
+                info.category      = StatisticalCategory::kokkos_value_interval;
+                info.valueQuantity = CandidateValueType::kokkos_value_range;
+                info.candidates    = make_candidate_range(
+                    tuning_min, tuning_max, tuning_step, false, false);
 
-            SetOrRange cands;
-            cands.set       = ValueSet{config_indices_.size(), config_indices_.data()};
-            info.candidates = cands;
-
-            variable_id_ = declare_output_type(kernel_name + "_tile_config", info);
+                variable_ids_[d] = declare_output_type(
+                    kernel_name + "_tile_size_" + std::to_string(d), info);
+            }
         }
 #endif
 
@@ -83,17 +74,39 @@ public:
     }
 
     bool is_initialized() const { return initialized_; }
-    size_t num_configurations() const { return valid_configs_.size(); }
 
-    // Call before binning/kernel - returns tile configuration to use
+    // Map normalized value [0,1] to candidate index
+    int map_to_candidate(double normalized) const {
+        if (candidates_.empty()) return 1;
+
+        // Clamp to [0, 1]
+        normalized = std::max(0.0, std::min(1.0, normalized));
+
+        // Map to index
+        size_t idx = static_cast<size_t>(normalized * (candidates_.size() - 1) + 0.5);
+        idx = std::min(idx, candidates_.size() - 1);
+
+        return candidates_[idx];
+    }
+
+    // Map candidate value back to normalized [0,1]
+    double map_to_normalized(int candidate) const {
+        if (candidates_.size() <= 1) return 0.5;
+
+        auto it = std::lower_bound(candidates_.begin(), candidates_.end(), candidate);
+        size_t idx = (it != candidates_.end())
+                     ? std::distance(candidates_.begin(), it)
+                     : candidates_.size() - 1;
+
+        return static_cast<double>(idx) / (candidates_.size() - 1);
+    }
+
     TileConfig begin() {
-        if (!initialized_ || valid_configs_.empty()) {
-            TileConfig fallback;
-            for (unsigned d = 0; d < Dim; ++d) fallback[d] = 1;
-            return fallback;
+        if (!initialized_) {
+            return default_tile_;
         }
 
-        size_t config_index = default_index_;
+        TileConfig result = default_tile_;
 
 #if IPPL_TUNING_ENABLED
         if (Kokkos::Tools::Experimental::have_tuning_tool()) {
@@ -103,21 +116,28 @@ public:
             begin_context(context_id_);
             context_active_ = true;
 
-            VariableValue value = make_variable_value(variable_id_,
-                                                       static_cast<int64_t>(default_index_));
-            request_output_values(context_id_, 1, &value);
-
-            config_index = static_cast<size_t>(value.value.int_value);
-            if (config_index >= valid_configs_.size()) {
-                config_index = default_index_;
+            // Request tuned values for each dimension
+            std::array<VariableValue, Dim> values;
+            for (unsigned d = 0; d < Dim; ++d) {
+                double default_norm = map_to_normalized(default_tile_[d]);
+                values[d] = make_variable_value(variable_ids_[d], default_norm);
             }
+
+            request_output_values(context_id_, Dim, values.data());
+
+            // Map normalized values back to tile sizes
+            for (unsigned d = 0; d < Dim; ++d) {
+                result[d] = map_to_candidate(values[d].value.double_value);
+            }
+
+            // Validate scratch constraint - scale down if needed
+            result = fit_to_scratch(result);
         }
 #endif
 
-        return valid_configs_[config_index];
+        return result;
     }
 
-    // Call after kernel + fence
     void end() {
 #if IPPL_TUNING_ENABLED
         if (context_active_ && Kokkos::Tools::Experimental::have_tuning_tool()) {
@@ -128,58 +148,52 @@ public:
     }
 
 private:
-    template <typename ScratchCalculator>
-    void generate_valid_configs(const std::vector<int>& candidates,
-                                size_t max_scratch,
-                                ScratchCalculator& calc) {
-        TileConfig current;
-        generate_recursive(candidates, max_scratch, calc, 0, current);
-
-        std::sort(valid_configs_.begin(), valid_configs_.end(),
-                  [](const TileConfig& a, const TileConfig& b) {
-                      size_t vol_a = 1, vol_b = 1;
-                      for (unsigned d = 0; d < Dim; ++d) {
-                          vol_a *= a[d];
-                          vol_b *= b[d];
-                      }
-                      return vol_a < vol_b;
-                  });
-    }
-
-    template <typename ScratchCalculator>
-    void generate_recursive(const std::vector<int>& candidates,
-                            size_t max_scratch,
-                            ScratchCalculator& calc,
-                            unsigned dim,
-                            TileConfig& current) {
-        if (dim == Dim) {
-            if (calc(current) <= max_scratch) {
-                valid_configs_.push_back(current);
-            }
-            return;
+    // Scale down proportionally if tile doesn't fit in scratch
+    TileConfig fit_to_scratch(const TileConfig& tile) const {
+        if (scratch_calc_(tile) <= max_scratch_) {
+            return tile;
         }
-        for (int c : candidates) {
-            current[dim] = c;
-            generate_recursive(candidates, max_scratch, calc, dim + 1, current);
-        }
-    }
 
-    size_t find_closest_config(const TileConfig& target) const {
-        size_t best_idx  = 0;
-        int best_dist    = std::numeric_limits<int>::max();
+        // Binary search for largest scale factor that fits
+        TileConfig result = tile;
+        double lo = 0.0, hi = 1.0;
 
-        for (size_t i = 0; i < valid_configs_.size(); ++i) {
-            int dist = 0;
+        for (int iter = 0; iter < 20; ++iter) {
+            double mid = (lo + hi) / 2.0;
+
+            TileConfig test;
             for (unsigned d = 0; d < Dim; ++d) {
-                int diff = valid_configs_[i][d] - target[d];
-                dist += diff * diff;
+                int scaled = static_cast<int>(tile[d] * mid);
+                test[d] = snap_to_candidate(std::max(1, scaled));
             }
-            if (dist < best_dist) {
-                best_dist = dist;
-                best_idx  = i;
+
+            if (scratch_calc_(test) <= max_scratch_) {
+                lo = mid;
+                result = test;
+            } else {
+                hi = mid;
             }
         }
-        return best_idx;
+
+        // Final fallback - minimum tile
+        if (scratch_calc_(result) > max_scratch_) {
+            for (unsigned d = 0; d < Dim; ++d) {
+                result[d] = candidates_.front();
+            }
+        }
+
+        return result;
+    }
+
+    int snap_to_candidate(int value) const {
+        if (candidates_.empty()) return value;
+
+        // Find largest candidate <= value
+        auto it = std::upper_bound(candidates_.begin(), candidates_.end(), value);
+        if (it == candidates_.begin()) {
+            return candidates_.front();
+        }
+        return *std::prev(it);
     }
 };
 

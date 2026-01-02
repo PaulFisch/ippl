@@ -162,7 +162,7 @@ namespace ippl {
 
         template <template <int, class, class> class Impl, int W, class Types, class Policy,
                   bool IsComplex, class Field>
-        Vector<int, Dim> get_tuned_tile_size(const Field& field,
+        Vector<int, Dim> get_tuned_tile_size(const Field& /*field*/,
                                              const Vector<int, Dim>& default_tile) {
             using RealType        = typename Types::RealType;
             using execution_space = typename Types::execution_space;
