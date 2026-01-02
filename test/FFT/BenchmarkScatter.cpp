@@ -86,10 +86,18 @@ public:
             auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
             // cfg.tile_size_3d = tile_size;
-            cfg.sort = false;
+            cfg.sort          = false;
             cfg.enable_tuning = params_.tuning;
             configs.push_back(cfg);
 
+            cfg.sort = true;
+            configs.push_back(cfg);
+        }
+
+        // Atomic (sorted)
+        {
+            auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
             cfg.sort = true;
             configs.push_back(cfg);
         }
@@ -199,9 +207,10 @@ private:
         };
 
         std::vector<MethodBest> methods = {
+            {"OutputFocused", std::numeric_limits<double>::max(), ""},
             {"Atomic", std::numeric_limits<double>::max(), ""},
+            {"AtomicSort", std::numeric_limits<double>::max(), ""},
             // {"Tiled", std::numeric_limits<double>::max(), ""},
-            // {"OutputFocused", std::numeric_limits<double>::max(), ""}
         };
 
         for (size_t i = 0; i < configs.size(); ++i) {
