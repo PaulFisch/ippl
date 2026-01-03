@@ -3,3 +3,4 @@ message(STATUS "Adding unit tests found in ${_relPath}")
 
 add_ippl_test(FFT)
 add_ippl_test(NUFFT LINK_FINUFFT)
+add_ippl_test(NUFFTAccuracy LINK_FINUFFT)

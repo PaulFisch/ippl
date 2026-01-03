@@ -61,12 +61,12 @@ public:
             cfg.sort   = false;
             configs.push_back(cfg);
         }
-        {
-            auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-            cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
-            cfg.sort   = true;
-            configs.push_back(cfg);
-        }
+        // {
+        //     auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+        //     cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
+        //     cfg.sort   = true;
+        //     configs.push_back(cfg);
+        // }
         //
         // // Tiled with different tile sizes
         // for (int tile_size : {8, 12, 16, 20, 24}) {

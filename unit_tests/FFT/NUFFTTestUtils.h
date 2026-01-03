@@ -356,7 +356,7 @@ namespace ippl {
             template <typename T>
             static ippl::ParameterList createNativeParams(T tolerance,
                                                           bool useUpsampling,
-                                                          const std::string& spreadMethod = "tiled",
+                                                          const std::string& spreadMethod = "atomic",
                                                           const std::string& gatherMethod = "atomic_sort") {
                 ippl::ParameterList params;
 
