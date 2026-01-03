@@ -421,7 +421,7 @@ namespace ippl {
 
             template<int W>
             KOKKOS_INLINE_FUNCTION T eval(T x) const {
-                return x >= T(1.0) ? T(0.0) : es_kernel_eval<W>(x, w_);
+                return x >= T(1.0) ? T(0.0) : es_kernel_eval<W>(x);
             }
 
             KOKKOS_INLINE_FUNCTION int width() const { return w_; }
