@@ -331,7 +331,7 @@ namespace ippl::Interpolation::detail {
         };
 
         // Compute scratch size for N particles per team
-        template<bool>
+        template <bool>
         static size_t compute_scratch_size(int particles_per_team) {
             return ScratchBaseView::shmem_size(particles_per_team, Dim)
                    + ScratchWeightsView::shmem_size(particles_per_team, Dim, W)
@@ -390,8 +390,13 @@ namespace ippl::Interpolation::detail {
                         base(team_rank, d) = idx0 - args.local_offset[d] + args.nghost;
 
                         for (int i = 0; i < W; ++i) {
-                            kw(team_rank, d, i) =
-                                args.kernel((g_pos - RealType(idx0 + i)) * args.inv_hw);
+                            if constexpr (Types::KernelType::has_width_template) {
+                                kw(team_rank, d, i) =
+                                    args.kernel.eval<W>((g_pos - RealType(idx0 + i)) * args.inv_hw);
+                            } else {
+                                kw(team_rank, d, i) =
+                                    args.kernel((g_pos - RealType(idx0 + i)) * args.inv_hw);
+                            }
                         }
                     }
                 }

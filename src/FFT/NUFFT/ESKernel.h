@@ -362,7 +362,7 @@ namespace ippl {
                 return es_kernel_eval_w14(x);
             } else if constexpr (W == 15) {
                 return es_kernel_eval_w15(x);
-            } else if constexpr (W > 15) {
+            } else if constexpr (W >= 15) {
                 // Fallback to exact evaluation for unsupported widths
                 return Kokkos::exp(T(2.30) * W * (Kokkos::sqrt(T(1) - x * x) - T(1)));
             }
@@ -386,6 +386,7 @@ namespace ippl {
         template <typename T = double>
         class ESKernel {
         public:
+            static constexpr bool has_width_template = true;
             using value_type = T;
 
             static constexpr T default_tol = T(1e-10);
@@ -416,6 +417,11 @@ namespace ippl {
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 x = Kokkos::abs(x);
                 return x >= T(1.0) ? T(0.0) : es_kernel_eval(x, w_);
+            }
+
+            template<int W>
+            KOKKOS_INLINE_FUNCTION T eval(T x) const {
+                return x >= T(1.0) ? T(0.0) : es_kernel_eval<W>(x, w_);
             }
 
             KOKKOS_INLINE_FUNCTION int width() const { return w_; }
