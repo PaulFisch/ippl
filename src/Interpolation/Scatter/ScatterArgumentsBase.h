@@ -42,6 +42,7 @@ namespace ippl::Interpolation::detail {
         Vector<RealType, Dim> origin;
         Vector<RealType, Dim> invdx;
         RealType inv_hw;
+        size_t n_particles;
 
     protected:
         template <typename Field, typename Positions, typename Values, typename Kernel>
@@ -52,6 +53,7 @@ namespace ippl::Interpolation::detail {
             grid   = field.getView();
             nghost = field.getNghost();
             kernel = k;
+            n_particles = positions.getParticleCount();
 
             const auto& layout = field.getLayout();
             const auto& lDom   = layout.getLocalNDIndex();
