@@ -362,7 +362,7 @@ namespace ippl {
                 return es_kernel_eval_w14(x);
             } else if constexpr (W == 15) {
                 return es_kernel_eval_w15(x);
-            } else {
+            } else if constexpr (W > 15) {
                 // Fallback to exact evaluation for unsupported widths
                 return Kokkos::exp(T(2.30) * W * (Kokkos::sqrt(T(1) - x * x) - T(1)));
             }
