@@ -371,36 +371,39 @@ namespace ippl::Interpolation::detail {
             const size_t p_global      = base_particle + team_rank;
 
             // Each team member loads its particle (only vector lane 0)
-            Kokkos::single(Kokkos::PerThread(team), [&]() {
-                if (p_global < args.n_particles) {
-                    size_t p = p_global;
-                    if constexpr (Policy::use_sorting) {
-                        p = args.permute(p_global);
-                    }
-
+            if (p_global < args.n_particles) {
+                size_t p = p_global;
+                if constexpr (Policy::use_sorting) {
+                    p = args.permute(p_global);
+                }
+                Kokkos::single(Kokkos::PerThread(team), [&]() {
                     values(team_rank) = args.values(p);
+                });
 
-                    CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx,
-                                                                 args.n_grid};
+                CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx, args.n_grid};
 
-                    for (unsigned d = 0; d < Dim; ++d) {
+                // for (unsigned d = 0; d < Dim; ++d) {
+                Kokkos::parallel_for(
+                    Kokkos::ThreadVectorRange(team, Dim * W), [&](const int idx_linear) {
+                        int d = idx_linear % Dim;
+                        int i = idx_linear / Dim;
                         const RealType g_pos = transform.toGridCoordinate(args.x(p)[d], d);
                         const int idx0       = transform.getStencilBase(g_pos, W);
 
                         base(team_rank, d) = idx0 - args.local_offset[d] + args.nghost;
 
-                        for (int i = 0; i < W; ++i) {
-                            if constexpr (Types::KernelType::has_width_template) {
-                                kw(team_rank, d, i) =
-                                    args.kernel.eval<W>((g_pos - RealType(idx0 + i)) * args.inv_hw);
-                            } else {
-                                kw(team_rank, d, i) =
-                                    args.kernel((g_pos - RealType(idx0 + i)) * args.inv_hw);
-                            }
+                        // for (int i = 0; i < W; ++i) {
+                        if constexpr (Types::KernelType::has_width_template) {
+                            kw(team_rank, d, i) =
+                                args.kernel.eval<W>((g_pos - RealType(idx0 + i)) * args.inv_hw);
+                        } else {
+                            kw(team_rank, d, i) =
+                                args.kernel((g_pos - RealType(idx0 + i)) * args.inv_hw);
                         }
-                    }
-                }
-            });
+                        // }
+                        // }
+                    });
+            }
 
             // Synchronize so all threads see the shared data
             team.team_barrier();
