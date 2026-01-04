@@ -243,7 +243,8 @@ namespace ippl {
 
                 static IpplTimings::TimerRef scatterTimer = IpplTimings::getTimer("scatterTimerNUFFT1");
                 IpplTimings::startTimer(scatterTimer);
-                *grid_field_ = complex_type(0, 0);  // Zero the grid
+                // *grid_field_ = complex_type(0, 0);  // Zero the grid
+                Kokkos::deep_copy(*grid_field_, complex_type(0.0, 0.0));
 
                 Q.scatter_kernel(*grid_field_, R, kernel_, cfg_.scatter_config);
                 Kokkos::fence();
