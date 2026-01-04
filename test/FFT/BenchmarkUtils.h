@@ -147,6 +147,7 @@ namespace ippl::benchmark {
             : base_type(playout) {
             this->addAttribute(Q);
             this->addAttribute(Q_result);
+            this->addAttribute(real);
         }
 
         ippl::ParticleAttrib<real_type> real;

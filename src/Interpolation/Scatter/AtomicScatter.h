@@ -308,7 +308,6 @@ namespace ippl::Interpolation::detail {
         static constexpr int vector_length = 32;
 
         // Scratch view types for N particles
-        // base[N][Dim], weights[N][Dim][W], values[N]
         using ScratchBaseView    = Kokkos::View<int**, scratch_space, unmanaged>;
         using ScratchWeightsView = Kokkos::View<RealType***, scratch_space, unmanaged>;
         using ScratchValuesView  = Kokkos::View<ValueType*, scratch_space, unmanaged>;
