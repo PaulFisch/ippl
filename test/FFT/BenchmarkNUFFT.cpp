@@ -285,7 +285,7 @@ void printResult(const std::string& label, const BenchmarkResult& result) {
 // Benchmark Functions
 // ============================================================================
 
-BenchmarkResult benchmarkNUFFTType1(int grid_size, int particles_per_point, double tolerance,
+BenchmarkResult benchmarkNUFFTType1(int grid_size, double particles_per_point, double tolerance,
                                     const std::string& spread_method, int warmup_runs,
                                     int benchmark_runs) {
     constexpr unsigned int dim = 3;
@@ -443,7 +443,7 @@ BenchmarkResult benchmarkNUFFTType1(int grid_size, int particles_per_point, doub
     return result;
 }
 
-BenchmarkResult benchmarkNUFFTType2(int grid_size, int particles_per_point, double tolerance,
+BenchmarkResult benchmarkNUFFTType2(int grid_size, double particles_per_point, double tolerance,
                                     const std::string& gather_method, int warmup_runs,
                                     int benchmark_runs) {
     constexpr unsigned int dim = 3;
@@ -628,7 +628,7 @@ int main(int argc, char* argv[]) {
     {
         // Default parameters
         int grid_size           = 8;
-        int particles_per_point = 1;
+        double particles_per_point = 1.0;
         double tolerance        = 1e-4;
         int warmup_runs         = 3;
         int benchmark_runs      = 10;
@@ -650,7 +650,7 @@ int main(int argc, char* argv[]) {
             if (arg == "--grid" && i + 1 < argc) {
                 grid_size = std::atoi(argv[++i]);
             } else if (arg == "--ppp" && i + 1 < argc) {
-                particles_per_point = std::atoi(argv[++i]);
+                particles_per_point = std::atof(argv[++i]);
             } else if (arg == "--tol" && i + 1 < argc) {
                 tolerance = std::atof(argv[++i]);
             } else if (arg == "--warmup" && i + 1 < argc) {
