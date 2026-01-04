@@ -8,4 +8,8 @@
 #include "FFT/Backend/CuFFTMp.h"
 #endif
 
+#ifdef KOKKOS_ENABLE_CUDA
+#include "FFT/Backend/CuFFT.h"
+#endif
+
 #endif  // IPPL_FFT_BACKEND_H
