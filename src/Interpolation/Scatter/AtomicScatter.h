@@ -384,8 +384,8 @@ namespace ippl::Interpolation::detail {
                 // for (unsigned d = 0; d < Dim; ++d) {
                 Kokkos::parallel_for(
                     Kokkos::ThreadVectorRange(team, Dim * W), [&](const int idx_linear) {
-                        int d = idx_linear % Dim;
-                        int i = idx_linear / Dim;
+                        int d                = idx_linear % Dim;
+                        int i                = idx_linear / Dim;
                         const RealType g_pos = transform.toGridCoordinate(args.x(p)[d], d);
                         const int idx0       = transform.getStencilBase(g_pos, W);
 
@@ -430,20 +430,43 @@ namespace ippl::Interpolation::detail {
                             w *= kw(team_rank, d, stencil_idx[d]);
                         }
 
-                        const auto contribution = static_cast<grid_value_t>(my_val * w);
+                        if constexpr (std::is_same_v<grid_value_t, Kokkos::complex<RealType>>
+                                      && std::is_same_v<ValueType, RealType>) {
+                            const auto contribution = my_val * w;
 
-                        // Perform atomic scatter
-                        if constexpr (Dim == 1) {
-                            Kokkos::atomic_add(&grid(my_base[0] + stencil_idx[0]), contribution);
-                        } else if constexpr (Dim == 2) {
-                            Kokkos::atomic_add(
-                                &grid(my_base[0] + stencil_idx[0], my_base[1] + stencil_idx[1]),
-                                contribution);
-                        } else if constexpr (Dim == 3) {
-                            Kokkos::atomic_add(
-                                &grid(my_base[0] + stencil_idx[0], my_base[1] + stencil_idx[1],
-                                      my_base[2] + stencil_idx[2]),
-                                contribution);
+                            // Perform atomic scatter
+                            if constexpr (Dim == 1) {
+                                Kokkos::atomic_add(&grid(my_base[0] + stencil_idx[0]).real(),
+                                                   contribution);
+                            } else if constexpr (Dim == 2) {
+                                Kokkos::atomic_add(
+                                    &grid(my_base[0] + stencil_idx[0], my_base[1] + stencil_idx[1])
+                                         .real(),
+                                    contribution);
+                            } else if constexpr (Dim == 3) {
+                                Kokkos::atomic_add(
+                                    &grid(my_base[0] + stencil_idx[0], my_base[1] + stencil_idx[1],
+                                          my_base[2] + stencil_idx[2])
+                                         .real(),
+                                    contribution);
+                            }
+                        } else {
+                            const auto contribution = static_cast<grid_value_t>(my_val * w);
+
+                            // Perform atomic scatter
+                            if constexpr (Dim == 1) {
+                                Kokkos::atomic_add(&grid(my_base[0] + stencil_idx[0]),
+                                                   contribution);
+                            } else if constexpr (Dim == 2) {
+                                Kokkos::atomic_add(
+                                    &grid(my_base[0] + stencil_idx[0], my_base[1] + stencil_idx[1]),
+                                    contribution);
+                            } else if constexpr (Dim == 3) {
+                                Kokkos::atomic_add(
+                                    &grid(my_base[0] + stencil_idx[0], my_base[1] + stencil_idx[1],
+                                          my_base[2] + stencil_idx[2]),
+                                    contribution);
+                            }
                         }
                     });
             }
