@@ -84,7 +84,6 @@ namespace ippl {
         //=============================================================================
         // heFFTe C2C
         //=============================================================================
-
         template <typename T, unsigned Dim, typename MemSpace>
         class HeffteC2C {
         public:
@@ -93,32 +92,56 @@ namespace ippl {
             using heffte_t    = heffte::fft3d<backend_t, long long>;
             using workspace_t = typename heffte_t::template buffer_container<complex_t>;
 
+            // Standard constructor
             HeffteC2C(const heffte::box3d<long long>& inbox, const heffte::box3d<long long>& outbox,
-                      MPI_Comm comm, const ParameterList& params) {
-                auto opts  = makeHeffteOptions<backend_t>(params);
-                heffte_    = std::make_shared<heffte_t>(inbox, outbox, comm, opts);
-                workspace_ = workspace_t(heffte_->size_workspace());
+                      MPI_Comm comm, const ParameterList& params, int maxBatchSize = 1)
+                : maxBatchSize_(maxBatchSize) {
+                static_assert(Dim == 3, "HeFFTe wrapper only supports 3D");
 
-                local_size_  = heffte_->size_outbox();
-                global_size_ = computeGlobalSize(inbox, outbox, comm);
+                auto opts = makeHeffteOptions<backend_t>(params);
+                heffte_   = std::make_shared<heffte_t>(inbox, outbox, comm, opts);
+
+                // Allocate workspace for maximum batch size
+                workspace_ = workspace_t(heffte_->size_workspace() * maxBatchSize);
+
+                localSize_  = heffte_->size_outbox();
+                globalSize_ = computeGlobalSize(inbox, outbox, comm);
             }
 
+            // Single transform
             void forward(complex_t* in, complex_t* out) {
                 heffte_->forward(in, out, workspace_.data(), heffte::scale::full);
-                // applyScale<T, MemSpace>(out, T(1) / static_cast<T>(global_size_), local_size_);
             }
 
             void backward(complex_t* in, complex_t* out) {
                 heffte_->backward(in, out, workspace_.data(), heffte::scale::none);
             }
 
-            std::size_t workspace_size() const { return heffte_->size_workspace(); }
+            // Batched transform
+            void forward(int batchSize, complex_t* in, complex_t* out) {
+                assert(batchSize <= maxBatchSize_ && "Batch size exceeds allocated workspace");
+                heffte_->forward(batchSize, in, out, workspace_.data(), heffte::scale::full);
+            }
+
+            void backward(int batchSize, complex_t* in, complex_t* out) {
+                assert(batchSize <= maxBatchSize_ && "Batch size exceeds allocated workspace");
+                heffte_->backward(batchSize, in, out, workspace_.data(), heffte::scale::none);
+            }
+
+            // Accessors
+            size_t workspace_size() const { return heffte_->size_workspace(); }
+            size_t local_size() const { return localSize_; }
+            size_t global_size() const { return globalSize_; }
+            size_t size_inbox() const { return heffte_->size_inbox(); }
+            size_t size_outbox() const { return heffte_->size_outbox(); }
+            int max_batch_size() const { return maxBatchSize_; }
 
         private:
             std::shared_ptr<heffte_t> heffte_;
             workspace_t workspace_;
-            size_t local_size_;
-            size_t global_size_;
+            size_t localSize_;
+            size_t globalSize_;
+            int maxBatchSize_;
         };
 
         //=============================================================================
