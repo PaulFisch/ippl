@@ -290,7 +290,7 @@ namespace ippl::Interpolation::detail {
         using memory_space    = typename Types::memory_space;
         using execution_space = typename Types::execution_space;
 
-        using team_policy = Kokkos::TeamPolicy<execution_space>;
+        using team_policy = Kokkos::TeamPolicy<execution_space, Kokkos::LaunchBounds<128, 8>>;
         using team_member = typename team_policy::member_type;
 
         using scratch_space = typename execution_space::scratch_memory_space;

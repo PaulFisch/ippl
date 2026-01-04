@@ -16,6 +16,7 @@ namespace ippl {
         template <typename T = double>
         struct NGPKernel {
             using value_type = T;
+            static constexpr bool has_width_template = false;
 
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // Transform: y = x * (w/2) = x * 0.5
@@ -36,6 +37,7 @@ namespace ippl {
         template <typename T = double>
         struct LinearKernel {
             using value_type = T;
+            static constexpr bool has_width_template = false;
 
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // w/2 = 1, so y = x (no transformation needed)
@@ -59,7 +61,8 @@ namespace ippl {
          */
         template <typename T = double>
         struct QuadraticKernel {
-            using value_type = T;
+            using value_type                         = T;
+            static constexpr bool has_width_template = false;
 
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // Transform to natural coordinates: y = x * (w/2) = x * 1.5
@@ -90,7 +93,8 @@ namespace ippl {
          */
         template <typename T = double>
         struct CubicKernel {
-            using value_type = T;
+            using value_type                         = T;
+            static constexpr bool has_width_template = false;
 
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // Transform to natural coordinates: y = x * (w/2) = x * 2
@@ -121,7 +125,8 @@ namespace ippl {
          */
         template <typename T = double>
         struct QuarticKernel {
-            using value_type = T;
+            using value_type                         = T;
+            static constexpr bool has_width_template = false;
 
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // Transform to natural coordinates: y = x * (w/2) = x * 2.5
@@ -138,7 +143,7 @@ namespace ippl {
                     return T(55.0 / 96.0) + T(5.0 / 24.0) * y - T(5.0 / 4.0) * y2
                            + T(5.0 / 6.0) * y3 - T(1.0 / 6.0) * y4;
                 } else if (y < T(2.5)) {
-                    T t = T(2.5) - y;
+                    T t  = T(2.5) - y;
                     T t2 = t * t;
                     return t2 * t2 / T(24);
                 }
