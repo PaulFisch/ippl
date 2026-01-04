@@ -108,9 +108,13 @@ namespace ippl {
 
         // Ensure temps
         for (int s = 0; s < numConcurrent_; ++s) {
+            static IpplTimings::TimerRef allocateTempTimer =
+                IpplTimings::getTimer("FFTAllocateTemp");
+            IpplTimings::startTimer(allocateTempTimer);
             if (temps_[s].size() != output.getOwned().size()) {
                 temps_[s] = detail::shrinkView("pruned_temp_" + std::to_string(s), outView, ngOut);
             }
+            IpplTimings::stopTimer(allocateTempTimer);
         }
 
         Kokkos::deep_copy(outView, Complex_t(0, 0));
@@ -164,11 +168,14 @@ namespace ippl {
                         temp(i0, i1, i2) = inView(si, sj, sk);
                     });
                 GPUOps::sync(streams_[local]);
+                static IpplTimings::TimerRef heffteTimer = IpplTimings::getTimer("RunHeffte");
+                IpplTimings::startTimer(heffteTimer);
                 if (dir == 1) {
                     backends_[local]->forward(temp.data(), temp.data());
                 } else {
                     backends_[local]->backward(temp.data(), temp.data());
                 }
+                IpplTimings::stopTimer(heffteTimer);
             }
 
             Kokkos::fence();
