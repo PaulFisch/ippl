@@ -158,7 +158,7 @@ private:
         // Warmup runs
         for (int i = 0; i < params_.warmup_runs; ++i) {
             *grid_output_ = complex_type(0.0, 0.0);
-            bunch_->Q.scatter_kernel(*grid_output_, bunch_->R, kernel_, cfg);
+            bunch_->real.scatter_kernel(*grid_output_, bunch_->R, kernel_, cfg);
             grid_output_->accumulateHalo();
         }
 
@@ -167,7 +167,7 @@ private:
             *grid_output_ = complex_type(0.0, 0.0);
 
             timer.start();
-            bunch_->Q.scatter_kernel(*grid_output_, bunch_->R, kernel_, cfg);
+            bunch_->real.scatter_kernel(*grid_output_, bunch_->R, kernel_, cfg);
             grid_output_->accumulateHalo();
             double elapsed = timer.stop();
 

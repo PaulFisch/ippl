@@ -149,6 +149,7 @@ namespace ippl::benchmark {
             this->addAttribute(Q_result);
         }
 
+        ippl::ParticleAttrib<real_type> real;
         ippl::ParticleAttrib<complex_type> Q;
         ippl::ParticleAttrib<complex_type> Q_result;
     };
@@ -198,11 +199,10 @@ namespace ippl::benchmark {
 
         auto R_view  = bunch.R.getView();
         auto Q_view  = bunch.Q.getView();
+        auto real_view = bunch.real.getView();
         auto Qr_view = bunch.Q_result.getView();
 
-        // --- NEW: global uniform sampling in [0, 2*pi] for each coordinate ---
         const real_type two_pi = static_cast<real_type>(2.0 * M_PI);
-        // ---------------------------------------------------------------------
 
         Kokkos::parallel_for(
             "InitParticles", Kokkos::RangePolicy<ExecSpace>(0, nLoc),
@@ -226,6 +226,7 @@ namespace ippl::benchmark {
                 real_type im = Kokkos::sqrt(-2.0 * Kokkos::log(u3)) * Kokkos::cos(2.0 * M_PI * u4);
                 Q_view(i)    = complex_type(re, im);
                 Qr_view(i)   = complex_type(0.0, 0.0);
+                real_view(i) = re;
 
                 rand_pool.free_state(gen);
             });
