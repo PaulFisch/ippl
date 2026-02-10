@@ -19,5 +19,10 @@ build*/
 # ignore .vscode directory
 .vscode
 .cache
+
+# IDEA IDE
 .idea*
 cmake-build-*
+
+# mac
+.DS_Store

@@ -16,6 +16,8 @@
 #ifndef IPPL_PARTICLE_ATTRIB_H
 #define IPPL_PARTICLE_ATTRIB_H
 
+#include <cstring>
+
 #include "Expression/IpplExpressions.h"
 
 #include "../Interpolation/Gather/GatherConfig.h"
@@ -103,10 +105,17 @@ namespace ippl {
         const view_type& getView() const { return dview_m; }
 
         HostMirror getHostMirror() const { return Kokkos::create_mirror(dview_m); }
+        
+        void set_name(const std::string& name_) override {
+            size_t len = name_.size();
+            if (len >= detail::ATTRIB_NAME_MAX_LEN) {
+                len = detail::ATTRIB_NAME_MAX_LEN - 1;
+            }
+            std::memcpy(this->name_m, name_.c_str(), len);
+            this->name_m[len] = '\0';
+        }
 
-        // void set_name(const std::string& name_) override { this->name_m = name_; }
-
-        // std::string get_name() const override { return this->name_m; }
+        std::string get_name() const override { return std::string(this->name_m); }
 
         /*!
          * Assign the same value to the whole attribute.

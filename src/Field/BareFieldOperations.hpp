@@ -17,11 +17,13 @@ namespace ippl {
         constexpr unsigned Dim = BareField::dim;
 
         T sum                  = 0;
-        auto layout            = f1.getLayout();
-        auto view1             = f1.getView();
-        auto view2             = f2.getView();
+        auto &layout            = f1.getLayout();
+        auto &view1             = f1.getView();
+        auto &view2             = f2.getView();
         using exec_space       = typename BareField::execution_space;
         using index_array_type = typename RangePolicy<Dim, exec_space>::index_array_type;
+
+
         ippl::parallel_reduce(
             "Field::innerProduct(Field&, Field&)", f1.getFieldRangePolicy(),
             KOKKOS_LAMBDA(const index_array_type& args, T& val) {
@@ -57,8 +59,8 @@ namespace ippl {
         constexpr unsigned Dim = BareField::dim;
 
         T local                = 0;
-        auto layout            = field.getLayout();
-        auto view              = field.getView();
+        auto& layout            = field.getLayout();
+        auto& view              = field.getView();
         using exec_space       = typename BareField::execution_space;
         using index_array_type = typename RangePolicy<Dim, exec_space>::index_array_type;
         switch (p) {
