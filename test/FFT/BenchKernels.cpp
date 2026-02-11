@@ -65,7 +65,7 @@ private:
 // ============================================================================
 
 struct BenchParams {
-    int n_grid = 128;
+    int n_grid = 16;
     double rho = 10.0;              // particles per grid point
     double kernel_tol = 1e-6;       // determines kernel width
     int warmup_runs = 3;
@@ -309,7 +309,7 @@ public:
             cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
             int tile_size = 2;
             std::array<int, 10> tile_sizes = {
-                1,1,4,3,3,2,4,2,2
+                1,1,4,3,3,2,4,2,2,2
             };
             if (w < 10) {
                 tile_size = tile_sizes[w];
