@@ -483,7 +483,7 @@ public:
             int stride = 17;  // Prime to avoid cache line alignment
             Kokkos::parallel_for("init_scatter_indices", Kokkos::RangePolicy<ExecSpace>(0, params_.N),
                 KOKKOS_LAMBDA(const size_t i) {
-                    indices(i) = (i * stride) % N;
+                    indices(i) = (i * stride) % params_.N;
                 });
             Kokkos::fence();
             
