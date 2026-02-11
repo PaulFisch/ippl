@@ -159,7 +159,7 @@ namespace ippl {
                 static GatherConfig<Dim> get() {
                     GatherConfig<Dim> config;
                     config.method    = GatherMethod::Atomic;
-                    config.team_size = 4;
+                    config.team_size = 1;
 
                     if constexpr (Dim == 1) {
                         config.tile_size = {256};

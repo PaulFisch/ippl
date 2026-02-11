@@ -68,7 +68,7 @@ namespace fft {
         CuFFTC2C(const heffte::box3d<long long>& inbox,
                  const heffte::box3d<long long>& outbox,
                  MPI_Comm comm,
-                 const ParameterList& params,
+                 const ParameterList& /*params*/,
                  int maxBatchSize = 1)
             : maxBatchSize_(maxBatchSize)
             , comm_(comm)

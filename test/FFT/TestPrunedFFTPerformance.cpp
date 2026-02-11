@@ -49,10 +49,10 @@ MemoryInfo getCudaMemoryInfo() {
 void printMemoryUsage(const std::string&) {
     if (ippl::Comm->rank() == 0) {
 #ifdef KOKKOS_ENABLE_CUDA
-        MemoryInfo info = getCudaMemoryInfo();
-        std::cout << "[Memory] " << label << ": "
-                  << "Used: " << (info.used_bytes / (1024.0 * 1024.0)) << " MB, "
-                  << "Free: " << (info.free_bytes / (1024.0 * 1024.0)) << " MB" << std::endl;
+        // MemoryInfo info = getCudaMemoryInfo();
+        // std::cout << "[Memory] " << label << ": "
+        //           << "Used: " << (info.used_bytes / (1024.0 * 1024.0)) << " MB, "
+        //           << "Free: " << (info.free_bytes / (1024.0 * 1024.0)) << " MB" << std::endl;
 #endif
     }
 }

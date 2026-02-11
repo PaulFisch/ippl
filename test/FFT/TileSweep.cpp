@@ -271,9 +271,9 @@ public:
 
                 // Benchmark Tiled scatter
                 {
-                    auto cfg = ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
+                    auto cfg = ippl::Interpolation::ScatterConfig<3>::get_default<ExecSpace>();
                     cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
-                    cfg.tile_size_3d = tile_size;
+                    cfg.set_tile_size(tile_size);
 
                     auto result = benchmark_scatter("Tiled", cfg, kernel, nghost, n_particles, tile_size);
                     results.push_back(result);
@@ -283,9 +283,9 @@ public:
 
                 // Benchmark OutputFocused scatter
                 {
-                    auto cfg = ippl::Interpolation::ScatterConfig::get_default<ExecSpace>();
+                    auto cfg = ippl::Interpolation::ScatterConfig<3>::get_default<ExecSpace>();
                     cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
-                    cfg.tile_size_3d = tile_size;
+                    cfg.set_tile_size(tile_size);
 
                     auto result = benchmark_scatter("OutputFocused", cfg, kernel, nghost, n_particles, tile_size);
                     results.push_back(result);
@@ -328,7 +328,7 @@ public:
     }
 
     BenchmarkResult benchmark_scatter(const std::string& method,
-                                       const ippl::Interpolation::ScatterConfig& cfg,
+                                       const ippl::Interpolation::ScatterConfig<3>& cfg,
                                        const ippl::NUFFT::ESKernel<real_type>& kernel,
                                        int /*nghost*/,
                                        size_t n_particles,

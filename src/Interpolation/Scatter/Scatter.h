@@ -104,7 +104,7 @@ namespace ippl {
                   class Positions, class Values>
         void dispatch(Field& field, const Positions& positions, const Values& values) {
             using memory_space    = typename Types::memory_space;
-            using execution_space = typename Types::execution_space;
+            // using execution_space = typename Types::execution_space;
             using RealType        = typename Types::RealType;
             using grid_value_t    = typename Field::value_type;
 

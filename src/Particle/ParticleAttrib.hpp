@@ -160,7 +160,6 @@ namespace ippl {
         Kokkos::parallel_for(
             "ParticleAttrib::scatter", iteration_policy,
             KOKKOS_LAMBDA(const size_t idx) {
-            "ParticleAttrib::scatter", iteration_policy, KOKKOS_CLASS_LAMBDA(const size_t idx) {
                 // map index to possible hash_map
                 size_t mapped_idx = useHashView ? hash_array(idx) : idx;
 

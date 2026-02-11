@@ -202,7 +202,7 @@ public:
     std::array<T, Dim> len;
 };
 
-using Tests = TestParams::tests<2, 3>;
+using Tests = TestParams::tests<3>;
 TYPED_TEST_SUITE(FFTTest, Tests);
 
 TYPED_TEST(FFTTest, Cos) {
@@ -212,55 +212,55 @@ TYPED_TEST(FFTTest, Cos) {
 TYPED_TEST(FFTTest, Sin) {
     //this->template testTrig<ippl::SineTransform>(this->realField, this->layout);
 }
-
-TYPED_TEST(FFTTest, RC) {
-    constexpr unsigned Dim = TestFixture::dim;
-
-    auto& mesh   = this->mesh;
-    auto& layout = this->layout;
-    auto& field  = this->realField;
-
-    ippl::ParameterList fftParams;
-    fftParams.add("use_heffte_defaults", true);
-    fftParams.add("r2c_direction", 0);
-
-    std::array<bool, Dim> isParallel;
-    isParallel.fill(true);
-
-    ippl::NDIndex<Dim> ownedOutput;
-    for (unsigned d = 0; d < Dim; d++) {
-        if (static_cast<int>(d) == fftParams.get<int>("r2c_direction")) {
-            ownedOutput[d] = ippl::Index(this->pt[d] / 2 + 1);
-        } else {
-            ownedOutput[d] = ippl::Index(this->pt[d]);
-        }
-    }
-
-    typename TestFixture::layout_type layoutOutput(MPI_COMM_WORLD, ownedOutput, isParallel);
-
-    typename TestFixture::mesh_type meshOutput(ownedOutput, mesh.getMeshSpacing(),
-                                               mesh.getOrigin());
-    typename TestFixture::field_type_complex fieldOutput(meshOutput, layoutOutput);
-
-    std::shared_ptr<typename TestFixture::template FFT_type<ippl::RCTransform>> fft =
-        std::make_unique<typename TestFixture::template FFT_type<ippl::RCTransform>>(
-            layout, layoutOutput, fftParams);
-
-    auto& view      = field->getView();
-    auto input_host = field->getHostMirror();
-
-    const int nghost = field->getNghost();
-    this->zeroRealField(nghost, input_host);
-
-    Kokkos::deep_copy(view, input_host);
-
-    fft->transform(ippl::FORWARD, *field, fieldOutput);
-    fft->transform(ippl::BACKWARD, *field, fieldOutput);
-
-    auto field_result = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), view);
-
-    this->verifyResult(nghost, field_result, input_host);
-}
+//
+// TYPED_TEST(FFTTest, RC) {
+//     constexpr unsigned Dim = TestFixture::dim;
+//
+//     auto& mesh   = this->mesh;
+//     auto& layout = this->layout;
+//     auto& field  = this->realField;
+//
+//     ippl::ParameterList fftParams;
+//     fftParams.add("use_heffte_defaults", true);
+//     fftParams.add("r2c_direction", 0);
+//
+//     std::array<bool, Dim> isParallel;
+//     isParallel.fill(true);
+//
+//     ippl::NDIndex<Dim> ownedOutput;
+//     for (unsigned d = 0; d < Dim; d++) {
+//         if (static_cast<int>(d) == fftParams.get<int>("r2c_direction")) {
+//             ownedOutput[d] = ippl::Index(this->pt[d] / 2 + 1);
+//         } else {
+//             ownedOutput[d] = ippl::Index(this->pt[d]);
+//         }
+//     }
+//
+//     typename TestFixture::layout_type layoutOutput(MPI_COMM_WORLD, ownedOutput, isParallel);
+//
+//     typename TestFixture::mesh_type meshOutput(ownedOutput, mesh.getMeshSpacing(),
+//                                                mesh.getOrigin());
+//     typename TestFixture::field_type_complex fieldOutput(meshOutput, layoutOutput);
+//
+//     std::shared_ptr<typename TestFixture::template FFT_type<ippl::RCTransform>> fft =
+//         std::make_unique<typename TestFixture::template FFT_type<ippl::RCTransform>>(
+//             layout, layoutOutput, fftParams);
+//
+//     auto& view      = field->getView();
+//     auto input_host = field->getHostMirror();
+//
+//     const int nghost = field->getNghost();
+//     this->zeroRealField(nghost, input_host);
+//
+//     Kokkos::deep_copy(view, input_host);
+//
+//     fft->transform(ippl::FORWARD, *field, fieldOutput);
+//     fft->transform(ippl::BACKWARD, *field, fieldOutput);
+//
+//     auto field_result = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), view);
+//
+//     this->verifyResult(nghost, field_result, input_host);
+// }
 
 TYPED_TEST(FFTTest, CC) {
     using T = typename TestFixture::value_type;

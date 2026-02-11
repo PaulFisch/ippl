@@ -72,8 +72,8 @@ namespace ippl {
 #ifdef IPPL_ENABLE_CUFFTMP
         using Backend_t = fft::CuFFTMpC2C<T, Dim, MemSpace>;
 #else
-        // using Backend_t = fft::HeffteC2C<T, Dim, MemSpace>;
-        using Backend_t = fft::CuFFTC2C<T, Dim, MemSpace>;
+        using Backend_t = fft::HeffteC2C<T, Dim, MemSpace>;
+        // using Backend_t = fft::CuFFTC2C<T, Dim, MemSpace>;
 #endif
 
         static constexpr bool UseBatched = fft::supports_native_batched_v<Backend_t>;

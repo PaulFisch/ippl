@@ -37,8 +37,8 @@ namespace ippl {
             },
             Kokkos::Sum<T>(sum));
         T globalSum = 0;
-        if (is_complex_v<T>) {
-            using real_type = std::decay_t<decltype(T{}.real())>;
+        if constexpr (is_complex_v<T>) {
+            using real_type = decltype(T{}.real());
             layout.comm.allreduce(sum.real(), globalSum.real(), 1, std::plus<real_type>{});
             layout.comm.allreduce(sum.imag(), globalSum.imag(), 1, std::plus<real_type>{});
         } else {

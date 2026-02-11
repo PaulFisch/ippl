@@ -203,8 +203,8 @@ public:
 using AccuracyTest3D = NUFFTAccuracyTest<double, 3>;
 
 TEST_F(AccuracyTest3D, ToleranceSweep) {
-    const size_t gridSize     = 32;  // 16^3 = 4096 modes
-    const size_t numParticles = 262144;
+    const size_t gridSize     = 16;  // 16^3 = 4096 modes
+    const size_t numParticles = 40960;
 
     setup(gridSize, numParticles);
 

@@ -271,7 +271,7 @@ namespace ippl {
             static Kokkos::complex<T> computeType2ValueLocal(const FieldView& field,
                                                              const ippl::Vector<T, Dim>& testPos,
                                                              const ippl::NDIndex<Dim>& lDom,
-                                                             const ippl::Vector<T, Dim>& hx,
+                                                             const ippl::Vector<T, Dim>& /*hx*/,
                                                              const ippl::Vector<int, Dim>& nModes,
                                                              int nghost) {
                 Kokkos::complex<T> dftLocal(0.0, 0.0);

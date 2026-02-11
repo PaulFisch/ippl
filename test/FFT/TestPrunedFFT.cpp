@@ -848,7 +848,7 @@ void printFieldStats(const std::string& name, Field& field, int rank) {
             mdrange_t({nghost, nghost, nghost},
                       {view.extent(0) - nghost, view.extent(1) - nghost, view.extent(2) - nghost}),
             KOKKOS_LAMBDA(const int i, const int j, const int k,
-                         double& lsum_r, double& lsum_i, double& lmax, size_t& lcount) {
+                         double& lsum_r, double& /*lsum_i*/, double& lmax, size_t& lcount) {
                 double val = view(i, j, k);
                 lsum_r += val;
                 double abs_val = Kokkos::fabs(val);
@@ -1062,7 +1062,6 @@ bool testPrunedCC() {
     // Find worst errors with their indices
     double max_error = 0.0;
     size_t count = 0;
-    int worst_gi_p = -1, worst_gj_p = -1, worst_gk_p = -1;
 
     using exec_space = typename field_type::execution_space;
     using mdrange_t = Kokkos::MDRangePolicy<exec_space, Kokkos::Rank<3>>;

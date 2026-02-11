@@ -164,7 +164,7 @@ namespace ippl {
                     ScatterConfig<Dim> config;
                     config.method    = ScatterMethod::Atomic;
                     config.sort      = false;
-                    config.team_size = 4;
+                    config.team_size = 1;
 
                     if constexpr (Dim == 1) {
                         config.tile_size = {256};

@@ -14,6 +14,7 @@
 
 #include "Utility/Inform.h"
 #include "Utility/IpplInfo.h"
+#include "Types/IpplTypes.h"
 namespace Kokkos {
     template <typename T, unsigned Dim>
     struct reduction_identity<ippl::Vector<T, Dim>> {
@@ -24,10 +25,10 @@ namespace Kokkos {
             return ippl::Vector<T, Dim>(1);
         }
         KOKKOS_FORCEINLINE_FUNCTION static ippl::Vector<T, Dim> min() {
-            return ippl::Vector<T, Dim>(std::numeric_limits<T>::infinity());
+            return ippl::Vector<T, Dim>(ippl::detail::infinity<T>());
         }
         KOKKOS_FORCEINLINE_FUNCTION static ippl::Vector<T, Dim> max() {
-            return ippl::Vector<T, Dim>(-std::numeric_limits<T>::infinity());
+            return ippl::Vector<T, Dim>(-ippl::detail::infinity<T>());
         }
     };
 }  // namespace Kokkos

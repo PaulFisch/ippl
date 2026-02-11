@@ -21,14 +21,25 @@ if(IPPL_ENABLE_FINUFFT)
 endif()
 
 add_executable (BumponTailInstabilityPIF BumponTailInstabilityPIF.cpp)
-target_link_libraries (BumponTailInstabilityPIF ${IPPL_LIBS})
+target_link_libraries (BumponTailInstabilityPIF PRIVATE ${IPPL_LIBS})
+
+if(IPPL_ENABLE_FINUFFT)
+    target_link_libraries(BumponTailInstabilityPIF PRIVATE cufinufft finufft)
+endif()
 
 add_executable (PenningTrapPIF PenningTrapPIF.cpp)
-target_link_libraries (PenningTrapPIF ${IPPL_LIBS})
+target_link_libraries (PenningTrapPIF PRIVATE ${IPPL_LIBS})
+
+if(IPPL_ENABLE_FINUFFT)
+    target_link_libraries(PenningTrapPIF PRIVATE cufinufft finufft)
+endif()
 
 add_executable (LandauDampingPIFPruned LandauDampingPIFPruned.cpp)
 target_link_libraries (LandauDampingPIFPruned PRIVATE ${IPPL_LIBS})
 
+if(IPPL_ENABLE_FINUFFT)
+    target_link_libraries(LandauDampingPIFPruned PRIVATE cufinufft finufft)
+endif()
 # vi: set et ts=4 sw=4 sts=4:
 
 # Local Variables:

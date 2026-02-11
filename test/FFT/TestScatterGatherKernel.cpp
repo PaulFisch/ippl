@@ -226,20 +226,20 @@ int main(int argc, char* argv[]) {
         cfg_tiled.sort   = true;
 
         ippl::Interpolation::GatherConfig cfg_atomic_gather =
-            ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
-        cfg_atomic_gather.method = ippl::Interpolation::GatherMethod::Atomic;
-        cfg_atomic_gather.sort   = true;
+            ippl::Interpolation::GatherConfig<3>::get_default<ExecSpace>();
+        cfg_atomic_gather.method = ippl::Interpolation::GatherMethod::AtomicSort;
+        // cfg_atomic_gather.sort   = true;
 
         ippl::Interpolation::GatherConfig cfg_tiled_gather =
-            ippl::Interpolation::GatherConfig::get_default<ExecSpace>();
+            ippl::Interpolation::GatherConfig<3>::get_default<ExecSpace>();
         cfg_tiled_gather.method = ippl::Interpolation::GatherMethod::Tiled;
-        cfg_tiled_gather.sort   = true;
+        // cfg_tiled_gather.sort   = true;
 
         // ====================================================================
         // 1) Adjointness test for Atomic and Tiled
         // ====================================================================
         auto run_adjointness = [&](const ippl::Interpolation::ScatterConfig<3>& cfg,
-                                   const ippl::Interpolation::GatherConfig& cfg_gather,
+                                   const ippl::Interpolation::GatherConfig<3>& cfg_gather,
                                    const char* label, real_type& rel_err_out) {
             // Scatter: grid_scattered_atomic used as scratch here
             Field_t& grid_scattered = grid_scattered_atomic;
