@@ -451,7 +451,6 @@ public:
         return 0;
     }
 
-private:
     void print_header() {
         std::cout << "\n============================================================\n";
         std::cout << " Scatter benchmark (ESKernel) + microbench+fit model\n";
@@ -650,7 +649,6 @@ private:
         layout_.reset();
     }
 
-private:
     BenchParams p_;
     ippl::NUFFT::ESKernel<real_type> kernel_;
 
