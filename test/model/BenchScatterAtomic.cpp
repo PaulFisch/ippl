@@ -1,348 +1,499 @@
-// BenchmarkScatterAtomic.cpp
-#include "Ippl.h"
+/**
+ * BenchmarkScatterESRoofline.cpp
+ *
+ * Scatter throughput benchmark using ippl::NUFFT::ESKernel and density-based particle count.
+ *
+ * Measures:
+ *  - Scatter throughput (updates/s) for ScatterMethod variants (Atomic/Tiled/OutputFocused)
+ *  - Kokkos atomicAdd baseline with no contention (ops/s) as an "ideal atomics roofline"
+ *
+ * Usage:
+ *   mpirun -n 1 ./BenchmarkScatterESRoofline --grid 256 --rho 10 --tol 1e-6 --runs 20 --warmup 5
+ * --output out.csv
+ *
+ * Notes:
+ *  - Total particles = rho * grid^3 (global), distributed across ranks.
+ *  - Updates = n_particles_local * (kernel.width()^3)   (per-rank)
+ *    Global updates/s computed by MPI reduction.
+ */
 
 #include <Kokkos_Core.hpp>
-#include <Kokkos_Random.hpp>
+#include "Ippl.h"
 
+#include <Kokkos_Random.hpp>
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <mpi.h>
+#include <numeric>
 #include <string>
 #include <vector>
-#include <iomanip>
 
-#include "Interpolation/Scatter/Scatter.h"
-#include "Interpolation/Scatter/ScatterConfig.h"
-#include "Interpolation/Kernels.h"
+using namespace ippl;
 
-// --------------------- tiny CLI ---------------------
-struct Args {
-    int dim = 3;
-    int grid = 128;                 // per-dimension grid size (uniform)
-    int nParticles = 2'000'000;     // per rank
-    int repeats = 10;
-    bool sort = true;
-    std::string method = "Atomic";  // Atomic|Tiled|OutputFocused
-    std::string kernel = "Cubic";   // NGP|Linear|Quadratic|Cubic
-    std::string csv = "scatter_bench.csv";
+// --------------------- Manual timer (GPU fenced) ---------------------
+class ManualTimer {
+public:
+    using clock_type = std::chrono::high_resolution_clock;
+    void start() {
+        Kokkos::fence();
+        t0_ = clock_type::now();
+    }
+    double stop() {
+        Kokkos::fence();
+        auto t1 = clock_type::now();
+        return std::chrono::duration<double>(t1 - t0_).count();
+    }
+
+private:
+    clock_type::time_point t0_;
 };
 
-static Args parse_args(int argc, char** argv) {
-    Args a;
+// --------------------- CLI ---------------------
+struct BenchParams {
+    int grid           = 256;   // N
+    double rho         = 10.0;  // particles per grid point (global density)
+    double tol         = 1e-6;  // ESKernel tolerance -> width
+    int warmup         = 5;
+    int runs           = 20;
+    std::string dist   = "uniform";  // uniform|clustered
+    std::string output = "scatter_es_roofline.csv";
+    bool verbose       = false;
+    bool ncu_mode      = false;
+
+    size_t n_particles_global() const {
+        // rho * N^3
+        return static_cast<size_t>(rho * double(grid) * double(grid) * double(grid));
+    }
+};
+
+static BenchParams parse_args(int argc, char** argv) {
+    BenchParams p;
     for (int i = 1; i < argc; ++i) {
         auto get = [&](const char* k) -> const char* {
-            if (i + 1 >= argc) { std::cerr << "Missing value for " << k << "\n"; std::exit(1); }
+            if (i + 1 >= argc) {
+                std::fprintf(stderr, "Missing value for %s\n", k);
+                std::exit(1);
+            }
             return argv[++i];
         };
-        if (!std::strcmp(argv[i], "--dim")) a.dim = std::atoi(get("--dim"));
-        else if (!std::strcmp(argv[i], "--grid")) a.grid = std::atoi(get("--grid"));
-        else if (!std::strcmp(argv[i], "--n")) a.nParticles = std::atoi(get("--n"));
-        else if (!std::strcmp(argv[i], "--repeats")) a.repeats = std::atoi(get("--repeats"));
-        else if (!std::strcmp(argv[i], "--sort")) a.sort = std::atoi(get("--sort")) != 0;
-        else if (!std::strcmp(argv[i], "--method")) a.method = get("--method");
-        else if (!std::strcmp(argv[i], "--kernel")) a.kernel = get("--kernel");
-        else if (!std::strcmp(argv[i], "--csv")) a.csv = get("--csv");
-        else if (!std::strcmp(argv[i], "--help")) {
-            std::cout <<
-              "Usage: BenchmarkScatterAtomic [options]\n"
-              "  --dim 2|3\n"
-              "  --grid N              (per dim)\n"
-              "  --n N                 particles per rank\n"
-              "  --repeats N\n"
-              "  --sort 0|1\n"
-              "  --method Atomic|Tiled|OutputFocused\n"
-              "  --kernel NGP|Linear|Quadratic|Cubic\n"
-              "  --csv path\n";
+        if (!std::strcmp(argv[i], "--grid"))
+            p.grid = std::atoi(get("--grid"));
+        else if (!std::strcmp(argv[i], "--rho"))
+            p.rho = std::atof(get("--rho"));
+        else if (!std::strcmp(argv[i], "--tol"))
+            p.tol = std::atof(get("--tol"));
+        else if (!std::strcmp(argv[i], "--warmup"))
+            p.warmup = std::atoi(get("--warmup"));
+        else if (!std::strcmp(argv[i], "--runs"))
+            p.runs = std::atoi(get("--runs"));
+        else if (!std::strcmp(argv[i], "--dist"))
+            p.dist = get("--dist");
+        else if (!std::strcmp(argv[i], "--output"))
+            p.output = get("--output");
+        else if (!std::strcmp(argv[i], "--verbose") || !std::strcmp(argv[i], "-v"))
+            p.verbose = true;
+        else if (!std::strcmp(argv[i], "--ncu-mode")) {
+            p.ncu_mode = true;
+            p.warmup   = 1;
+            p.runs     = 1;
+        } else if (!std::strcmp(argv[i], "--help")) {
+            std::cout << "Usage: BenchmarkScatterESRoofline [options]\n"
+                         "  --grid N        grid size per dimension (default 256)\n"
+                         "  --rho R         particles per grid point (default 10)\n"
+                         "  --tol T         ESKernel tolerance (default 1e-6)\n"
+                         "  --warmup W      warmup runs (default 5)\n"
+                         "  --runs K        timed runs (default 20)\n"
+                         "  --dist D        uniform|clustered (default uniform)\n"
+                         "  --output FILE   output CSV (default scatter_es_roofline.csv)\n"
+                         "  --ncu-mode      single-run for Nsight Compute\n"
+                         "  -v,--verbose\n";
             std::exit(0);
         }
     }
-    return a;
+    return p;
 }
 
-// --------------------- timing helper ---------------------
-template <class F>
-double time_best_seconds(int repeats, F&& f) {
-    double best = 1e100;
-    for (int r = 0; r < repeats; ++r) {
-        ippl::fence();
-        double t0 = MPI_Wtime();
-        f();
-        ippl::fence();
-        double t1 = MPI_Wtime();
-        best = std::min(best, t1 - t0);
-    }
-    return best;
-}
-
-// --------------------- Kokkos microbench ---------------------
-struct MicroBenchRes {
-    double seconds = 0.0;
-    double ops = 0.0;
-    double gops = 0.0;
+// --------------------- Stats ---------------------
+struct Stats {
+    double mean_ms = 0, std_ms = 0, min_ms = 0, max_ms = 0, median_ms = 0;
+    size_t n = 0;
 };
 
+static Stats stats_ms(const std::vector<double>& sec) {
+    Stats s;
+    s.n = sec.size();
+    if (s.n == 0)
+        return s;
+
+    std::vector<double> ms(s.n);
+    for (size_t i = 0; i < s.n; ++i)
+        ms[i] = sec[i] * 1000.0;
+
+    double sum = std::accumulate(ms.begin(), ms.end(), 0.0);
+    s.mean_ms  = sum / double(s.n);
+
+    double sq = 0.0;
+    for (double x : ms)
+        sq += (x - s.mean_ms) * (x - s.mean_ms);
+    s.std_ms = (s.n > 1) ? std::sqrt(sq / double(s.n - 1)) : 0.0;
+
+    auto [mn, mx] = std::minmax_element(ms.begin(), ms.end());
+    s.min_ms      = *mn;
+    s.max_ms      = *mx;
+
+    std::sort(ms.begin(), ms.end());
+    s.median_ms = (s.n % 2 == 0) ? 0.5 * (ms[s.n / 2 - 1] + ms[s.n / 2]) : ms[s.n / 2];
+    return s;
+}
+
+// --------------------- Microbench: atomic no contention ---------------------
 template <class ExecSpace>
-MicroBenchRes bench_atomic_nocont(std::size_t nThreads, int iters, int repeats) {
+double atomic_nocont_ops_per_sec(size_t nThreads, int iters, int repeats) {
     Kokkos::View<float*, ExecSpace> v("v", nThreads);
     Kokkos::deep_copy(v, 0.0f);
 
-    auto best = time_best_seconds(repeats, [&](){
-        Kokkos::parallel_for("atomic_nocont",
-            Kokkos::RangePolicy<ExecSpace>(0, nThreads),
-            KOKKOS_LAMBDA(const int i){
+    auto run_once = [&]() {
+        Kokkos::parallel_for(
+            "atomic_nocont", Kokkos::RangePolicy<ExecSpace>(0, nThreads),
+            KOKKOS_LAMBDA(const int i) {
                 for (int k = 0; k < iters; ++k) {
                     Kokkos::atomic_add(&v(i), 1.0f);
                 }
             });
         Kokkos::fence();
-    });
-
-    MicroBenchRes r;
-    r.seconds = best;
-    r.ops = double(nThreads) * double(iters);
-    r.gops = (r.ops / r.seconds) / 1e9;
-    return r;
-}
-
-template <class ExecSpace>
-MicroBenchRes bench_atomic_cont(std::size_t nThreads, int iters, int repeats) {
-    Kokkos::View<float*, ExecSpace> v("v", 1);
-    Kokkos::deep_copy(v, 0.0f);
-
-    auto best = time_best_seconds(repeats, [&](){
-        Kokkos::parallel_for("atomic_cont",
-            Kokkos::RangePolicy<ExecSpace>(0, nThreads),
-            KOKKOS_LAMBDA(const int){
-                for (int k = 0; k < iters; ++k) {
-                    Kokkos::atomic_add(&v(0), 1.0f);
-                }
-            });
-        Kokkos::fence();
-    });
-
-    MicroBenchRes r;
-    r.seconds = best;
-    r.ops = double(nThreads) * double(iters);
-    r.gops = (r.ops / r.seconds) / 1e9;
-    return r;
-}
-
-template <class ExecSpace>
-MicroBenchRes bench_write_nocont(std::size_t nThreads, int iters, int repeats) {
-    Kokkos::View<float*, ExecSpace> v("v", nThreads);
-    Kokkos::deep_copy(v, 0.0f);
-
-    auto best = time_best_seconds(repeats, [&](){
-        Kokkos::parallel_for("write_nocont",
-            Kokkos::RangePolicy<ExecSpace>(0, nThreads),
-            KOKKOS_LAMBDA(const int i){
-                float x = 0.0f;
-                for (int k = 0; k < iters; ++k) {
-                    x += 1.0f;
-                    v(i) = x;
-                }
-            });
-        Kokkos::fence();
-    });
-
-    MicroBenchRes r;
-    r.seconds = best;
-    r.ops = double(nThreads) * double(iters);
-    r.gops = (r.ops / r.seconds) / 1e9;
-    return r;
-}
-
-// --------------------- scatter runner (templated on Dim + Kernel) ---------------------
-template <typename T, typename ExecSpace, unsigned Dim, typename Kernel>
-int run_scatter(const Args& a) {
-    using mesh_type      = ippl::UniformCartesian<T, Dim>;
-    using layout_type    = ippl::FieldLayout<Dim>;
-    using playout_type   = ippl::ParticleSpatialLayout<T, Dim, mesh_type, ExecSpace>;
-    using field_type     = ippl::Field<T, Dim, mesh_type, typename mesh_type::DefaultCentering, ExecSpace>::uniform_type;
-
-    // domain/grid
-    ippl::Vector<T, Dim> origin, extent, hx;
-    ippl::Vector<std::size_t, Dim> gridSize;
-    const T L = T(1.0);
-
-    for (unsigned d = 0; d < Dim; ++d) {
-        origin[d] = 0.0;
-        extent[d] = L;
-        gridSize[d] = std::size_t(a.grid);
-        hx[d] = extent[d] / T(gridSize[d]);
-    }
-
-    Kernel kernel;
-
-    int nghost = kernel.width() / 2 + 1;
-
-    std::array<ippl::Index, Dim> domains;
-    std::array<bool, Dim> isParallel;
-    isParallel.fill(true);
-    for (unsigned d = 0; d < Dim; ++d) domains[d] = ippl::Index(gridSize[d]);
-
-    auto owned  = std::make_from_tuple<ippl::NDIndex<Dim>>(domains);
-    auto layout = std::make_shared<layout_type>(MPI_COMM_WORLD, owned, isParallel, true, nghost);
-    auto mesh   = std::make_shared<mesh_type>(owned, hx, origin);
-
-    auto playout = std::make_shared<playout_type>(*layout, *mesh);
-
-    // Minimal bunch: positions + weights
-    struct Bunch : public ippl::ParticleBase<playout_type> {
-        ippl::ParticleAttrib<T> weight;
-        explicit Bunch(playout_type& L) : ippl::ParticleBase<playout_type>(L) { this->addAttribute(weight); }
     };
-
-    auto bunch = std::make_shared<Bunch>(*playout);
-    bunch->create(a.nParticles);
-
-    // random particle positions and weights
-    auto R_view = bunch->R.getView();
-    auto w_view = bunch->weight.getView();
-    using RandPool = Kokkos::Random_XorShift64_Pool<ExecSpace>;
-    RandPool pool(1234 + ippl::Comm->rank() * 101);
-
-    auto origin_local = origin;
-    auto extent_local = extent;
-
-    Kokkos::parallel_for("init_particles", Kokkos::RangePolicy<ExecSpace>(0, a.nParticles),
-        KOKKOS_LAMBDA(const int i){
-            auto gen = pool.get_state();
-            ippl::Vector<T, Dim> pos;
-            for (unsigned d = 0; d < Dim; ++d) {
-                pos[d] = origin_local[d] + gen.drand() * extent_local[d];
-            }
-            R_view(i) = pos;
-            w_view(i) = T(1.0);
-            pool.free_state(gen);
-        });
-    Kokkos::fence();
-    bunch->update();
-    ippl::fence();
-
-    field_type field(*mesh, *layout, nghost);
-    field = T(0);
-
-    // scatter config
-    ippl::Interpolation::ScatterConfig<Dim> cfg;
-    cfg.sort = a.sort;
-    if (a.method == "Atomic") cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
-    else if (a.method == "Tiled") cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
-    else if (a.method == "OutputFocused") cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
-    else {
-        if (ippl::Comm->rank() == 0) std::cerr << "Unknown --method " << a.method << "\n";
-        return 2;
-    }
-
-    auto scatter = ippl::Scatter(kernel, cfg);
 
     // warmup
-    scatter(field, bunch->R, bunch->weight);
-    ippl::fence();
+    run_once();
 
-    // time
-    double t_best = time_best_seconds(a.repeats, [&](){
-        field = T(0);
-        scatter(field, bunch->R, bunch->weight);
-    });
-
-    // Estimate "updates" = particles * stencil_points.
-    // This is the modeling quantity you likely care about for histogram/stencil throughput.
-    const double stencil_points = std::pow(double(kernel.width()), double(Dim));
-    const double updates = double(a.nParticles) * stencil_points;
-    const double updates_per_s = updates / t_best;
-
-    // microbench baseline (Kokkos atomics)
-    // Use same logical parallelism as particle count; do a few iters to stabilize.
-    constexpr int microIters = 8;
-
-    auto m_nocont = bench_atomic_nocont<ExecSpace>(std::size_t(a.nParticles), microIters, 5);
-    auto m_cont   = bench_atomic_cont<ExecSpace>(std::size_t(a.nParticles), microIters, 5);
-    auto m_write  = bench_write_nocont<ExecSpace>(std::size_t(a.nParticles), microIters, 5);
-
-    // Convert baseline to per-op (atomicAdd) rate; compare scatter updates vs atomic ops rate.
-    // Baseline ops/sec:
-    const double atomic_nocont_ops_per_s = m_nocont.ops / m_nocont.seconds;
-
-    const double util = updates_per_s / atomic_nocont_ops_per_s;
-
-    if (ippl::Comm->rank() == 0) {
-        std::cout << std::fixed << std::setprecision(6);
-        std::cout << "Scatter: dim=" << Dim
-                  << " kernel_width=" << kernel.width()
-                  << " stencil_points=" << stencil_points
-                  << " method=" << a.method
-                  << " sort=" << (a.sort ? 1 : 0)
-                  << " n=" << a.nParticles
-                  << " best_s=" << t_best
-                  << " updates/s=" << updates_per_s
-                  << "\n";
-
-        std::cout << "Microbench (Kokkos):\n"
-                  << "  atomic_nocont: " << (atomic_nocont_ops_per_s/1e9) << " Gop/s\n"
-                  << "  atomic_cont  : " << ((m_cont.ops/m_cont.seconds)/1e9) << " Gop/s\n"
-                  << "  write_nocont : " << ((m_write.ops/m_write.seconds)/1e9) << " Gop/s\n"
-                  << "  utilization(scatter_updates / atomic_nocont_ops) = " << util << "\n";
-
-        // CSV header + row
-        // Note: append mode; remove file if you want a clean sweep.
-        std::FILE* f = std::fopen(a.csv.c_str(), "a");
-        if (f) {
-            // If file empty, write header (best-effort)
-            std::fseek(f, 0, SEEK_END);
-            long sz = std::ftell(f);
-            if (sz == 0) {
-                std::fprintf(f,
-                    "dim,grid,kernel,width,stencil_points,method,sort,nParticles,"
-                    "scatter_seconds,scatter_updates_per_s,"
-                    "atomic_nocont_ops_per_s,atomic_cont_ops_per_s,write_nocont_ops_per_s,util\n");
-            }
-            std::fprintf(f,
-                "%u,%d,%s,%d,%.0f,%s,%d,%d,%.9f,%.6e,%.6e,%.6e,%.6e,%.6f\n",
-                Dim, a.grid, a.kernel.c_str(), kernel.width(), stencil_points,
-                a.method.c_str(), (a.sort ? 1 : 0), a.nParticles,
-                t_best, updates_per_s,
-                atomic_nocont_ops_per_s,
-                (m_cont.ops/m_cont.seconds),
-                (m_write.ops/m_write.seconds),
-                util);
-            std::fclose(f);
-        } else {
-            std::cerr << "Could not open CSV: " << a.csv << "\n";
-        }
+    ManualTimer t;
+    double best = 1e100;
+    for (int r = 0; r < repeats; ++r) {
+        t.start();
+        run_once();
+        double dt = t.stop();
+        best      = std::min(best, dt);
     }
 
-    return 0;
+    const double ops = double(nThreads) * double(iters);
+    return ops / best;
 }
 
-int main(int argc, char** argv) {
-    ippl::initialize(argc, argv);
-    Args a = parse_args(argc, argv);
+// --------------------- Benchmark core ---------------------
+template <typename ExecSpace>
+class Bench {
+public:
+    static constexpr unsigned Dim = 3;
+    using real_type               = double;
+    using complex_type            = Kokkos::complex<real_type>;
 
-    using T = double;
-    using ExecSpace = Kokkos::DefaultExecutionSpace;
+    using Mesh_t      = ippl::UniformCartesian<real_type, Dim>;
+    using Centering_t = typename Mesh_t::DefaultCentering;
+    using Field_t     = ippl::Field<complex_type, Dim, Mesh_t, Centering_t>;
+    using Layout_t    = ippl::FieldLayout<Dim>;
+    using PLayout_t   = ippl::ParticleSpatialLayout<real_type, Dim>;
+    using Bunch_t     = ippl::ParticleBase<PLayout_t>;
 
-    int rc = 0;
+    explicit Bench(const BenchParams& p)
+        : p_(p)
+        , kernel_(p.tol) {}
 
-    auto run_dim = [&](auto dim_tag) {
-        constexpr unsigned Dim = decltype(dim_tag)::value;
+    int run() {
+        if (ippl::Comm->rank() == 0)
+            print_header();
 
-        if (a.kernel == "NGP")       rc = run_scatter<T, ExecSpace, Dim, ippl::Interpolation::NGPKernel<T>>(a);
-        else if (a.kernel == "Linear")    rc = run_scatter<T, ExecSpace, Dim, ippl::Interpolation::LinearKernel<T>>(a);
-        else if (a.kernel == "Quadratic") rc = run_scatter<T, ExecSpace, Dim, ippl::Interpolation::QuadraticKernel<T>>(a);
-        else if (a.kernel == "Cubic")     rc = run_scatter<T, ExecSpace, Dim, ippl::Interpolation::CubicKernel<T>>(a);
-        else {
-            if (ippl::Comm->rank() == 0) std::cerr << "Unknown --kernel " << a.kernel << "\n";
-            rc = 2;
+        const int w      = kernel_.width();
+        const int nghost = w / 2 + 1;
+
+        setup_domain(nghost);
+        init_particles();
+        init_grid(nghost);
+
+        // Scatter configs to test
+        struct Variant {
+            const char* name;
+            ippl::Interpolation::ScatterConfig<Dim> cfg;
+        };
+        std::vector<Variant> variants;
+
+        {
+            auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
+            variants.push_back({"Atomic", cfg});
         }
+        {
+            auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
+            cfg.tile_size.fill(4);
+            variants.push_back({"Tiled", cfg});
+        }
+        {
+            auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
+            // heuristic from your snippet (safe fallback)
+            int tile_size                  = 2;
+            std::array<int, 10> tile_sizes = {1, 1, 4, 3, 3, 2, 4, 2, 2, 2};
+            if (w < 10)
+                tile_size = tile_sizes[w];
+            cfg.tile_size.fill(tile_size);
+            variants.push_back({"GridParallel", cfg});
+        }
+
+        // Baseline “ideal atomic” (no contention)
+        // Use same logical parallelism as local particles; a few iters to stabilize.
+        const int microIters      = 8;
+        double atomic_nocont_rate = atomic_nocont_ops_per_sec<ExecSpace>(n_local_, microIters, 5);
+
+        // MPI-reduce atomic roofline as a *sum of per-rank rates* (approx for identical GPUs).
+        double atomic_nocont_rate_global = 0.0;
+        MPI_Allreduce(&atomic_nocont_rate, &atomic_nocont_rate_global, 1, MPI_DOUBLE, MPI_SUM,
+                      ippl::Comm->getCommunicator());
+
+        // Run variants and write CSV
+        if (ippl::Comm->rank() == 0)
+            write_csv_header();
+
+        for (auto& v : variants) {
+            auto res = bench_scatter_variant(v.name, v.cfg, nghost);
+
+            // Global particle + update accounting
+            double updates_local  = double(n_local_) * std::pow(double(kernel_.width()), 3.0);
+            double updates_global = 0.0;
+            MPI_Allreduce(&updates_local, &updates_global, 1, MPI_DOUBLE, MPI_SUM,
+                          ippl::Comm->getCommunicator());
+
+            double t_mean_s = res.total_stats.mean_ms * 1e-3;
+            // The timing is already global-synchronized by fences, but each rank timed its own
+            // work. We use the *max* mean across ranks to be conservative.
+            double t_mean_s_global = 0.0;
+            MPI_Allreduce(&t_mean_s, &t_mean_s_global, 1, MPI_DOUBLE, MPI_MAX,
+                          ippl::Comm->getCommunicator());
+
+            double scatter_updates_per_s = updates_global / t_mean_s_global;
+            double util                  = scatter_updates_per_s / atomic_nocont_rate_global;
+
+            if (ippl::Comm->rank() == 0) {
+                append_csv_row(v.name, res, scatter_updates_per_s, atomic_nocont_rate_global, util);
+                if (p_.verbose) {
+                    std::cout << "Variant " << v.name << " mean_ms=" << res.total_stats.mean_ms
+                              << " updates/s=" << scatter_updates_per_s
+                              << " atomic_nocont_ops/s=" << atomic_nocont_rate_global
+                              << " util=" << util << "\n";
+                }
+            }
+        }
+
+        cleanup();
+        return 0;
+    }
+
+    struct Result {
+        std::vector<double> total_times_s;
+        Stats total_stats;
     };
 
-    if (a.dim == 2) run_dim(std::integral_constant<unsigned, 2>{});
-    else if (a.dim == 3) run_dim(std::integral_constant<unsigned, 3>{});
-    else {
-        if (ippl::Comm->rank() == 0) std::cerr << "Unsupported --dim " << a.dim << " (use 2 or 3)\n";
-        rc = 2;
+    void print_header() {
+        std::cout << "\n============================================================\n";
+        std::cout << " Scatter benchmark (ESKernel) + atomic roofline (nocont)\n";
+        std::cout << "============================================================\n";
+        std::cout << "grid N           : " << p_.grid << "\n";
+        std::cout << "rho              : " << p_.rho << "\n";
+        std::cout << "particles global : " << p_.n_particles_global() << "\n";
+        std::cout << "dist             : " << p_.dist << "\n";
+        std::cout << "tol              : " << p_.tol << "\n";
+        std::cout << "ESKernel width w : " << kernel_.width() << "\n";
+        std::cout << "warmup/runs      : " << p_.warmup << "/" << p_.runs << "\n";
+        if (p_.ncu_mode)
+            std::cout << "NCU mode         : ON (single run)\n";
+        std::cout << "============================================================\n\n";
     }
+
+    void setup_domain(int nghost) {
+        ippl::NDIndex<Dim> domain;
+        for (unsigned d = 0; d < Dim; ++d)
+            domain[d] = ippl::Index(p_.grid);
+
+        std::array<bool, Dim> isParallel;
+        isParallel.fill(true);
+
+        layout_ = std::make_unique<Layout_t>(MPI_COMM_WORLD, domain, isParallel, true, nghost);
+
+        for (unsigned d = 0; d < Dim; ++d) {
+            origin_[d] = 0.0;
+            hx_[d]     = 2.0 * M_PI / double(p_.grid);
+        }
+        mesh_    = std::make_unique<Mesh_t>(domain, hx_, origin_);
+        playout_ = std::make_unique<PLayout_t>(*layout_, *mesh_);
+
+        bunch_ = std::make_unique<Bunch_t>(*playout_);
+        bunch_->addAttribute(R_);
+        bunch_->addAttribute(Q_);
+
+        bunch_->setParticleBC(ippl::BC::PERIODIC);
+
+        // Global particles split across ranks
+        const size_t n_global = p_.n_particles_global();
+        const int nr          = ippl::Comm->size();
+        const int r           = ippl::Comm->rank();
+
+        const size_t base = n_global / size_t(nr);
+        const size_t rem  = n_global % size_t(nr);
+        n_local_          = base + (size_t(r) < rem ? 1 : 0);
+
+        bunch_->create(n_local_);
+    }
+
+    void init_particles() {
+        auto Rv = R_.getView();
+        auto Qv = Q_.getView();
+
+        Kokkos::Random_XorShift64_Pool<> pool(42 + ippl::Comm->rank() * 101);
+
+        if (p_.dist == "uniform") {
+            Kokkos::parallel_for(
+                "init_R_uniform", Kokkos::RangePolicy<ExecSpace>(0, n_local_),
+                KOKKOS_LAMBDA(const int i) {
+                    auto gen = pool.get_state();
+                    for (unsigned d = 0; d < Dim; ++d) {
+                        Rv(i)[d] = gen.drand() * 2.0 * M_PI;
+                    }
+                    Qv(i) = complex_type(1.0, 0.0);
+                    pool.free_state(gen);
+                });
+        } else {  // clustered
+            Kokkos::parallel_for(
+                "init_R_clustered", Kokkos::RangePolicy<ExecSpace>(0, n_local_),
+                KOKKOS_LAMBDA(const int i) {
+                    auto gen = pool.get_state();
+                    for (unsigned d = 0; d < Dim; ++d) {
+                        double u1 = gen.drand();
+                        double u2 = gen.drand();
+                        double z  = Kokkos::sqrt(-2.0 * Kokkos::log(u1 + 1e-12))
+                                   * Kokkos::cos(2.0 * M_PI * u2);
+                        double x = M_PI + 0.3 * z;
+                        while (x < 0)
+                            x += 2.0 * M_PI;
+                        while (x >= 2.0 * M_PI)
+                            x -= 2.0 * M_PI;
+                        Rv(i)[d] = x;
+                    }
+                    Qv(i) = complex_type(1.0, 0.0);
+                    pool.free_state(gen);
+                });
+        }
+
+        Kokkos::fence();
+    }
+
+    void init_grid(int nghost) {
+        grid_  = std::make_unique<Field_t>(*mesh_, *layout_, nghost);
+        *grid_ = complex_type(0.0, 0.0);
+        Kokkos::fence();
+    }
+
+    Result bench_scatter_variant(const std::string& name,
+                                 const ippl::Interpolation::ScatterConfig<Dim>& cfg,
+                                 int /*nghost*/) {
+        if (ippl::Comm->rank() == 0 && p_.verbose) {
+            std::cout << "Benchmark scatter: " << name << "\n";
+        }
+
+        ManualTimer t;
+
+        // warmup
+        for (int i = 0; i < p_.warmup; ++i) {
+            *grid_ = complex_type(0.0, 0.0);
+            Q_.scatter_kernel(*grid_, R_, kernel_, cfg);
+            grid_->accumulateHalo();
+        }
+        Kokkos::fence();
+
+        std::vector<double> times;
+        times.reserve(p_.runs);
+
+        for (int i = 0; i < p_.runs; ++i) {
+            *grid_ = complex_type(0.0, 0.0);
+            Kokkos::fence();
+
+            t.start();
+            Q_.scatter_kernel(*grid_, R_, kernel_, cfg);
+            grid_->accumulateHalo();
+            double dt = t.stop();
+
+            times.push_back(dt);
+        }
+
+        Result r;
+        r.total_times_s = std::move(times);
+        r.total_stats   = stats_ms(r.total_times_s);
+        return r;
+    }
+
+    void write_csv_header() {
+        // overwrite each run (simple)
+        std::ofstream out(p_.output);
+        out << "kernel_variant,dist,grid,rho,particles_global,particles_local,"
+               "tol,width,warmup,runs,"
+               "mean_ms,std_ms,median_ms,min_ms,max_ms,"
+               "scatter_updates_per_s,atomic_nocont_ops_per_s,util\n";
+    }
+
+    void append_csv_row(const std::string& variant, const Result& r, double scatter_updates_per_s,
+                        double atomic_nocont_ops_per_s_global, double util) {
+        std::ofstream out(p_.output, std::ios::app);
+
+        out << variant << "," << p_.dist << "," << p_.grid << "," << std::fixed
+            << std::setprecision(3) << p_.rho << "," << p_.n_particles_global() << "," << n_local_
+            << "," << std::scientific << std::setprecision(2) << p_.tol << "," << kernel_.width()
+            << "," << p_.warmup << "," << p_.runs << "," << std::fixed << std::setprecision(4)
+            << r.total_stats.mean_ms << "," << r.total_stats.std_ms << ","
+            << r.total_stats.median_ms << "," << r.total_stats.min_ms << "," << r.total_stats.max_ms
+            << "," << std::scientific << std::setprecision(6) << scatter_updates_per_s << ","
+            << atomic_nocont_ops_per_s_global << "," << std::fixed << std::setprecision(6) << util
+            << "\n";
+    }
+
+    void cleanup() {
+        bunch_.reset();
+        playout_.reset();
+        grid_.reset();
+        mesh_.reset();
+        layout_.reset();
+    }
+
+private:
+    BenchParams p_;
+    ippl::NUFFT::ESKernel<real_type> kernel_;
+
+    ippl::Vector<real_type, Dim> origin_{};
+    ippl::Vector<real_type, Dim> hx_{};
+
+    std::unique_ptr<Layout_t> layout_;
+    std::unique_ptr<Mesh_t> mesh_;
+    std::unique_ptr<Field_t> grid_;
+    std::unique_ptr<PLayout_t> playout_;
+    std::unique_ptr<Bunch_t> bunch_;
+
+    size_t n_local_ = 0;
+
+    ippl::ParticleAttrib<ippl::Vector<real_type, Dim>> R_;
+    ippl::ParticleAttrib<complex_type> Q_;
+};
+
+// --------------------- main ---------------------
+int main(int argc, char** argv) {
+    ippl::initialize(argc, argv);
+
+    BenchParams p = parse_args(argc, argv);
+
+    Bench<Kokkos::DefaultExecutionSpace> b(p);
+    int rc = b.run();
 
     ippl::finalize();
     return rc;
