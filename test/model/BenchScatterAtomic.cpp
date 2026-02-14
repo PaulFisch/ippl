@@ -489,12 +489,13 @@ private:
 // --------------------- main ---------------------
 int main(int argc, char** argv) {
     ippl::initialize(argc, argv);
+    int rc = 1;
+    {
+        BenchParams p = parse_args(argc, argv);
 
-    BenchParams p = parse_args(argc, argv);
-
-    Bench<Kokkos::DefaultExecutionSpace> b(p);
-    int rc = b.run();
-
+        Bench<Kokkos::DefaultExecutionSpace> b(p);
+        rc = b.run();
+    }
     ippl::finalize();
     return rc;
 }
