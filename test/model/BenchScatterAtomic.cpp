@@ -333,14 +333,14 @@ public:
         return 0;
     }
 
-    static ValueType one_value() {
+    KOKKOS_INLINE_FUNCTION static ValueType one_value() {
         if constexpr (std::is_same_v<ValueType, double>) {
             return 1.0;
         } else {
             return ValueType(1.0, 0.0);
         }
     }
-    static ValueType zero_value() {
+    KOKKOS_INLINE_FUNCTION static ValueType zero_value() {
         if constexpr (std::is_same_v<ValueType, double>) {
             return 0.0;
         } else {
