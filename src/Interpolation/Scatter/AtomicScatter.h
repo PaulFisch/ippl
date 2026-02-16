@@ -107,12 +107,10 @@ namespace ippl::Interpolation::detail {
             CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx, args.n_grid};
 
             constexpr auto dimension = Dim;
-            constexpr auto width = W;
+            constexpr auto width     = W;
 
             Kokkos::parallel_for(
-                Kokkos::ThreadVectorMDRange(team, dimension,  width), [&](const int d, const int  i) {
-                    // int d                = idx_linear % Dim;
-                    // int i                = idx_linear / Dim;
+                Kokkos::ThreadVectorMDRange(team, dimension, width), [&](const int d, const int i) {
                     const RealType g_pos = transform.toGridCoordinate(args.x(p_global)[d], d);
                     const int idx0       = transform.getStencilBase(g_pos, W);
 
@@ -134,62 +132,19 @@ namespace ippl::Interpolation::detail {
             const ValueType my_val = args.values(p_global);
             auto grid              = args.grid;
 
-            // Cache base indices in registers
-            int my_base[Dim];
-            for (unsigned d = 0; d < Dim; ++d) {
-                my_base[d] = base(team_rank, d);
-            }
-
-            // Distribute stencil points across vector lanes
-            Kokkos::parallel_for(
-                Kokkos::ThreadVectorRange(team, total_stencil_points),
-                [&](const int stencil_idx_linear) {
-                    const auto stencil_idx = linear_to_multi(stencil_idx_linear);
-
-                    // Compute weight product
-                    RealType w = RealType(1);
-                    for (unsigned d = 0; d < Dim; ++d) {
-                        w *= kw(team_rank, d, stencil_idx[d]);
-                    }
-
-                    if constexpr (std::is_same_v<grid_value_t, Kokkos::complex<RealType>>
-                                  && std::is_same_v<ValueType, RealType>) {
-                        const auto contribution = my_val * w;
-
-                        // Perform atomic scatter
-                        if constexpr (Dim == 1) {
-                            Kokkos::atomic_add(&grid(my_base[0] + stencil_idx[0]).real(),
-                                               contribution);
-                        } else if constexpr (Dim == 2) {
-                            Kokkos::atomic_add(
-                                &grid(my_base[0] + stencil_idx[0], my_base[1] + stencil_idx[1])
-                                     .real(),
-                                contribution);
-                        } else if constexpr (Dim == 3) {
-                            Kokkos::atomic_add(
-                                &grid(my_base[0] + stencil_idx[0], my_base[1] + stencil_idx[1],
-                                      my_base[2] + stencil_idx[2])
-                                     .real(),
-                                contribution);
-                        }
-                    } else {
-                        const auto contribution = static_cast<grid_value_t>(my_val * w);
-
-                        // Perform atomic scatter
-                        if constexpr (Dim == 1) {
-                            Kokkos::atomic_add(&grid(my_base[0] + stencil_idx[0]), contribution);
-                        } else if constexpr (Dim == 2) {
-                            Kokkos::atomic_add(
-                                &grid(my_base[0] + stencil_idx[0], my_base[1] + stencil_idx[1]),
-                                contribution);
-                        } else if constexpr (Dim == 3) {
-                            Kokkos::atomic_add(
-                                &grid(my_base[0] + stencil_idx[0], my_base[1] + stencil_idx[1],
-                                      my_base[2] + stencil_idx[2]),
-                                contribution);
-                        }
-                    }
+            auto stencil_extents = Kokkos::Array<int, Dim>{};
+            for_constexpr(std::make_integer_sequence<int, Dim>{}, [&]<int d>() {
+                stencil_extents[d] = W;
+            });
+            thread_vector_md_for<Dim>(team, stencil_extents, [&](auto... stencil_idx) {
+                RealType w = product_over<Dim>([&]<int D>() {
+                    return kw(team_rank, D, get_arg<D>(stencil_idx...));
                 });
+
+                auto& cell = grid_at(grid, base, team_rank, stencil_idx...);
+                Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
+                                   static_cast<grid_value_t>(my_val * w));
+            });
         }
 
         void run(size_t) {

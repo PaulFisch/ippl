@@ -103,6 +103,26 @@ namespace ippl {
         (f.template operator()<Is>(), ...);
     }
 
+    template <int... Is, typename F>
+    KOKKOS_FORCEINLINE_FUNCTION auto product_over(std::integer_sequence<int, Is...>, F&& f) {
+        return (f.template operator()<Is>() * ...);
+    }
+
+    template <int N, typename F>
+    KOKKOS_FORCEINLINE_FUNCTION auto product_over(F&& f) {
+        return product_over(std::make_integer_sequence<int, N>{}, std::forward<F>(f));
+    }
+
+    template <int Dim, typename Team, typename Extents, typename F>
+    KOKKOS_FORCEINLINE_FUNCTION void thread_vector_md_for(const Team& team, const Extents& extents,
+                                                          F&& f) {
+        [&]<int... Is>(std::integer_sequence<int, Is...>) {
+            Kokkos::parallel_for(
+                Kokkos::ThreadVectorMDRange<Kokkos::Rank<Dim>, Team>(team, extents[Is]...),
+                std::forward<F>(f));
+        }(std::make_integer_sequence<int, Dim>{});
+    }
+
     namespace detail {
         /*!
          * Recursively templated struct for defining tuples with arbitrary
@@ -231,6 +251,31 @@ namespace ippl {
                                typename detail::ExtractReducerReturnType<ReducerArgument>::type...>(
                 functor),
             std::forward<ReducerArgument>(reducer)...);
+    }
+
+    template <std::size_t I, typename T, typename... Rest>
+    KOKKOS_FORCEINLINE_FUNCTION auto get_arg(T first, Rest... rest) {
+        if constexpr (I == 0) {
+            return first;
+        } else {
+            return get_arg<I - 1>(rest...);
+        }
+    }
+
+    template <typename Grid, typename Base, typename... Stencils>
+    KOKKOS_FORCEINLINE_FUNCTION decltype(auto) grid_at(Grid& grid, const Base& base, int team_rank,
+                                                       Stencils... stencil_idx) {
+        return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> decltype(auto) {
+            return grid((base(team_rank, Is) + get_arg<Is>(stencil_idx...))...);
+        }(std::index_sequence_for<Stencils...>{});
+    }
+
+    template <int D, typename Grid, typename Base, typename Stencils>
+    KOKKOS_FORCEINLINE_FUNCTION decltype(auto) grid_at_t(Grid& grid, const Base& base,
+                                                         int team_rank, Stencils& stencil_idx) {
+        return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> decltype(auto) {
+            return grid((base(team_rank, Is) + stencil_idx[Is])...);
+        }(std::make_index_sequence<D>{});
     }
 }  // namespace ippl
 

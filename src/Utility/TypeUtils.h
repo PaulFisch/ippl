@@ -442,6 +442,24 @@ namespace ippl {
 
     template <typename T>
     inline constexpr bool is_complex_v = is_complex<T>::value;
+
+    template <typename T>
+    KOKKOS_FORCEINLINE_FUNCTION decltype(auto) real_part(T& val) {
+        if constexpr (is_complex_v<std::remove_cv_t<T>>) {
+            return val.real();
+        } else {
+            return val;
+        }
+    }
+
+    template <typename GridT, typename T>
+    KOKKOS_FORCEINLINE_FUNCTION decltype(auto) to_grid_value(T& val) {
+        if constexpr (is_complex_v<std::remove_cv_t<T>> && !is_complex_v<std::remove_cv_t<GridT>>) {
+            return val.real();
+        } else {
+            return val;
+        }
+    }
 }  // namespace ippl
 
 #endif
