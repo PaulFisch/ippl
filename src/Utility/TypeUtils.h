@@ -460,6 +460,15 @@ namespace ippl {
             return val;
         }
     }
+
+    template <int Base, int Exp>
+    struct StaticPow {
+        static constexpr int value = Base * StaticPow<Base, Exp - 1>::value;
+    };
+    template <int Base>
+    struct StaticPow<Base, 0> {
+        static constexpr int value = 1;
+    };
 }  // namespace ippl
 
 #endif

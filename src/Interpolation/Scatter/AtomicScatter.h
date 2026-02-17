@@ -87,65 +87,152 @@ namespace ippl::Interpolation::detail {
             const int team_rank = team.team_rank();
             const int team_size = team.team_size();
 
-            // Allocate scratch views
-            ScratchBaseView base(team.team_scratch(0), team_size, Dim);
-            ScratchWeightsView kw(team.team_scratch(0), team_size, Dim, W);
-
-            // Global particle index for this team member
             const size_t base_particle = team.league_rank() * team_size;
             size_t p_global            = base_particle + team_rank;
-
-            if (p_global >= args.n_particles) {
+            if (p_global >= args.n_particles)
                 return;
-            }
 
-            // Each team member loads its particle
             if constexpr (Policy::use_sorting) {
                 p_global = args.permute(p_global);
             }
 
             CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx, args.n_grid};
 
-            constexpr auto dimension = Dim;
-            constexpr auto width     = W;
+            // ----------------------------
+            // 1) Build stencil base + weights (NO MDRange, NO scratch)
+            // ----------------------------
+            Kokkos::Array<int, Dim> base{};
+            Kokkos::Array<RealType, Dim * W> kw_flat{};  // kw_flat[d*W + i]
 
-            Kokkos::parallel_for(
-                Kokkos::ThreadVectorMDRange(team, dimension, width), [&](const int d, const int i) {
-                    const RealType g_pos = transform.toGridCoordinate(args.x(p_global)[d], d);
-                    const int idx0       = transform.getStencilBase(g_pos, W);
+#pragma unroll
+            for (int d = 0; d < Dim; ++d) {
+                const RealType g_pos = transform.toGridCoordinate(args.x(p_global)[d], d);
+                const int idx0       = transform.getStencilBase(g_pos, W);
 
-                    base(team_rank, d) = idx0 - args.local_offset[d] + args.nghost;
+                base[d] = idx0 - args.local_offset[d] + args.nghost;
 
+#pragma unroll
+                for (int i = 0; i < W; ++i) {
+                    const RealType xi = (g_pos - RealType(idx0 + i)) * args.inv_hw;
                     if constexpr (Types::KernelType::has_width_template) {
-                        kw(team_rank, d, i) = args.kernel.template eval<W>(
-                            (g_pos - RealType(idx0 + i)) * args.inv_hw);
+                        kw_flat[d * W + i] = args.kernel.template eval<W>(xi);
                     } else {
-                        kw(team_rank, d, i) =
-                            args.kernel((g_pos - RealType(idx0 + i)) * args.inv_hw);
+                        kw_flat[d * W + i] = args.kernel(xi);
                     }
-                });
+                }
+            }
 
-            // Synchronize so all threads see the shared data
-            team.team_barrier();
-
-            // Each team member processes its particle using vector parallelism
+            // ----------------------------
+            // 2) Scatter to grid using a flat ThreadVectorRange over W^Dim
+            // ----------------------------
             const ValueType my_val = args.values(p_global);
             auto grid              = args.grid;
 
-            auto stencil_extents = Kokkos::Array<int, Dim>{};
-            for_constexpr(std::make_integer_sequence<int, Dim>{}, [&]<int d>() {
-                stencil_extents[d] = W;
-            });
-            thread_vector_md_for<Dim>(team, stencil_extents, [&](auto... stencil_idx) {
-                RealType w = product_over<Dim>([&]<int D>() {
-                    return kw(team_rank, D, get_arg<D>(stencil_idx...));
-                });
+            constexpr int STENCIL_SIZE = StaticPow<W, Dim>::value;
 
-                auto& cell = grid_at(grid, base, team_rank, stencil_idx...);
-                Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
-                                   static_cast<grid_value_t>(my_val * w));
-            });
+            Kokkos::parallel_for(
+                Kokkos::ThreadVectorRange(team, STENCIL_SIZE), [&](const int flat) {
+                    if constexpr (Dim == 1) {
+                        const int i0 = flat;
+
+                        const RealType w = kw_flat[0 * W + i0];
+
+                        auto& cell = grid(base[0] + i0);
+                        Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
+                                           static_cast<grid_value_t>(my_val * w));
+
+                    } else if constexpr (Dim == 2) {
+                        const int i0 = flat % W;
+                        const int i1 = flat / W;
+
+                        const RealType w = kw_flat[0 * W + i0] * kw_flat[1 * W + i1];
+
+                        auto& cell = grid(base[0] + i0, base[1] + i1);
+                        Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
+                                           static_cast<grid_value_t>(my_val * w));
+
+                    } else if constexpr (Dim == 3) {
+                        const int i0 = flat % W;
+                        const int t  = flat / W;
+                        const int i1 = t % W;
+                        const int i2 = t / W;
+
+                        const RealType w =
+                            kw_flat[0 * W + i0] * kw_flat[1 * W + i1] * kw_flat[2 * W + i2];
+
+                        auto& cell = grid(base[0] + i0, base[1] + i1, base[2] + i2);
+                        Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
+                                           static_cast<grid_value_t>(my_val * w));
+                    }
+                });
         }
+        //
+        // KOKKOS_INLINE_FUNCTION void operator()(const team_member& team) const {
+        //     using grid_value_t = typename decltype(args.grid)::non_const_value_type;
+        //
+        //     const int team_rank = team.team_rank();
+        //     const int team_size = team.team_size();
+        //
+        //     // Allocate scratch views
+        //     ScratchBaseView base(team.team_scratch(0), team_size, Dim);
+        //     ScratchWeightsView kw(team.team_scratch(0), team_size, Dim, W);
+        //
+        //     // Global particle index for this team member
+        //     const size_t base_particle = team.league_rank() * team_size;
+        //     size_t p_global            = base_particle + team_rank;
+        //
+        //     if (p_global >= args.n_particles) {
+        //         return;
+        //     }
+        //
+        //     // Each team member loads its particle
+        //     if constexpr (Policy::use_sorting) {
+        //         p_global = args.permute(p_global);
+        //     }
+        //
+        //     CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx, args.n_grid};
+        //
+        //     constexpr auto dimension = Dim;
+        //     constexpr auto width     = W;
+        //
+        //     Kokkos::parallel_for(
+        //         Kokkos::ThreadVectorMDRange(team, dimension, width), [&](const int d, const int
+        //         i) {
+        //             const RealType g_pos = transform.toGridCoordinate(args.x(p_global)[d], d);
+        //             const int idx0       = transform.getStencilBase(g_pos, W);
+        //
+        //             base(team_rank, d) = idx0 - args.local_offset[d] + args.nghost;
+        //
+        //             if constexpr (Types::KernelType::has_width_template) {
+        //                 kw(team_rank, d, i) = args.kernel.template eval<W>(
+        //                     (g_pos - RealType(idx0 + i)) * args.inv_hw);
+        //             } else {
+        //                 kw(team_rank, d, i) =
+        //                     args.kernel((g_pos - RealType(idx0 + i)) * args.inv_hw);
+        //             }
+        //         });
+        //
+        //     // Synchronize so all threads see the shared data
+        //     team.team_barrier();
+        //
+        //     // Each team member processes its particle using vector parallelism
+        //     const ValueType my_val = args.values(p_global);
+        //     auto grid              = args.grid;
+        //
+        //     auto stencil_extents = Kokkos::Array<int, Dim>{};
+        //     for_constexpr(std::make_integer_sequence<int, Dim>{}, [&]<int d>() {
+        //         stencil_extents[d] = W;
+        //     });
+        //     thread_vector_md_for<Dim>(team, stencil_extents, [&](auto... stencil_idx) {
+        //         RealType w = product_over<Dim>([&]<int D>() {
+        //             return kw(team_rank, D, get_arg<D>(stencil_idx...));
+        //         });
+        //
+        //         auto& cell = grid_at(grid, base, team_rank, stencil_idx...);
+        //         Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
+        //                            static_cast<grid_value_t>(my_val * w));
+        //     });
+        // }
 
         void run(size_t) {
             const int team_size       = particles_per_team_;
