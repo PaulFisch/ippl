@@ -38,6 +38,8 @@ namespace ippl::Interpolation::detail {
         using ScratchBaseView    = Kokkos::View<int**, scratch_space, unmanaged>;
         using ScratchWeightsView = Kokkos::View<RealType***, scratch_space, unmanaged>;
         using ScratchValuesView  = Kokkos::View<ValueType*, scratch_space, unmanaged>;
+        using G0View       = Kokkos::View<RealType**, scratch_space, unmanaged>;
+
 
         struct Arguments : ScatterArgumentsBase<Arguments, Types> {
             using PermuteView = Kokkos::View<uint64_t*, memory_space>;
@@ -61,7 +63,7 @@ namespace ippl::Interpolation::detail {
         static size_t compute_scratch_size(int particles_per_team) {
             return ScratchBaseView::shmem_size(particles_per_team, Dim)
                    + ScratchWeightsView::shmem_size(particles_per_team, Dim, W)
-                   + ScratchValuesView::shmem_size(particles_per_team);
+                   + G0View::shmem_size(particles_per_team, Dim);
         }
 
         Arguments args;
@@ -98,33 +100,58 @@ namespace ippl::Interpolation::detail {
 
             CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx, args.n_grid};
 
-            // ----------------------------
-            // 1) Build stencil base + weights (NO MDRange, NO scratch)
-            // ----------------------------
-            Kokkos::Array<int, Dim> base{};
-            Kokkos::Array<RealType, Dim * W> kw_flat{};  // kw_flat[d*W + i]
+            // ------------------------------------------------------------
+            // Scratch allocation (IMPORTANT: reuse the same scratch "allocator")
+            // ------------------------------------------------------------
+            auto scratch = team.team_scratch(0);
 
-#pragma unroll
-            for (int d = 0; d < Dim; ++d) {
+            ScratchBaseView base(scratch, team_size, Dim);      // int  [team_size, Dim]
+            ScratchWeightsView kw(scratch, team_size, Dim, W);  // Real [team_size, Dim, W]
+
+            // Add one small scratch view to avoid recomputing idx0 per i:
+            using ScratchSpace = typename team_member::scratch_memory_space;
+            using Unmanaged    = Kokkos::MemoryUnmanaged;
+            G0View g0(scratch, team_size, Dim);  // Real [team_size, Dim]
+
+            // ------------------------------------------------------------
+            // 1) Precompute base and g0(d) = (g_pos - idx0) * inv_hw in warp-parallel way
+            //    (Dim is small, but this avoids serial work and avoids redundant recompute later.)
+            // ------------------------------------------------------------
+            Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, Dim), [&](const int d) {
                 const RealType g_pos = transform.toGridCoordinate(args.x(p_global)[d], d);
                 const int idx0       = transform.getStencilBase(g_pos, W);
 
-                base[d] = idx0 - args.local_offset[d] + args.nghost;
+                base(team_rank, d) = idx0 - args.local_offset[d] + args.nghost;
 
-#pragma unroll
-                for (int i = 0; i < W; ++i) {
-                    const RealType xi = (g_pos - RealType(idx0 + i)) * args.inv_hw;
-                    if constexpr (Types::KernelType::has_width_template) {
-                        kw_flat[d * W + i] = args.kernel.template eval<W>(xi);
-                    } else {
-                        kw_flat[d * W + i] = args.kernel(xi);
-                    }
+                // Store scaled offset so weights become: kernel(g0 - i*inv_hw)
+                g0(team_rank, d) = (g_pos - RealType(idx0)) * args.inv_hw;
+            });
+
+            // Ensure base/g0 visible before filling kw
+            team.team_barrier();
+
+            // ------------------------------------------------------------
+            // 2) Fill kw in warp-parallel: N = Dim*W entries
+            // ------------------------------------------------------------
+            Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, Dim * W), [&](const int k) {
+                const int d = k / W;
+                const int i = k - d * W;
+
+                const RealType xi = g0(team_rank, d) - RealType(i) * args.inv_hw;
+
+                if constexpr (Types::KernelType::has_width_template) {
+                    kw(team_rank, d, i) = args.kernel.template eval<W>(xi);
+                } else {
+                    kw(team_rank, d, i) = args.kernel(xi);
                 }
-            }
+            });
 
-            // ----------------------------
-            // 2) Scatter to grid using a flat ThreadVectorRange over W^Dim
-            // ----------------------------
+            // Ensure kw visible before stencil scatter
+            team.team_barrier();
+
+            // ------------------------------------------------------------
+            // 3) Flat vector loop over stencil points: W^Dim
+            // ------------------------------------------------------------
             const ValueType my_val = args.values(p_global);
             auto grid              = args.grid;
 
@@ -135,9 +162,9 @@ namespace ippl::Interpolation::detail {
                     if constexpr (Dim == 1) {
                         const int i0 = flat;
 
-                        const RealType w = kw_flat[0 * W + i0];
+                        const RealType w = kw(team_rank, 0, i0);
 
-                        auto& cell = grid(base[0] + i0);
+                        auto& cell = grid(base(team_rank, 0) + i0);
                         Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
                                            static_cast<grid_value_t>(my_val * w));
 
@@ -145,9 +172,9 @@ namespace ippl::Interpolation::detail {
                         const int i0 = flat % W;
                         const int i1 = flat / W;
 
-                        const RealType w = kw_flat[0 * W + i0] * kw_flat[1 * W + i1];
+                        const RealType w = kw(team_rank, 0, i0) * kw(team_rank, 1, i1);
 
-                        auto& cell = grid(base[0] + i0, base[1] + i1);
+                        auto& cell = grid(base(team_rank, 0) + i0, base(team_rank, 1) + i1);
                         Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
                                            static_cast<grid_value_t>(my_val * w));
 
@@ -158,14 +185,16 @@ namespace ippl::Interpolation::detail {
                         const int i2 = t / W;
 
                         const RealType w =
-                            kw_flat[0 * W + i0] * kw_flat[1 * W + i1] * kw_flat[2 * W + i2];
+                            kw(team_rank, 0, i0) * kw(team_rank, 1, i1) * kw(team_rank, 2, i2);
 
-                        auto& cell = grid(base[0] + i0, base[1] + i1, base[2] + i2);
+                        auto& cell = grid(base(team_rank, 0) + i0, base(team_rank, 1) + i1,
+                                          base(team_rank, 2) + i2);
                         Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
                                            static_cast<grid_value_t>(my_val * w));
                     }
                 });
         }
+
         //
         // KOKKOS_INLINE_FUNCTION void operator()(const team_member& team) const {
         //     using grid_value_t = typename decltype(args.grid)::non_const_value_type;
