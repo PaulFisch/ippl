@@ -73,11 +73,11 @@ namespace ippl {
         template <class ParticleContainer>
         void update(ParticleContainer& pc);
 
-        const RegionLayout_t& getRegionLayout() const { return rlayout_m; }
+        const RegionLayout_t& getRegionLayout() const { return *rlayout_m; }
 
     protected:
         //! The RegionLayout which determines where our particles go.
-        RegionLayout_t rlayout_m;
+        std::shared_ptr<RegionLayout_t> rlayout_m;
 
         //! The FieldLayout containing information on nearest neighbors
         FieldLayout_t& flayout_m;

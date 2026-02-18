@@ -60,7 +60,7 @@ namespace ippl {
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
     ParticleSpatialLayout<T, Dim, Mesh, Properties...>::ParticleSpatialLayout(FieldLayout<Dim>& fl,
                                                                               Mesh& mesh, bool fem)
-        : rlayout_m(fl, mesh, fem)
+        : rlayout_m(std::make_shared<RegionLayout_t>(fl, mesh, fem))
         , flayout_m(fl)
     {   
         nRecvs_m.resize(Comm->size());
@@ -73,7 +73,7 @@ namespace ippl {
     void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::updateLayout(FieldLayout<Dim>& fl,
                                                                           Mesh& mesh) {
         //flayout_m = fl;
-        rlayout_m.changeDomain(fl, mesh);
+        rlayout_m->changeDomain(fl, mesh);
     }
 
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
@@ -83,7 +83,7 @@ namespace ippl {
         /* Apply Boundary Conditions */
         static IpplTimings::TimerRef ParticleBCTimer = IpplTimings::getTimer("particleBC");
         IpplTimings::startTimer(ParticleBCTimer);
-        this->applyBC(pc.R, rlayout_m.getDomain());
+        this->applyBC(pc.R, rlayout_m->getDomain());
         IpplTimings::stopTimer(ParticleBCTimer);
 
         /* Update Timer for the rest of the function */
@@ -278,7 +278,7 @@ namespace ippl {
         locate_type& nSends_dview, locate_type& sends_dview) const {
 
         auto positions           = pc.R.getView();
-        region_view_type Regions = rlayout_m.getdLocalRegions();
+        region_view_type Regions = rlayout_m->getdLocalRegions();
 
         using mdrange_type = Kokkos::MDRangePolicy<Kokkos::Rank<2>, position_execution_space>;
 
