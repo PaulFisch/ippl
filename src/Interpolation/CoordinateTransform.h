@@ -27,9 +27,9 @@ namespace ippl::Interpolation {
         using Vector_t    = ippl::Vector<T, Dim>;
         using VectorInt_t = ippl::Vector<int, Dim>;
 
-        const Vector_t &origin_;           // Physical origin from mesh
-        const Vector_t &invdx_;            // Inverse of mesh spacing (1/dx)
-        const VectorInt_t &ngrid_global_;  // Global grid dimensions
+        const Vector_t& origin_;           // Physical origin from mesh
+        const Vector_t& invdx_;            // Inverse of mesh spacing (1/dx)
+        const VectorInt_t& ngrid_global_;  // Global grid dimensions
 
         /**
          * @brief Construct from mesh parameters
@@ -57,11 +57,18 @@ namespace ippl::Interpolation {
             // Scale to grid: (x - origin) / dx
             T grid_pos = (physical_pos - origin_[dim]) * invdx_[dim];
 
-
             T ngrid = static_cast<T>(ngrid_global_[dim]);
             grid_pos -= Kokkos::floor(grid_pos / ngrid) * ngrid;
 
             return grid_pos;
+        }
+
+        template <int D>
+        KOKKOS_FORCEINLINE_FUNCTION T toGridCoordinate(T physical_pos) const {
+            T gp      = (physical_pos - origin_[D]) * invdx_[D];
+            const T n = static_cast<T>(ngrid_global_[D]);
+            gp -= static_cast<int>(gp / n) * n;
+            return gp;
         }
 
         /**
@@ -83,6 +90,14 @@ namespace ippl::Interpolation {
                 odd ? static_cast<int>(Kokkos::round(grid_pos)) : static_cast<int>(grid_pos);
 
             return center_idx;
+        }
+
+        template <int Width>
+        KOKKOS_FORCEINLINE_FUNCTION int getStencilCenter(T grid_pos) const {
+            if constexpr (Width & 1)
+                return static_cast<int>(Kokkos::round(grid_pos));
+            else
+                return static_cast<int>(grid_pos);
         }
 
         /**
@@ -108,6 +123,11 @@ namespace ippl::Interpolation {
          */
         KOKKOS_INLINE_FUNCTION int getStencilBase(T grid_pos, int width) const {
             return getStencilCenter(grid_pos, width) - (width - 1) / 2;
+        }
+
+        template <int Width>
+        KOKKOS_FORCEINLINE_FUNCTION int getStencilBase(T grid_pos) const {
+            return getStencilCenter<Width>(grid_pos) - (Width - 1) / 2;
         }
     };
 
