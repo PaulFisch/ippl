@@ -98,60 +98,101 @@ namespace ippl::Interpolation::detail {
 
             CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx, args.n_grid};
 
-            // -------------------------
-            // base + g0 in registers (no scratch / no shared traffic)
-            // -------------------------
             const RealType inv_hw = args.inv_hw;
             const auto xp         = args.x(p_global);
 
-            Kokkos::Array<int, Dim> base;
-            Kokkos::Array<RealType, Dim> g0;
+            // ------------------------------------------------------------
+            // base + g0
+            // ------------------------------------------------------------
+            int b0 = 0, b1 = 0, b2 = 0;
+            RealType g00 = RealType(0), g01 = RealType(0), g02 = RealType(0);
 
-#pragma unroll
-            for (int d = 0; d < Dim; ++d) {
-                const RealType g_pos = transform.toGridCoordinate(xp[d], d);
-                const int idx0       = transform.getStencilBase(g_pos, W);
-                base[d]              = idx0 - args.local_offset[d] + args.nghost;
-                g0[d]                = (g_pos - RealType(idx0)) * inv_hw;
+            if constexpr (Dim >= 1) {
+                const RealType gpos0 = transform.toGridCoordinate(xp[0], 0);
+                const int idx00      = transform.getStencilBase(gpos0, W);
+                b0                   = idx00 - args.local_offset[0] + args.nghost;
+                g00                  = (gpos0 - RealType(idx00)) * inv_hw;
+            }
+            if constexpr (Dim >= 2) {
+                const RealType gpos1 = transform.toGridCoordinate(xp[1], 1);
+                const int idx01      = transform.getStencilBase(gpos1, W);
+                b1                   = idx01 - args.local_offset[1] + args.nghost;
+                g01                  = (gpos1 - RealType(idx01)) * inv_hw;
+            }
+            if constexpr (Dim >= 3) {
+                const RealType gpos2 = transform.toGridCoordinate(xp[2], 2);
+                const int idx02      = transform.getStencilBase(gpos2, W);
+                b2                   = idx02 - args.local_offset[2] + args.nghost;
+                g02                  = (gpos2 - RealType(idx02)) * inv_hw;
             }
 
-            // -------------------------
-            // weights in scratch as a single 1D array, manually indexed
-            // Padding breaks power-of-2 strides -> fewer shared-memory bank conflicts
-            // -------------------------
+            // ------------------------------------------------------------
+            // weights in scratch: 1D, manual indexing, padded to reduce bank conflicts
+            // ------------------------------------------------------------
             using ScratchSpace = typename team_member::scratch_memory_space;
             using Unmanaged    = Kokkos::MemoryUnmanaged;
 
             auto scratch = team.team_scratch(0);
 
-            constexpr int KW_PAD    = 1;                 // tune (1 is a good default)
-            constexpr int KW_STRIDE = Dim * W + KW_PAD;  // per-particle slice length
+            constexpr int KW_PAD    = 1;
+            constexpr int KW_STRIDE = Dim * W + KW_PAD;
             const int kw_base       = team_rank * KW_STRIDE;
 
             using Kw1D = Kokkos::View<RealType*, ScratchSpace, Unmanaged>;
             Kw1D kw(scratch, team_size * KW_STRIDE);
 
-            auto kw_at = [&](int d, int i) -> RealType& {
-                return kw(kw_base + d * W + i);
-            };
+            // Fill weights with *separate* W-loops per dimension -> no (d,i) decoding and no g0
+            // array.
+            if constexpr (Dim == 1) {
+                Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W), [&](const int i) {
+                    const RealType xi = g00 - RealType(i) * inv_hw;
+                    if constexpr (Types::KernelType::has_width_template)
+                        kw(kw_base + 0 * W + i) = args.kernel.template eval<W>(xi);
+                    else
+                        kw(kw_base + 0 * W + i) = args.kernel(xi);
+                });
+            } else if constexpr (Dim == 2) {
+                Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W), [&](const int i) {
+                    const RealType xi = g00 - RealType(i) * inv_hw;
+                    if constexpr (Types::KernelType::has_width_template)
+                        kw(kw_base + 0 * W + i) = args.kernel.template eval<W>(xi);
+                    else
+                        kw(kw_base + 0 * W + i) = args.kernel(xi);
+                });
+                Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W), [&](const int i) {
+                    const RealType xi = g01 - RealType(i) * inv_hw;
+                    if constexpr (Types::KernelType::has_width_template)
+                        kw(kw_base + 1 * W + i) = args.kernel.template eval<W>(xi);
+                    else
+                        kw(kw_base + 1 * W + i) = args.kernel(xi);
+                });
+            } else if constexpr (Dim == 3) {
+                Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W), [&](const int i) {
+                    const RealType xi = g00 - RealType(i) * inv_hw;
+                    if constexpr (Types::KernelType::has_width_template)
+                        kw(kw_base + 0 * W + i) = args.kernel.template eval<W>(xi);
+                    else
+                        kw(kw_base + 0 * W + i) = args.kernel(xi);
+                });
+                Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W), [&](const int i) {
+                    const RealType xi = g01 - RealType(i) * inv_hw;
+                    if constexpr (Types::KernelType::has_width_template)
+                        kw(kw_base + 1 * W + i) = args.kernel.template eval<W>(xi);
+                    else
+                        kw(kw_base + 1 * W + i) = args.kernel(xi);
+                });
+                Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W), [&](const int i) {
+                    const RealType xi = g02 - RealType(i) * inv_hw;
+                    if constexpr (Types::KernelType::has_width_template)
+                        kw(kw_base + 2 * W + i) = args.kernel.template eval<W>(xi);
+                    else
+                        kw(kw_base + 2 * W + i) = args.kernel(xi);
+                });
+            }
 
-            Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, Dim * W), [&](const int k) {
-                const int d = k / W;
-                const int i = k - d * W;
-
-                const RealType xi = g0[d] - RealType(i) * inv_hw;
-
-                if constexpr (Types::KernelType::has_width_template) {
-                    kw_at(d, i) = args.kernel.template eval<W>(xi);
-                } else {
-                    kw_at(d, i) = args.kernel(xi);
-                }
-            });
-
-            // -------------------------
-            // Stencil: decode flat index so the contiguous grid dim varies fastest
-            // (better spatial locality / L2 behavior for the atomic stream)
-            // -------------------------
+            // ------------------------------------------------------------
+            // Stencil: layout-aware flat decoding for better locality/L2 behavior
+            // ------------------------------------------------------------
             const ValueType my_val = args.values(p_global);
             auto grid              = args.grid;
 
@@ -163,45 +204,46 @@ namespace ippl::Interpolation::detail {
                 Kokkos::ThreadVectorRange(team, STENCIL_SIZE), [&](const int flat) {
                     if constexpr (Dim == 1) {
                         const int i0     = flat;
-                        const RealType w = kw_at(0, i0);
+                        const RealType w = kw(kw_base + 0 * W + i0);
 
-                        auto& cell = grid(base[0] + i0);
+                        auto& cell = grid(b0 + i0);
                         Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
                                            static_cast<grid_value_t>(my_val * w));
 
                     } else if constexpr (Dim == 2) {
                         int i0, i1;
-                        if constexpr (layout_right) {  // rightmost index contiguous -> i1 fastest
+                        if constexpr (layout_right) {
                             i1 = flat % W;
                             i0 = flat / W;
-                        } else {  // leftmost index contiguous -> i0 fastest
+                        } else {
                             i0 = flat % W;
                             i1 = flat / W;
                         }
 
-                        const RealType w = kw_at(0, i0) * kw_at(1, i1);
+                        const RealType w = kw(kw_base + 0 * W + i0) * kw(kw_base + 1 * W + i1);
 
-                        auto& cell = grid(base[0] + i0, base[1] + i1);
+                        auto& cell = grid(b0 + i0, b1 + i1);
                         Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
                                            static_cast<grid_value_t>(my_val * w));
 
                     } else if constexpr (Dim == 3) {
                         int i0, i1, i2;
-                        if constexpr (layout_right) {  // rightmost contiguous -> i2 fastest
+                        if constexpr (layout_right) {
                             i2          = flat % W;
                             const int t = flat / W;
                             i1          = t % W;
                             i0          = t / W;
-                        } else {  // leftmost contiguous -> i0 fastest
+                        } else {
                             i0          = flat % W;
                             const int t = flat / W;
                             i1          = t % W;
                             i2          = t / W;
                         }
 
-                        const RealType w = kw_at(0, i0) * kw_at(1, i1) * kw_at(2, i2);
+                        const RealType w = kw(kw_base + 0 * W + i0) * kw(kw_base + 1 * W + i1)
+                                           * kw(kw_base + 2 * W + i2);
 
-                        auto& cell = grid(base[0] + i0, base[1] + i1, base[2] + i2);
+                        auto& cell = grid(b0 + i0, b1 + i1, b2 + i2);
                         Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
                                            static_cast<grid_value_t>(my_val * w));
                     }
