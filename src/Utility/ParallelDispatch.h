@@ -123,6 +123,31 @@ namespace ippl {
         }(std::make_integer_sequence<int, Dim>{});
     }
 
+    template <int Dim, int W, typename Team, typename F>
+    KOKKOS_FORCEINLINE_FUNCTION void thread_vector_stencil_for(const Team& team, F&& f) {
+        constexpr int TotalCells = [] {
+            int r = 1;
+            for (int i = 0; i < Dim; ++i)
+                r *= W;
+            return r;
+        }();
+
+        Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, TotalCells), [&](const int flat_idx) {
+            // Compile-time unrollable index decomposition
+            Kokkos::Array<int, Dim> idx;
+            int tmp = flat_idx;
+            for (int d = Dim - 1; d >= 0; --d) {
+                idx[d] = tmp % W;
+                tmp /= W;
+            }
+
+            // Call with index pack
+            [&]<int... Is>(std::integer_sequence<int, Is...>) {
+                f(idx[Is]...);
+            }(std::make_integer_sequence<int, Dim>{});
+        });
+    }
+
     namespace detail {
         /*!
          * Recursively templated struct for defining tuples with arbitrary
