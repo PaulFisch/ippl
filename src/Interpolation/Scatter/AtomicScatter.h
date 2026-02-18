@@ -99,7 +99,7 @@ namespace ippl::Interpolation::detail {
             CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx, args.n_grid};
 
             // -------------------------
-            // base + g0 kept in registers (no scratch / no shared traffic)
+            // base + g0 in registers (no scratch / no shared traffic)
             // -------------------------
             const RealType inv_hw = args.inv_hw;
             const auto xp         = args.x(p_global);
@@ -111,26 +111,29 @@ namespace ippl::Interpolation::detail {
             for (int d = 0; d < Dim; ++d) {
                 const RealType g_pos = transform.toGridCoordinate(xp[d], d);
                 const int idx0       = transform.getStencilBase(g_pos, W);
-
-                base[d] = idx0 - args.local_offset[d] + args.nghost;
-                g0[d]   = (g_pos - RealType(idx0)) * inv_hw;
+                base[d]              = idx0 - args.local_offset[d] + args.nghost;
+                g0[d]                = (g_pos - RealType(idx0)) * inv_hw;
             }
 
             // -------------------------
-            // Weights in scratch (shared), padded to reduce worst-case bank conflicts
-            // when multiple team_ranks are read by a warp (e.g. vector_length==1 setups).
-            // Flattened: kw(team_rank, d*W+i)
+            // weights in scratch as a single 1D array, manually indexed
+            // Padding breaks power-of-2 strides -> fewer shared-memory bank conflicts
             // -------------------------
             using ScratchSpace = typename team_member::scratch_memory_space;
             using Unmanaged    = Kokkos::MemoryUnmanaged;
 
             auto scratch = team.team_scratch(0);
 
-            constexpr int KW_PAD    = 1;  // small, usually enough to break power-of-2 strides
-            constexpr int KW_STRIDE = Dim * W + KW_PAD;
+            constexpr int KW_PAD    = 1;                 // tune (1 is a good default)
+            constexpr int KW_STRIDE = Dim * W + KW_PAD;  // per-particle slice length
+            const int kw_base       = team_rank * KW_STRIDE;
 
-            using KwView = Kokkos::View<RealType**, scratch_space, unmanaged>;
-            KwView kw(scratch, team_size, KW_STRIDE);
+            using Kw1D = Kokkos::View<RealType*, ScratchSpace, Unmanaged>;
+            Kw1D kw(scratch, team_size * KW_STRIDE);
+
+            auto kw_at = [&](int d, int i) -> RealType& {
+                return kw(kw_base + d * W + i);
+            };
 
             Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, Dim * W), [&](const int k) {
                 const int d = k / W;
@@ -138,20 +141,16 @@ namespace ippl::Interpolation::detail {
 
                 const RealType xi = g0[d] - RealType(i) * inv_hw;
 
-                RealType w;
                 if constexpr (Types::KernelType::has_width_template) {
-                    w = args.kernel.template eval<W>(xi);
+                    kw_at(d, i) = args.kernel.template eval<W>(xi);
                 } else {
-                    w = args.kernel(xi);
+                    kw_at(d, i) = args.kernel(xi);
                 }
-                kw(team_rank, d * W + i) = w;
             });
 
-            team.team_barrier();  // kw must be visible before stencil
-
             // -------------------------
-            // Stencil: layout-aware decoding so the fastest-varying index matches the
-            // contiguous dimension, improving locality / L2 behavior on atomics.
+            // Stencil: decode flat index so the contiguous grid dim varies fastest
+            // (better spatial locality / L2 behavior for the atomic stream)
             // -------------------------
             const ValueType my_val = args.values(p_global);
             auto grid              = args.grid;
@@ -160,54 +159,53 @@ namespace ippl::Interpolation::detail {
             using grid_layout           = typename decltype(args.grid)::array_layout;
             constexpr bool layout_right = std::is_same<grid_layout, Kokkos::LayoutRight>::value;
 
-            Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, STENCIL_SIZE), [&](const int
-                                                                                        flat) {
-                if constexpr (Dim == 1) {
-                    const int i0     = flat;
-                    const RealType w = kw(team_rank, 0 * W + i0);
+            Kokkos::parallel_for(
+                Kokkos::ThreadVectorRange(team, STENCIL_SIZE), [&](const int flat) {
+                    if constexpr (Dim == 1) {
+                        const int i0     = flat;
+                        const RealType w = kw_at(0, i0);
 
-                    auto& cell = grid(base[0] + i0);
-                    Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
-                                       static_cast<grid_value_t>(my_val * w));
+                        auto& cell = grid(base[0] + i0);
+                        Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
+                                           static_cast<grid_value_t>(my_val * w));
 
-                } else if constexpr (Dim == 2) {
-                    int i0, i1;
-                    if constexpr (layout_right) {  // rightmost index contiguous: make i1 fastest
-                        i1 = flat % W;
-                        i0 = flat / W;
-                    } else {  // leftmost index contiguous: make i0 fastest
-                        i0 = flat % W;
-                        i1 = flat / W;
+                    } else if constexpr (Dim == 2) {
+                        int i0, i1;
+                        if constexpr (layout_right) {  // rightmost index contiguous -> i1 fastest
+                            i1 = flat % W;
+                            i0 = flat / W;
+                        } else {  // leftmost index contiguous -> i0 fastest
+                            i0 = flat % W;
+                            i1 = flat / W;
+                        }
+
+                        const RealType w = kw_at(0, i0) * kw_at(1, i1);
+
+                        auto& cell = grid(base[0] + i0, base[1] + i1);
+                        Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
+                                           static_cast<grid_value_t>(my_val * w));
+
+                    } else if constexpr (Dim == 3) {
+                        int i0, i1, i2;
+                        if constexpr (layout_right) {  // rightmost contiguous -> i2 fastest
+                            i2          = flat % W;
+                            const int t = flat / W;
+                            i1          = t % W;
+                            i0          = t / W;
+                        } else {  // leftmost contiguous -> i0 fastest
+                            i0          = flat % W;
+                            const int t = flat / W;
+                            i1          = t % W;
+                            i2          = t / W;
+                        }
+
+                        const RealType w = kw_at(0, i0) * kw_at(1, i1) * kw_at(2, i2);
+
+                        auto& cell = grid(base[0] + i0, base[1] + i1, base[2] + i2);
+                        Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
+                                           static_cast<grid_value_t>(my_val * w));
                     }
-
-                    const RealType w = kw(team_rank, 0 * W + i0) * kw(team_rank, 1 * W + i1);
-
-                    auto& cell = grid(base[0] + i0, base[1] + i1);
-                    Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
-                                       static_cast<grid_value_t>(my_val * w));
-
-                } else if constexpr (Dim == 3) {
-                    int i0, i1, i2;
-                    if constexpr (layout_right) {  // rightmost index contiguous: i2 fastest
-                        i2          = flat % W;
-                        const int t = flat / W;
-                        i1          = t % W;
-                        i0          = t / W;
-                    } else {  // leftmost index contiguous: i0 fastest
-                        i0          = flat % W;
-                        const int t = flat / W;
-                        i1          = t % W;
-                        i2          = t / W;
-                    }
-
-                    const RealType w = kw(team_rank, 0 * W + i0) * kw(team_rank, 1 * W + i1)
-                                       * kw(team_rank, 2 * W + i2);
-
-                    auto& cell = grid(base[0] + i0, base[1] + i1, base[2] + i2);
-                    Kokkos::atomic_add(&to_grid_value<grid_value_t>(cell),
-                                       static_cast<grid_value_t>(my_val * w));
-                }
-            });
+                });
         }
 
         // KOKKOS_INLINE_FUNCTION void operator()(const team_member& team) const {
