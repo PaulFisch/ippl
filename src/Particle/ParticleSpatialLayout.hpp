@@ -112,13 +112,6 @@ namespace ippl {
          */
         locate_type particleRanks("particles' MPI ranks", localnum);
 
-        /* The indices are the indices of the particles,
-         * the boolean values describe whether the particle has left the current rank
-         * 0 --> particle valid (inside current rank)
-         * 1 --> particle invalid (left rank)
-         */
-        bool_type invalidParticles("validity of particles", localnum);
-
         /* The indices are the MPI ranks,
          * the values are the number of particles are sent to that rank from myrank
          */
@@ -132,8 +125,8 @@ namespace ippl {
         /* nInvalid is the number of invalid particles
          * nDestinationRanks is the number of MPI ranks we need to send to
          */
-        auto [nInvalid, nDestinationRanks] = locateParticles(
-            pc, particleRanks, invalidParticles, rankSendCount_dview, destinationRanks_dview);
+        auto [nInvalid, nDestinationRanks] =
+            locateParticles(pc, particleRanks, rankSendCount_dview, destinationRanks_dview);
 
         /* Host space copy of rankSendCount_dview */
         auto rankSendCount_hview =
@@ -196,7 +189,9 @@ namespace ippl {
         static IpplTimings::TimerRef destroyTimer = IpplTimings::getTimer("particleDestroy");
         IpplTimings::startTimer(destroyTimer);
 
-        pc.internalDestroy(invalidParticles, nInvalid);
+        auto myRank = Comm->rank();
+        pc.internalDestroy(
+            KOKKOS_LAMBDA(size_t i) { return particleRanks(i) != myRank; }, nInvalid);
         Kokkos::fence();
 
         IpplTimings::stopTimer(destroyTimer);
@@ -268,8 +263,8 @@ namespace ippl {
     template <typename ParticleContainer>
     std::pair<detail::size_type, detail::size_type>
     ParticleSpatialLayout<T, Dim, Mesh, Properties...>::locateParticles(
-        const ParticleContainer& pc, locate_type& ranks, bool_type& invalid,
-        locate_type& nSends_dview, locate_type& sends_dview) const {
+        const ParticleContainer& pc, locate_type& ranks, locate_type& nSends_dview,
+        locate_type& sends_dview) const {
         auto positions           = pc.R.getView();
         region_view_type Regions = rlayout_m->getdLocalRegions();
 
@@ -315,7 +310,7 @@ namespace ippl {
         size_type outsideCount = 0;
         Kokkos::parallel_reduce(
             "ParticleSpatialLayout::locateParticles() outside count",
-            Kokkos::RangePolicy<size_t>(0, pc.getLocalNum()),
+            policy_type(0, pc.getLocalNum()),
             KOKKOS_LAMBDA(const size_t i, size_type& cnt) {
                 bool found = positionInRegion(is, positions(i), Regions(myRank));
                 for (size_t j = 0; j < neighbors_view.extent(0) && !found; ++j) {
@@ -356,9 +351,8 @@ namespace ippl {
 
                 inCurr = positionInRegion(is, positions(i), Regions(myRank));
 
-                ranks(i)   = inCurr * myRank;
-                invalid(i) = !inCurr;
-                found      = inCurr || found;
+                ranks(i) = inCurr * myRank;
+                found    = inCurr || found;
 
                 /// Step 2
                 for (size_t j = 0; j < neighbors_view.extent(0); ++j) {
@@ -378,7 +372,7 @@ namespace ippl {
                     outsideIds(val.count[1]) = i;
                 }
                 // outsideIds(val.count[1]) = i * isOut;
-                increment[0] = invalid(i);
+                increment[0] = !inCurr;
                 increment[1] = !found;
                 val += increment;
             },

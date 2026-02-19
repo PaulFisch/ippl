@@ -68,7 +68,7 @@ namespace ippl {
      *
      *  Minimal empty base class for all ParticleBase specializations.
      *  Needed for e.g: c++20 constraints and concepts using std::derived_from
-     * 
+     *
      */
     class ParticleBaseBase {
     public:
@@ -84,7 +84,7 @@ namespace ippl {
      * IDs will be disabled for the bunch)
      */
     template <class PLayout, typename... IDProperties>
-    class ParticleBase: public ParticleBaseBase {
+    class ParticleBase : public ParticleBaseBase {
         constexpr static bool EnableIDs = sizeof...(IDProperties) > 0;
 
     public:
@@ -286,9 +286,13 @@ namespace ippl {
         /* This function does not alter the totalNum_m member function. It should only be called
          * during the update function where we know the number of particles remains the same.
          */
+        template <typename F, typename... Properties>
+        void internalDestroy(const F& invalid_functor, const size_type destroyNum);
         template <typename... Properties>
         void internalDestroy(const Kokkos::View<bool*, Properties...>& invalid,
-                             const size_type destroyNum);
+                             const size_type destroyNum) {
+            internalDestroy(KOKKOS_LAMBDA(size_t i) { return invalid(i); }, destroyNum);
+        }
 
         /*!
          * Sends particles to another rank
