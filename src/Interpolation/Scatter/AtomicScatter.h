@@ -24,7 +24,7 @@ namespace ippl::Interpolation::detail {
         using memory_space    = typename Types::memory_space;
         using execution_space = typename Types::execution_space;
 
-        using team_policy = Kokkos::TeamPolicy<execution_space, Kokkos::LaunchBounds<128, 8>>;
+        using team_policy = Kokkos::TeamPolicy<execution_space, Kokkos::LaunchBounds<64, 16>>;
         using team_member = typename team_policy::member_type;
 
         using scratch_space = typename execution_space::scratch_memory_space;
@@ -77,7 +77,7 @@ namespace ippl::Interpolation::detail {
 
         AtomicScatter(const Arguments& a)
             : args(a)
-            , particles_per_team_(4) {}
+            , particles_per_team_(2) {}
 
         // Convert linear stencil index to multi-dimensional indices
         KOKKOS_INLINE_FUNCTION Kokkos::Array<int, Dim> linear_to_multi(int linear_idx) const {
