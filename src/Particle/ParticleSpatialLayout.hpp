@@ -201,17 +201,17 @@ namespace ippl {
         region_view_type Regions = rlayout_m->getdLocalRegions();
         const auto is            = std::make_index_sequence<Dim>{};
 
-        auto destRankOf = KOKKOS_LAMBDA(const size_t i)->size_type {
+        auto destRankOf = KOKKOS_LAMBDA(const size_t i) {
             if (positionInRegion(is, positions(i), Regions(myRank)))
                 return myRank;
 
             for (size_t j = 0; j < neighbors_view.extent(0); ++j) {
-                const size_type r = neighbors_view(j);
+                const int r = neighbors_view(j);
                 if (positionInRegion(is, positions(i), Regions(r)))
                     return r;
             }
 
-            for (size_type r = 0; r < Regions.extent(0); ++r) {
+            for (int r = 0; r < Regions.extent(0); ++r) {
                 if (positionInRegion(is, positions(i), Regions(r)))
                     return r;
             }
