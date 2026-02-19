@@ -286,12 +286,16 @@ namespace ippl {
         /* This function does not alter the totalNum_m member function. It should only be called
          * during the update function where we know the number of particles remains the same.
          */
-        template <typename F, typename... Properties>
+        template <typename memory_space, typename execution_space, typename F, typename... Properties>
         void internalDestroy(const F& invalid_functor, const size_type destroyNum);
         template <typename... Properties>
         void internalDestroy(const Kokkos::View<bool*, Properties...>& invalid,
                              const size_type destroyNum) {
-            internalDestroy(KOKKOS_LAMBDA(size_t i) { return invalid(i); }, destroyNum);
+
+            using view_type       = Kokkos::View<bool*, Properties...>;
+            using memory_space    = typename view_type::memory_space;
+            using execution_space = typename view_type::execution_space;
+            internalDestroy<memory_space, execution_space>(KOKKOS_LAMBDA(size_t i) { return invalid(i); }, destroyNum);
         }
 
         /*!

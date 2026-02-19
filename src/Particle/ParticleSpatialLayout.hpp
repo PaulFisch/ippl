@@ -190,7 +190,7 @@ namespace ippl {
         IpplTimings::startTimer(destroyTimer);
 
         auto myRank = Comm->rank();
-        pc.internalDestroy(
+        pc.template internalDestroy<position_memory_space, position_execution_space>(
             KOKKOS_LAMBDA(size_t i) { return particleRanks(i) != myRank; }, nInvalid);
         Kokkos::fence();
 

@@ -161,9 +161,9 @@ namespace ippl {
     }
 
     template <class PLayout, typename... IP>
-    template <typename F, typename... Properties>
-    void ParticleBase<PLayout, IP...>::internalDestroy(
-        const F& invalid_functor, const size_type destroyNum) {
+    template <typename memory_space, typename execution_space, typename F, typename... Properties>
+    void ParticleBase<PLayout, IP...>::internalDestroy(const F& invalid_functor,
+                                                       const size_type destroyNum) {
         PAssert(destroyNum <= localNum_m);
 
         // If there aren't any particles to delete, do nothing
@@ -179,9 +179,6 @@ namespace ippl {
             return;
         }
 
-        using view_type       = Kokkos::View<bool*, Properties...>;
-        using memory_space    = typename view_type::memory_space;
-        using execution_space = typename view_type::execution_space;
         using policy_type     = Kokkos::RangePolicy<execution_space>;
         auto& locDeleteIndex  = deleteIndex_m.get<memory_space>();
         auto& locKeepIndex    = keepIndex_m.get<memory_space>();
