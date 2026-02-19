@@ -281,6 +281,7 @@ namespace ippl {
         region_view_type Regions = rlayout_m->getdLocalRegions();
 
         using mdrange_type = Kokkos::MDRangePolicy<Kokkos::Rank<2>, position_execution_space>;
+        using policy_type = Kokkos::RangePolicy<size_t, position_execution_space>;
 
         size_type myRank = Comm->rank();
 
@@ -336,7 +337,7 @@ namespace ippl {
 
         Kokkos::parallel_scan(
             "ParticleSpatialLayout::locateParticles()",
-            Kokkos::RangePolicy<size_t>(0, ranks.extent(0)),
+            policy_type(0, ranks.extent(0)),
             KOKKOS_LAMBDA(const size_type i, increment_type& val, const bool final) {
                 /* Step 1
                 * inCurr: True if the particle hasn't left the current MPI rank.
@@ -409,7 +410,7 @@ namespace ippl {
         IpplTimings::stopTimer(nonNeighboringParticles);
         
         Kokkos::parallel_for("Calculate nSends",
-            Kokkos::RangePolicy<size_t>(0, ranks.extent(0)),
+            policy_type(0, ranks.extent(0)),
             KOKKOS_LAMBDA(const size_t i){
                 size_type rank = ranks(i); 
                 Kokkos::atomic_fetch_add(&nSends_dview(rank),1);
@@ -420,7 +421,7 @@ namespace ippl {
         Kokkos::View<size_type> rankSends("Number of Ranks we need to send to");
         
         Kokkos::parallel_for("Calculate sends",
-               Kokkos::RangePolicy<size_t>(0, nSends_dview.extent(0)),
+               policy_type(0, nSends_dview.extent(0)),
                KOKKOS_LAMBDA(const size_t rank){
                    if(nSends_dview(rank) != 0){
                        size_type index = Kokkos::atomic_fetch_add(&rankSends(), 1);
