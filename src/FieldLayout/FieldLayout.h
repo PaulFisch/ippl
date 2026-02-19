@@ -18,6 +18,7 @@
 #include "Communicate/Communicator.h"
 #include "Index/NDIndex.h"
 #include "Partition/Partitioner.h"
+#include <Kokkos_Array.hpp>
 
 namespace ippl {
 
@@ -141,7 +142,7 @@ namespace ippl {
          * Utility function for getFace
          */
         template <size_t... Idx>
-        unsigned int getFace_impl(const std::array<e_cube_tag, sizeof...(Idx)>& args,
+        unsigned int getFace_impl(const Kokkos::Array<e_cube_tag, sizeof...(Idx)>& args,
                                   const std::index_sequence<Idx...>&) {
             return getCube<sizeof...(Idx)>(args[Idx]...);
         }
@@ -155,7 +156,7 @@ namespace ippl {
          */
         template <unsigned Dim>
         unsigned int getFace(unsigned int axis, e_cube_tag side) {
-            std::array<e_cube_tag, Dim> args;
+            Kokkos::Array<e_cube_tag, Dim> args;
             args.fill(IS_PARALLEL);
             args[axis] = side;
             return getFace_impl(args, std::make_index_sequence<Dim>{});
@@ -171,9 +172,9 @@ namespace ippl {
 
         struct bound_type {
             // lower bounds (ordering: x, y, z, ...)
-            std::array<long, Dim> lo;
+            Kokkos::Array<long, Dim> lo;
             // upper bounds (ordering: x, y, z, ...)
-            std::array<long, Dim> hi;
+            Kokkos::Array<long, Dim> hi;
 
             /*!
              * Compute the size of the region described by the bounds
@@ -191,8 +192,8 @@ namespace ippl {
         using rank_list   = std::vector<int>;
         using bounds_list = std::vector<bound_type>;
 
-        using neighbor_list       = std::array<rank_list, detail::countHypercubes(Dim) - 1>;
-        using neighbor_range_list = std::array<bounds_list, detail::countHypercubes(Dim) - 1>;
+        using neighbor_list       = Kokkos::Array<rank_list, detail::countHypercubes(Dim) - 1>;
+        using neighbor_range_list = Kokkos::Array<bounds_list, detail::countHypercubes(Dim) - 1>;
 
         /*!
          * Default constructor, which should only be used if you are going to
@@ -255,7 +256,7 @@ namespace ippl {
 
         // for the requested dimension, report if the distribution was requested to
         // be SERIAL or PARALLEL
-        std::array<bool, Dim> isParallel() const { return isParallelDim_m; }
+        Kokkos::Array<bool, Dim> isParallel() const { return isParallelDim_m; }
 
         // Get the local domain for the current rank.
         const NDIndex_t& getLocalNDIndex() const;
