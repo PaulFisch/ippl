@@ -179,9 +179,9 @@ namespace ippl {
             return;
         }
 
-        using policy_type     = Kokkos::RangePolicy<execution_space>;
-        auto& locDeleteIndex  = deleteIndex_m.get<memory_space>();
-        auto& locKeepIndex    = keepIndex_m.get<memory_space>();
+        using policy_type    = Kokkos::RangePolicy<execution_space>;
+        auto& locDeleteIndex = deleteIndex_m.get<memory_space>();
+        auto& locKeepIndex   = keepIndex_m.get<memory_space>();
 
         // Resize buffers, if necessary
         detail::runForAllSpaces([&]<typename MemorySpace>() {
@@ -278,11 +278,7 @@ namespace ippl {
             if (bufSize == 0) {
                 return;
             }
-
-            static IpplTimings::TimerRef sendTimer = IpplTimings::getTimer("sendtorank_getbuffer");
-            IpplTimings::startTimer(sendTimer);
             auto buf = Comm->getBuffer<MemorySpace>(bufSize);
-            IpplTimings::stopTimer(sendTimer);
 
             Comm->isend(rank, tag++, *this, *buf, requests.back(), nSends);
             buf->resetWritePos();

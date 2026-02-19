@@ -217,7 +217,7 @@ namespace ippl {
                     return r;
             }
 
-            for (int r = 0; r < Regions.extent(0); ++r) {
+            for (int r = 0; r < static_cast<int>(Regions.extent(0)); ++r) {
                 if (positionInRegion(is, positions(i), Regions(r)))
                     return r;
             }
