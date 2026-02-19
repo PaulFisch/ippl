@@ -164,17 +164,6 @@ namespace ippl {
     template <typename... Properties>
     void ParticleBase<PLayout, IP...>::internalDestroy(
         const Kokkos::View<bool*, Properties...>& invalid, const size_type destroyNum) {
-        internalDestroy(
-            KOKKOS_LAMBDA(size_t i) {
-                return invalid(i);
-            },
-            destroyNum);
-    }
-
-    template <class PLayout, typename... IP>
-    template <typename F, typename... Properties>
-    void ParticleBase<PLayout, IP...>::internalDestroy(const F& invalid_functor,
-                                                       const size_type destroyNum) {
         PAssert(destroyNum <= localNum_m);
 
         // If there aren't any particles to delete, do nothing
@@ -217,10 +206,10 @@ namespace ippl {
         Kokkos::parallel_scan(
             "Scan in ParticleBase::destroy()", policy_type(0, localNum_m - destroyNum),
             KOKKOS_LAMBDA(const size_t i, int& idx, const bool final) {
-                if (final && invalid_functor(i)) {
+                if (final && invalid(i)) {
                     locDeleteIndex(idx) = i;
                 }
-                if (invalid_functor(i)) {
+                if (invalid(i)) {
                     idx += 1;
                 }
             });
@@ -242,10 +231,10 @@ namespace ippl {
             "Second scan in ParticleBase::destroy()",
             Kokkos::RangePolicy<size_type, execution_space>(localNum_m - destroyNum, localNum_m),
             KOKKOS_LAMBDA(const size_t i, int& idx, const bool final) {
-                if (final && !invalid_functor(i)) {
+                if (final && !invalid(i)) {
                     locKeepIndex(idx) = i;
                 }
-                if (!invalid_functor(i)) {
+                if (!invalid(i)) {
                     idx += 1;
                 }
             });
