@@ -418,7 +418,7 @@ namespace ippl {
         ); 
     
         // Number of Ranks we need to send to 
-        Kokkos::View<size_type> rankSends("Number of Ranks we need to send to");
+        Kokkos::View<size_type, position_memory_space> rankSends("Number of Ranks we need to send to");
         
         Kokkos::parallel_for("Calculate sends",
                policy_type(0, nSends_dview.extent(0)),
