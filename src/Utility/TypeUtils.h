@@ -341,10 +341,22 @@ namespace ippl {
             template <typename DataType, typename Filter = std::nullptr_t>
             MultispaceContainer(const DataType& data, Filter&& predicate = nullptr)
                 : MultispaceContainer() {
-                using space = typename DataType::memory_space;
-                static_assert(std::is_same_v<DataType, Type<space>>);
+                static_assert(Kokkos::is_view<DataType>::value, "DataType must be a Kokkos::View");
 
-                elements_m[spaceToIndex<space>()] = data;
+                using space    = typename DataType::memory_space;
+                using expected = Type<space>;
+
+                static_assert(std::is_same_v<typename DataType::memory_space,
+                                             typename expected::memory_space>,
+                              "Hash view must live in the same memory_space as expected.");
+                static_assert(std::is_same_v<typename DataType::non_const_value_type,
+                                             typename expected::non_const_value_type>,
+                              "Hash view must have the same value_type as expected.");
+                static_assert(DataType::rank == expected::rank,
+                              "Hash view must have the same rank as expected.");
+
+                expected normalized = data;
+                elements_m[spaceToIndex<space>()] = normalized;
                 copyToOtherSpaces<space>(predicate);
             }
 

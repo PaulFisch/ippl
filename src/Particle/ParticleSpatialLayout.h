@@ -124,6 +124,11 @@ namespace ippl {
                                                         locate_type& nSends_dview,
                                                         locate_type& sends_dview) const;
 
+        template <typename ParticleContainer>
+        std::pair<detail::size_type, std::vector<int>> locateParticlesPacked(
+            const ParticleContainer& pc, locate_type& rankSendCount_dview,
+            locate_type& sendOffsets_dview, hash_type& sendIds_dview) const;
+
         /*!
          * @param rank we sent to
          * @param ranks a container specifying where a particle at the i-th index should go.
