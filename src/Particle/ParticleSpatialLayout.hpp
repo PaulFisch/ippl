@@ -72,6 +72,7 @@ namespace ippl {
                                                                           Mesh& mesh) {
         // flayout_m = fl;
         rlayout_m->changeDomain(fl, mesh);
+        neighbors_dirty_ = true;
     }
 
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
@@ -92,6 +93,9 @@ namespace ippl {
             return;
         }
 
+        ensureScratch(nRanks);
+        ensureNeighborsCached();
+
         /* particle MPI exchange:
          *   1. figure out which particles need to go where -> locateParticles(...)
          *   2. fill send buffer and send particles
@@ -104,26 +108,28 @@ namespace ippl {
         static IpplTimings::TimerRef locateTimer = IpplTimings::getTimer("locateParticles");
         IpplTimings::startTimer(locateTimer);
 
-        /* The indices are the MPI ranks,
-         * the values are the number of particles are sent to that rank from myrank
-         */
-        locate_type rankSendCount_dview("rankSendCount Device", nRanks);
-        locate_type sendOffsets_dview("rankSendCount Device", nRanks);
-        hash_type sendIds_dview;
+        const size_type nInvalid = locateParticlesPacked(pc);
 
-        Kokkos::deep_copy(rankSendCount_dview, size_type(0));
+        // Copy metadata to host
+        size_type nDest = 0;
+        Kokkos::deep_copy(nDest, nDest_d_);
 
-        /* nInvalid is the number of invalid particles
-         * nDestinationRanks is the number of MPI ranks we need to send to
-         */
-        auto [nInvalid, destinationRanks_h] =
-            locateParticlesPacked(pc, rankSendCount_dview, sendOffsets_dview, sendIds_dview);
+        // destRanks prefix
+        if (nDest > 0) {
+            Kokkos::deep_copy(
+                Kokkos::subview(destRanks_h_, std::make_pair(size_t(0), size_t(nDest))),
+                Kokkos::subview(destRanks_d_, std::make_pair(size_t(0), size_t(nDest))));
+        }
 
-        // Host copies for slicing
-        auto rankSendCount_hview =
-            Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), rankSendCount_dview);
-        auto sendOffsets_hview =
-            Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), sendOffsets_dview);
+        // counts + offsets (small; simplest + robust)
+        Kokkos::deep_copy(rankSendCount_h_, rankSendCount_d_);
+        Kokkos::deep_copy(sendOffsets_h_, sendOffsets_d_);
+
+        // Build host destination list without allocation
+        destinationRanks_host_.clear();
+        destinationRanks_host_.reserve((size_t)nDest);
+        for (size_t i = 0; i < (size_t)nDest; ++i)
+            destinationRanks_host_.push_back(destRanks_h_(i));
 
         IpplTimings::stopTimer(locateTimer);
 
@@ -139,10 +145,10 @@ namespace ippl {
         window_m.fence(0);
 
         // Prepare RMA window for the ranks we need to send to
-        for (int rank : destinationRanks_h) {
+        for (int rank : destinationRanks_host_) {
             if (rank == Comm->rank())
                 continue;
-            const int* src_ptr = &rankSendCount_hview(rank);
+            const int* src_ptr = &rankSendCount_h_(rank);
             window_m.put<int>(src_ptr, rank, Comm->rank());
         }
         window_m.fence(0);
@@ -155,21 +161,21 @@ namespace ippl {
         IpplTimings::startTimer(sendTimer);
 
         std::vector<MPI_Request> requests(0);
-        requests.reserve(destinationRanks_h.size());
+        requests.reserve(destinationRanks_host_.size());
 
         int tag = Comm->next_tag(mpi::tag::P_SPATIAL_LAYOUT, mpi::tag::P_LAYOUT_CYCLE);
 
-        for (int rank : destinationRanks_h) {
+        for (int rank : destinationRanks_host_) {
             if (rank == Comm->rank())
                 continue;
 
-            const size_type count = rankSendCount_hview(rank);
-            if (count == 0) {
+            const size_type count = static_cast<size_type>(rankSendCount_h_(rank));
+            if (count == 0)
                 continue;
-            }
 
-            const size_type begin = sendOffsets_hview(rank);
-            auto ids_sub = Kokkos::subview(sendIds_dview, std::make_pair(begin, begin + count));
+            const size_type begin = static_cast<size_type>(sendOffsets_h_(rank));
+            auto ids_sub =
+                Kokkos::subview(sendIds_d_, std::make_pair((size_t)begin, (size_t)(begin + count)));
 
             pc.sendToRank(rank, tag, requests, ids_sub);
         }
@@ -274,117 +280,111 @@ namespace ippl {
 
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
     template <typename ParticleContainer>
-    std::pair<detail::size_type, std::vector<int>>
-    ParticleSpatialLayout<T, Dim, Mesh, Properties...>::locateParticlesPacked(
-        const ParticleContainer& pc, locate_type& rankSendCount_dview,
-        locate_type& sendOffsets_dview, hash_type& sendIds_dview) const {
+    size_t ParticleSpatialLayout<T, Dim, Mesh, Properties...>::locateParticlesPacked(
+        const ParticleContainer& pc) {
+        const int nRanks       = Comm->size();
+        const size_type myRank = Comm->rank();
+
+        ensureScratch(nRanks);
+        ensureNeighborsCached();
+
         auto positions           = pc.R.getView();
         region_view_type Regions = rlayout_m->getdLocalRegions();
+        const auto is            = std::make_index_sequence<Dim>{};
 
         using exec_space  = position_execution_space;
         using policy_type = Kokkos::RangePolicy<size_t, exec_space>;
 
-        const size_type myRank = Comm->rank();
-        const int nRanks       = Comm->size();
-        const auto is          = std::make_index_sequence<Dim>{};
+        // Reset small device buffers
+        Kokkos::deep_copy(rankSendCount_d_, size_type(0));
+        Kokkos::deep_copy(cursor_d_, size_type(0));
+        Kokkos::deep_copy(nDest_d_, size_type(0));
 
-        // neighbors_view (build on host then deep_copy)
-        const neighbor_list& neighbors = flayout_m.getNeighbors();
-        const size_type neighborSize   = getNeighborSize(neighbors);
-        locate_type neighbors_view("Nearest neighbors IDs", neighborSize);
-        {
-            auto neighbors_mirror = Kokkos::create_mirror_view(neighbors_view);
-            size_t k              = 0;
-            for (const auto& componentNeighbors : neighbors) {
-                for (size_t j = 0; j < componentNeighbors.size(); ++j) {
-                    neighbors_mirror(k++) = componentNeighbors[j];
-                }
-            }
-            Kokkos::deep_copy(neighbors_view, neighbors_mirror);
-        }
+        const size_type neighbors_used = neighbors_used_;
+        auto& neighbours_d             = neighbors_d_;
 
-        // Local helper: destination rank for particle i
+        // Destination rank computation (no per-particle storage)
         auto destRankOf = KOKKOS_LAMBDA(const size_t i)->size_type {
             if (positionInRegion(is, positions(i), Regions(myRank)))
                 return myRank;
 
-            for (size_t j = 0; j < neighbors_view.extent(0); ++j) {
-                const size_type r = neighbors_view(j);
+            for (size_t j = 0; j < (size_t)neighbors_used; ++j) {
+                const size_type r = neighbours_d(j);
                 if (positionInRegion(is, positions(i), Regions(r)))
                     return r;
             }
 
+            // Rare slow-path: global scan (kept for correctness)
             for (size_type r = 0; r < Regions.extent(0); ++r) {
                 if (positionInRegion(is, positions(i), Regions(r)))
                     return r;
             }
 
+            // Policy if outside all regions
             return myRank;
         };
 
-        // Pass 1: counts + nInvalid
-        size_type nInvalid = 0;
+        // Pass 1: compute send counts + nInvalid
+        size_type nInvalid    = 0;
+        auto& rankSendCount_d = rankSendCount_d_;
         Kokkos::parallel_reduce(
-            "ParticleSpatialLayout::locateParticlesPacked count", policy_type(0, pc.getLocalNum()),
+            "PSL::packed_count", policy_type(0, pc.getLocalNum()),
             KOKKOS_LAMBDA(const size_t i, size_type& inval) {
                 const size_type dest = destRankOf(i);
                 const bool leaves    = (dest != myRank);
                 inval += leaves;
-
-                if (leaves) {
-                    Kokkos::atomic_fetch_add(&rankSendCount_dview(dest), size_type(1));
-                }
+                if (leaves)
+                    Kokkos::atomic_fetch_add(&rankSendCount_d(dest), size_type(1));
             },
             nInvalid);
         Kokkos::fence();
 
-        // Host counts for destination list (also used by update() for window put)
-        auto rankSendCount_h =
-            Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), rankSendCount_dview);
+        // Ensure sendIds capacity after we know nInvalid
+        ensureSendCapacity(nInvalid);
 
-        std::vector<int> destinationRanks_h;
-        destinationRanks_h.reserve(nRanks);
-        for (int r = 0; r < nRanks; ++r) {
-            if (r == (int)myRank)
-                continue;
-            if (rankSendCount_h(r) > 0)
-                destinationRanks_h.push_back(r);
-        }
-
-        // Offsets: exclusive scan over ranks; sendOffsets size nRanks+1
+        // Exclusive scan to offsets (length nRanks+1)
+        auto& sendOffsets_d = sendOffsets_d_;
         Kokkos::parallel_scan(
-            "ParticleSpatialLayout::locateParticlesPacked offsets",
-            policy_type(0, (size_t)nRanks + 1),
+            "PSL::packed_offsets", policy_type(0, (size_t)nRanks + 1),
             KOKKOS_LAMBDA(const size_t r, size_type& upd, const bool final) {
                 if (final)
-                    sendOffsets_dview(r) = upd;
+                    sendOffsets_d(r) = upd;
                 if (r < (size_t)nRanks)
-                    upd += rankSendCount_dview(r);
+                    upd += rankSendCount_d(r);
             });
         Kokkos::fence();
 
-        // Allocate packed IDs
-        sendIds_dview = hash_type("sendIdsPacked", nInvalid);
-
-        // Cursor per rank for fill
-        locate_type cursor_dview("sendFillCursor", nRanks);
-        Kokkos::deep_copy(cursor_dview, size_type(0));
-
-        // Pass 2: fill sendIds grouped by dest rank
+        // Pass 2: fill packed send IDs into sendIds_d_ (prefix [0, nInvalid))
+        auto& cursor_d  = cursor_d_;
+        auto& sendIds_d = sendIds_d_;
         Kokkos::parallel_for(
-            "ParticleSpatialLayout::locateParticlesPacked fill", policy_type(0, pc.getLocalNum()),
-            KOKKOS_LAMBDA(const size_t i) {
+            "PSL::packed_fill", policy_type(0, pc.getLocalNum()), KOKKOS_LAMBDA(const size_t i) {
                 const size_type dest = destRankOf(i);
                 if (dest == myRank)
                     return;
 
-                const size_type pos  = Kokkos::atomic_fetch_add(&cursor_dview(dest), size_type(1));
-                const size_type base = sendOffsets_dview(dest);
-                sendIds_dview(base + pos) = i;
+                const size_type pos  = Kokkos::atomic_fetch_add(&cursor_d(dest), size_type(1));
+                const size_type base = sendOffsets_d(dest);
+
+                sendIds_d(base + pos) = static_cast<typename hash_type::non_const_value_type>(i);
             });
         Kokkos::fence();
 
-        return {nInvalid, destinationRanks_h};
+        // Build destination rank list on device (compact), store length in nDest_d_
+        auto& destRanks_d = destRanks_d_;
+        auto& nDest_d     = nDest_d_;
+        Kokkos::parallel_for(
+            "PSL::packed_destRanks", policy_type(0, (size_t)nRanks), KOKKOS_LAMBDA(const size_t r) {
+                if ((size_type)r == myRank)
+                    return;
+                if (rankSendCount_d(r) > 0) {
+                    const size_type idx = Kokkos::atomic_fetch_add(&nDest_d(), size_type(1));
+                    destRanks_d(idx)    = static_cast<int>(r);
+                }
+            });
+        Kokkos::fence();
+
+        return nInvalid;
     }
 
     /**
@@ -610,6 +610,74 @@ namespace ippl {
             nSends);
         Kokkos::fence();
         return nSends;
+    }
+
+    template <typename T, unsigned Dim, class Mesh, typename... Properties>
+    void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::ensureScratch(int nRanks) {
+        if (scratch_nRanks_ == nRanks)
+            return;
+
+        scratch_nRanks_ = nRanks;
+
+        Kokkos::realloc(rankSendCount_d_, nRanks);
+        Kokkos::realloc(sendOffsets_d_, nRanks + 1);
+        Kokkos::realloc(cursor_d_, nRanks);
+        Kokkos::realloc(destRanks_d_, nRanks);
+
+        // scalar counter
+        nDest_d_ = Kokkos::View<size_type, position_memory_space>("nDest_d");
+
+        // Host mirrors
+        Kokkos::realloc(rankSendCount_h_, nRanks);
+        Kokkos::realloc(sendOffsets_h_, nRanks + 1);
+        Kokkos::realloc(destRanks_h_, nRanks);
+
+        destinationRanks_host_.clear();
+        destinationRanks_host_.reserve(nRanks);
+    }
+
+    template <typename T, unsigned Dim, class Mesh, typename... Properties>
+    void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::ensureSendCapacity(size_t nInvalid) {
+        if (nInvalid <= sendIds_capacity_)
+            return;
+
+        // grow geometrically
+        size_t newCap = sendIds_capacity_ ? sendIds_capacity_ : size_t(1024);
+        while (newCap < nInvalid)
+            newCap *= 2;
+
+        sendIds_capacity_ = newCap;
+        Kokkos::realloc(sendIds_d_, newCap);
+    }
+
+    template <typename T, unsigned Dim, class Mesh, typename... Properties>
+    void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::ensureNeighborsCached() {
+        if (!neighbors_dirty_)
+            return;
+
+        const neighbor_list& neighbors = flayout_m.getNeighbors();
+        const size_type neighborSize   = getNeighborSize(neighbors);
+        neighbors_used_                = neighborSize;
+
+        if (neighborSize > neighbors_capacity_) {
+            neighbors_capacity_ = neighborSize;
+            Kokkos::realloc(neighbors_d_, neighbors_capacity_);
+        }
+
+        // fill on host then deep_copy once
+        auto neighbors_h = Kokkos::create_mirror_view(neighbors_d_);
+        size_t k         = 0;
+        for (const auto& componentNeighbors : neighbors) {
+            for (size_t j = 0; j < componentNeighbors.size(); ++j) {
+                neighbors_h(k++) = componentNeighbors[j];
+            }
+        }
+        // Only copy the used prefix [0, neighborSize)
+        Kokkos::deep_copy(
+            Kokkos::subview(neighbors_d_, std::make_pair(size_t(0), size_t(neighborSize))),
+            Kokkos::subview(neighbors_h, std::make_pair(size_t(0), size_t(neighborSize))));
+
+        neighbors_dirty_ = false;
     }
 
 }  // namespace ippl

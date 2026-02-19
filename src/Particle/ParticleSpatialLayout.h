@@ -59,7 +59,6 @@ namespace ippl {
 
         using size_type = detail::size_type;
 
-    public:
         // constructor: this one also takes a Mesh
         ParticleSpatialLayout(FieldLayout<Dim>&, Mesh&, bool fem = false);
 
@@ -125,9 +124,7 @@ namespace ippl {
                                                         locate_type& sends_dview) const;
 
         template <typename ParticleContainer>
-        std::pair<detail::size_type, std::vector<int>> locateParticlesPacked(
-            const ParticleContainer& pc, locate_type& rankSendCount_dview,
-            locate_type& sendOffsets_dview, hash_type& sendIds_dview) const;
+        size_t locateParticlesPacked(const ParticleContainer& pc);
 
         /*!
          * @param rank we sent to
@@ -141,6 +138,40 @@ namespace ippl {
          * @param ranks a container specifying where a particle at the i-th index should go.
          */
         size_t numberOfSends(int rank, const locate_type& ranks);
+
+    private:
+        // Device Scratch buffers for particle update
+        locate_type rankSendCount_d_;  // [nRanks]
+        locate_type sendOffsets_d_;    // [nRanks+1]
+        hash_type sendIds_d_;          // [capacity >= max nInvalid seen]
+        locate_type cursor_d_;         // [nRanks]
+        locate_type destRanks_d_;      // [nRanks] (compacted list)
+        locate_type neighbors_d_;      // [neighborSize] cached device neighbors list
+
+        // Single scalar on device to count destinations
+        Kokkos::View<size_type, position_memory_space> nDest_d_;
+
+        // Host mirror buffers
+        using host_mem_space   = Kokkos::HostSpace;
+        using locate_host_type = typename detail::ViewType<int, 1, host_mem_space>::view_type;
+
+        locate_host_type rankSendCount_h_;  // [nRanks] (mirror)
+        locate_host_type sendOffsets_h_;    // [nRanks+1] (mirror)
+        locate_host_type destRanks_h_;      // [nRanks] (mirror)
+
+        // Host-side destination list
+        std::vector<int> destinationRanks_host_;
+        bool neighbors_dirty_ = true;
+
+        // capacities
+        int scratch_nRanks_        = 0;
+        size_t sendIds_capacity_   = 0;
+        size_t neighbors_capacity_ = 0;
+        size_type neighbors_used_  = 0;
+
+        void ensureScratch(int nRanks);
+        void ensureSendCapacity(size_t nInvalid);
+        void ensureNeighborsCached();
     };
 }  // namespace ippl
 
