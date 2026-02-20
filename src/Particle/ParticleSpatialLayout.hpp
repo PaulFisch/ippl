@@ -116,7 +116,8 @@ namespace ippl {
 
         // destRanks prefix
         if (nDest > 0) {
-            Kokkos::deep_copy(position_execution_space{},
+            Kokkos::deep_copy(
+                position_execution_space{},
                 Kokkos::subview(destRanks_h_, std::make_pair(size_t(0), size_t(nDest))),
                 Kokkos::subview(destRanks_d_, std::make_pair(size_t(0), size_t(nDest))));
         }
@@ -189,19 +190,8 @@ namespace ippl {
 
         const auto myRank = Comm->rank();
 
-        const neighbor_list& neighbors = flayout_m.getNeighbors();
-        const size_type neighborSize   = getNeighborSize(neighbors);
-        locate_type neighbors_view("Nearest neighbors IDs", neighborSize);
-        {
-            auto neighbors_mirror = Kokkos::create_mirror_view(neighbors_view);
-            size_t k              = 0;
-            for (const auto& componentNeighbors : neighbors) {
-                for (size_t j = 0; j < componentNeighbors.size(); ++j) {
-                    neighbors_mirror(k++) = componentNeighbors[j];
-                }
-            }
-            Kokkos::deep_copy(neighbors_view, neighbors_mirror);
-        }
+        auto neighbors_view =
+            Kokkos::subview(neighbors_d_, std::make_pair(size_t(0), size_t(neighbors_used_)));
 
         auto positions           = pc.R.getView();
         region_view_type Regions = rlayout_m->getdLocalRegions();
