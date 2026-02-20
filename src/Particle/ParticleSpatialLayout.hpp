@@ -112,18 +112,18 @@ namespace ippl {
 
         // Copy metadata to host
         size_type nDest = 0;
-        Kokkos::deep_copy(nDest, nDest_d_);
+        Kokkos::deep_copy(position_execution_space{}, nDest, nDest_d_);
 
         // destRanks prefix
         if (nDest > 0) {
-            Kokkos::deep_copy(
+            Kokkos::deep_copy(position_execution_space{},
                 Kokkos::subview(destRanks_h_, std::make_pair(size_t(0), size_t(nDest))),
                 Kokkos::subview(destRanks_d_, std::make_pair(size_t(0), size_t(nDest))));
         }
 
-        // counts + offsets (small; simplest + robust)
-        Kokkos::deep_copy(rankSendCount_h_, rankSendCount_d_);
-        Kokkos::deep_copy(sendOffsets_h_, sendOffsets_d_);
+        // counts + offsets
+        Kokkos::deep_copy(position_execution_space{}, rankSendCount_h_, rankSendCount_d_);
+        Kokkos::deep_copy(position_execution_space{}, sendOffsets_h_, sendOffsets_d_);
 
         // Build host destination list without allocation
         destinationRanks_host_.clear();

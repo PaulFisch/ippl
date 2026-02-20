@@ -24,7 +24,7 @@ void Timer::start() {
 
 void Timer::stop() {
     if (enableFences) {
-        Kokkos::fence();
+        Kokkos::fence("Timer Fence");
     }
     stop_m = std::chrono::high_resolution_clock::now();
 
