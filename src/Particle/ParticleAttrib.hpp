@@ -71,7 +71,6 @@ namespace ippl {
         Kokkos::parallel_for(
             "ParticleAttrib::pack()", policy_type(0, size),
             KOKKOS_LAMBDA(const size_t i) { buf(i) = dview(hash(i)); });
-        Kokkos::fence();
     }
 
     template <typename T, class... Properties>
