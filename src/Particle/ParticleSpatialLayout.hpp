@@ -152,7 +152,6 @@ namespace ippl {
             const int* src_ptr = &rankSendCount_h_(rank);
             window_m.put<int>(src_ptr, rank, Comm->rank());
         }
-        window_m.fence(0);
 
         IpplTimings::stopTimer(preprocTimer);
 
@@ -227,6 +226,7 @@ namespace ippl {
         static IpplTimings::TimerRef recvTimer = IpplTimings::getTimer("particleRecv");
         IpplTimings::startTimer(recvTimer);
 
+        window_m.fence(0);
         for (int rank = 0; rank < nRanks; ++rank) {
             if (nRecvs_m[rank] > 0) {
                 pc.recvFromRank(rank, tag, nRecvs_m[rank]);
