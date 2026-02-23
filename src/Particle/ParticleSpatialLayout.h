@@ -35,6 +35,14 @@
 
 namespace ippl {
 
+    // Controls how the send-count exchange is performed before the particle data transfer.
+    enum class CountExchange {
+        // One-sided RMA: each sender writes its count directly into the receiver's window.
+        RMA,
+        // Two-sided GPU-direct P2P: Isend/Irecv over device pointers
+        P2P_GPU
+    };
+
     /*!
      * ParticleSpatialLayout class definition.
      * @tparam T value type
@@ -60,7 +68,8 @@ namespace ippl {
         using size_type = detail::size_type;
 
         // constructor: this one also takes a Mesh
-        ParticleSpatialLayout(FieldLayout<Dim>&, Mesh&, bool fem = false);
+        ParticleSpatialLayout(FieldLayout<Dim>&, Mesh&, bool fem = false,
+                              CountExchange mode = CountExchange::P2P_GPU);
 
         ParticleSpatialLayout()
             : detail::ParticleLayout<T, Dim, PositionProperties...>() {}
@@ -81,11 +90,23 @@ namespace ippl {
         //! The FieldLayout containing information on nearest neighbors
         FieldLayout_t& flayout_m;
 
+        //! How counts are exchanged
+        CountExchange countExchangeMode_;
+
+        //
+        // RMA Path
+        //
+
         // Vector keeping track of the recieves from all ranks
         std::vector<size_type> nRecvs_m;
 
         // MPI RMA window for one-sided communication
         mpi::rma::Window<mpi::rma::Active> window_m;
+
+        //
+        // P2P GPU Path
+        //
+        locate_type recvCounts_d_;  // [nranks]
 
         //! Type of the Kokkos view containing the local regions.
         using region_view_type = typename RegionLayout_t::view_type;
@@ -140,16 +161,22 @@ namespace ippl {
         size_t numberOfSends(int rank, const locate_type& ranks);
 
     private:
-        // Device Scratch buffers for particle update
+        // Fixed-size scratch
         locate_type rankSendCount_d_;  // [nRanks]
         locate_type sendOffsets_d_;    // [nRanks+1]
         hash_type sendIds_d_;          // [capacity >= max nInvalid seen]
         locate_type cursor_d_;         // [nRanks]
         locate_type destRanks_d_;      // [nRanks] (compacted list)
-        locate_type neighbors_d_;      // [neighborSize] cached device neighbors list
 
         // Single scalar on device to count destinations
         Kokkos::View<size_type, position_memory_space> nDest_d_;
+
+        // Neigbour cache
+        locate_type neighbors_d_;          // [neighborSize] cached device neighbors list
+        std::vector<int> neighbors_host_;  // flat host copy
+        bool neighbors_dirty_      = true;
+        size_t neighbors_capacity_ = 0;
+        size_type neighbors_used_  = 0;
 
         // Host mirror buffers
         using host_mem_space   = Kokkos::HostSpace;
@@ -161,17 +188,17 @@ namespace ippl {
 
         // Host-side destination list
         std::vector<int> destinationRanks_host_;
-        bool neighbors_dirty_ = true;
 
         // capacities
-        int scratch_nRanks_        = 0;
-        size_t sendIds_capacity_   = 0;
-        size_t neighbors_capacity_ = 0;
-        size_type neighbors_used_  = 0;
+        size_t sendIds_capacity_ = 0;
+        int nRanks_              = 0;
 
-        void ensureScratch(int nRanks);
+        void initScratch(int nRanks);
         void ensureSendCapacity(size_t nInvalid);
         void ensureNeighborsCached();
+
+        void countExchangeRMA();
+        void countExchangeP2P();
     };
 }  // namespace ippl
 

@@ -58,11 +58,17 @@ namespace ippl {
 
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
     ParticleSpatialLayout<T, Dim, Mesh, Properties...>::ParticleSpatialLayout(FieldLayout<Dim>& fl,
-                                                                              Mesh& mesh, bool fem)
+                                                                              Mesh& mesh, bool fem,
+                                                                              CountExchange mode)
         : rlayout_m(std::make_shared<RegionLayout_t>(fl, mesh, fem))
-        , flayout_m(fl) {
-        nRecvs_m.resize(Comm->size());
-        if (Comm->size() > 1) {
+        , flayout_m(fl)
+        , countExchangeMode_(mode) {
+        const int nRanks = Comm->size();
+        nRanks_          = nRanks;
+        initScratch(nRanks);
+
+        if (mode == CountExchange::RMA && nRanks > 1) {
+            nRecvs_m.resize(Comm->size());
             window_m.create(*Comm, nRecvs_m.begin(), nRecvs_m.end());
         }
     }
@@ -73,6 +79,55 @@ namespace ippl {
         // flayout_m = fl;
         rlayout_m->changeDomain(fl, mesh);
         neighbors_dirty_ = true;
+    }
+
+    template <typename T, unsigned Dim, class Mesh, typename... Properties>
+    void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::countExchangeRMA() {
+        std::fill(nRecvs_m.begin(), nRecvs_m.end(), 0);
+        window_m.fence(0);
+
+        for (int rank : destinationRanks_host_) {
+            if (rank == Comm->rank())
+                continue;
+            const int* src = &rankSendCount_h_(rank);
+            window_m.put<int>(src, rank, Comm->rank());
+        }
+
+        window_m.fence(0);
+    }
+
+    template <typename T, unsigned Dim, class Mesh, typename... Properties>
+    void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::countExchangeP2P() {
+        const int myRank = Comm->rank();
+        const int tag    = Comm->next_tag(mpi::tag::P_SPATIAL_LAYOUT, mpi::tag::P_LAYOUT_CYCLE);
+
+        // Zero the receive-count buffer on the device
+        Kokkos::deep_copy(position_execution_space{}, recvCounts_d_, 0);
+        Kokkos::fence();
+
+        // Device pointer to send-count array
+        int* d_sendCounts = rankSendCount_d_.data();
+        int* d_recvCounts = recvCounts_d_.data();
+
+        std::vector<MPI_Request> reqs;
+        reqs.reserve(2 * std::max(0, nRanks_ - 1));
+
+        // Post receives from all ranks (except self)
+        for (int r = 0; r < nRanks_; ++r) {
+            if (r == myRank)
+                continue;
+            MPI_Irecv(d_recvCounts + r, 1, MPI_INT, r, tag, Comm->getCommunicator(),
+                      &reqs.emplace_back());
+        }
+
+        for (int r = 0; r < nRanks_; ++r) {
+            if (r == myRank)
+                continue;
+            MPI_Isend(d_sendCounts + r, 1, MPI_INT, r, tag, Comm->getCommunicator(),
+                      &reqs.emplace_back());
+        }
+
+        MPI_Waitall(static_cast<int>(reqs.size()), reqs.data(), MPI_STATUSES_IGNORE);
     }
 
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
@@ -88,12 +143,10 @@ namespace ippl {
         static IpplTimings::TimerRef ParticleUpdateTimer = IpplTimings::getTimer("updateParticle");
         IpplTimings::startTimer(ParticleUpdateTimer);
 
-        int nRanks = Comm->size();
-        if (nRanks < 2) {
+        if (nRanks_ < 2) {
             return;
         }
 
-        ensureScratch(nRanks);
         ensureNeighborsCached();
 
         /* particle MPI exchange:
@@ -128,7 +181,6 @@ namespace ippl {
 
         // Build host destination list without allocation
         destinationRanks_host_.clear();
-        destinationRanks_host_.reserve((size_t)nDest);
         for (size_t i = 0; i < (size_t)nDest; ++i)
             destinationRanks_host_.push_back(destRanks_h_(i));
 
@@ -136,21 +188,15 @@ namespace ippl {
 
         // 2. fill send buffer and send particles =============================================== //
 
-        // 2.1 Remote Memory Access window for one-sided communication
+        // 2.1 Count Exchange
 
         static IpplTimings::TimerRef preprocTimer = IpplTimings::getTimer("sendPreprocess");
         IpplTimings::startTimer(preprocTimer);
 
-        std::fill(nRecvs_m.begin(), nRecvs_m.end(), 0);
-
-        window_m.fence(0);
-
-        // Prepare RMA window for the ranks we need to send to
-        for (int rank : destinationRanks_host_) {
-            if (rank == Comm->rank())
-                continue;
-            const int* src_ptr = &rankSendCount_h_(rank);
-            window_m.put<int>(src_ptr, rank, Comm->rank());
+        if (countExchangeMode_ == CountExchange::RMA) {
+            countExchangeRMA();
+        } else {
+            countExchangeP2P();
         }
 
         IpplTimings::stopTimer(preprocTimer);
@@ -226,18 +272,29 @@ namespace ippl {
         static IpplTimings::TimerRef recvTimer = IpplTimings::getTimer("particleRecv");
         IpplTimings::startTimer(recvTimer);
 
-        window_m.fence(0);
-        for (int rank = 0; rank < nRanks; ++rank) {
-            if (nRecvs_m[rank] > 0) {
-                pc.recvFromRank(rank, tag, nRecvs_m[rank]);
+        if (countExchangeMode_ == CountExchange::RMA) {
+            for (int rank = 0; rank < nRanks_; ++rank) {
+                if (nRecvs_m[rank] > 0)
+                    pc.recvFromRank(rank, tag, nRecvs_m[rank]);
+            }
+        } else {
+            auto recvCounts_h =
+                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), recvCounts_d_);
+
+            for (int r = 0; r < nRanks_; ++r) {
+                if (r == Comm->rank())
+                    continue;
+                const int cnt = recvCounts_h(r);
+                if (cnt > 0)
+                    pc.recvFromRank(r, tag, cnt);
             }
         }
         IpplTimings::stopTimer(recvTimer);
 
         // IpplTimings::startTimer(sendTimer);
 
-        if (requests.size() > 0) {
-            MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
+        if (!requests.empty()) {
+            MPI_Waitall(static_cast<int>(requests.size()), requests.data(), MPI_STATUSES_IGNORE);
         }
         Comm->freeAllBuffers();
         // IpplTimings::stopTimer(sendTimer);
@@ -275,7 +332,6 @@ namespace ippl {
         const int nRanks       = Comm->size();
         const size_type myRank = Comm->rank();
 
-        ensureScratch(nRanks);
         ensureNeighborsCached();
 
         auto positions           = pc.R.getView();
@@ -603,16 +659,12 @@ namespace ippl {
     }
 
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
-    void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::ensureScratch(int nRanks) {
-        if (scratch_nRanks_ == nRanks)
-            return;
-
-        scratch_nRanks_ = nRanks;
-
+    void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::initScratch(int nRanks) {
         Kokkos::realloc(rankSendCount_d_, nRanks);
         Kokkos::realloc(sendOffsets_d_, nRanks + 1);
         Kokkos::realloc(cursor_d_, nRanks);
         Kokkos::realloc(destRanks_d_, nRanks);
+        Kokkos::realloc(recvCounts_d_, nRanks);
 
         // scalar counter
         nDest_d_ = Kokkos::View<size_type, position_memory_space>("nDest_d");
@@ -654,15 +706,19 @@ namespace ippl {
             Kokkos::realloc(neighbors_d_, neighbors_capacity_);
         }
 
-        // fill on host then deep_copy once
+        neighbors_host_.clear();
+        neighbors_host_.reserve(neighborSize);
+
         auto neighbors_h = Kokkos::create_mirror_view(neighbors_d_);
         size_t k         = 0;
-        for (const auto& componentNeighbors : neighbors) {
-            for (size_t j = 0; j < componentNeighbors.size(); ++j) {
-                neighbors_h(k++) = componentNeighbors[j];
+        for (const auto& comp : neighbors) {
+            for (size_t j = 0; j < comp.size(); ++j) {
+                neighbors_h(k) = comp[j];
+                neighbors_host_.push_back(comp[j]);
+                ++k;
             }
         }
-        // Only copy the used prefix [0, neighborSize)
+
         Kokkos::deep_copy(
             Kokkos::subview(neighbors_d_, std::make_pair(size_t(0), size_t(neighborSize))),
             Kokkos::subview(neighbors_h, std::make_pair(size_t(0), size_t(neighborSize))));
