@@ -4,6 +4,7 @@
 //
 #include "Ippl.h"
 
+#include <Kokkos_Random.hpp>
 #include <chrono>
 #include <iostream>
 #include <random>
@@ -221,25 +222,49 @@ int main(int argc, char* argv[]) {
 
             static IpplTimings::TimerRef RandPTimer = IpplTimings::getTimer("RandomP");
             IpplTimings::startTimer(RandPTimer);
-            std::mt19937_64 engP;
-            engP.seed(42 + 10 * it + 100 * ippl::Comm->rank());
-            Kokkos::resize(P_host, P->P.size());
+
+            // Views on device
+            auto P_view = P->P.getView();
+            auto R_view = P->R.getView();
+
+            // Deterministic per-(rank,it) seed
+            const uint64_t seed = static_cast<uint64_t>(42 + 10 * it + 100 * ippl::Comm->rank());
+
+            // RNG pool on device
+            Kokkos::Random_XorShift64_Pool<> pool(seed);
+
+            // 1) Fill P on device: P_view(i)[d] ~ U(0, hr_min)
+            Kokkos::parallel_for(
+                "RandomizePDevice", Kokkos::RangePolicy<>(0, static_cast<int>(P->getLocalNum())),
+                KOKKOS_LAMBDA(const int i) {
+                    auto gen = pool.get_state();
+                    for (int d = 0; d < 3; ++d) {
+                        P_view(i)[d] = gen.drand() * hr_min;  // drand in [0,1)
+                    }
+                    pool.free_state(gen);
+                });
+
+            // 2) Compute sum of coordinates of R on device (same quantity you were summing)
             double sum_coord = 0.0;
-            Kokkos::resize(R_host, P->R.size());
-            Kokkos::deep_copy(R_host, P->R.getView());
-            for (unsigned long int i = 0; i < P->getLocalNum(); i++) {
-                for (int d = 0; d < 3; d++) {
-                    P_host(i)[d] = unifP(engP);
-                    sum_coord += R_host(i)[d];
-                }
-            }
+            Kokkos::parallel_reduce(
+                "SumCoordDevice", Kokkos::RangePolicy<>(0, static_cast<int>(P->getLocalNum())),
+                KOKKOS_LAMBDA(const int i, double& lsum) {
+                    lsum += R_view(i)[0] + R_view(i)[1] + R_view(i)[2];
+                },
+                sum_coord);
+
+            // Ensure device work is complete before MPI reduction / printing
+            Kokkos::fence();
+
+            // MPI reduction across ranks
             double global_sum_coord = 0.0;
             ippl::Comm->reduce(sum_coord, global_sum_coord, 1, std::plus<double>());
+
             if (ippl::Comm->rank() == 0) {
                 std::cout << "Sum Coord: " << std::setprecision(16) << global_sum_coord
                           << std::endl;
             }
-            Kokkos::deep_copy(P->P.getView(), P_host);
+
             IpplTimings::stopTimer(RandPTimer);
             ippl::Comm->barrier();
 
