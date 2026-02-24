@@ -213,7 +213,7 @@ int main(int argc, char* argv[]) {
         typename bunch_type::particle_position_type::HostMirror P_host = P->P.getHostMirror();
 
         // Deterministic per-(rank,it) seed
-        const uint64_t seed = static_cast<uint64_t>(42 + 10 * it + 100 * ippl::Comm->rank());
+        const uint64_t seed = static_cast<uint64_t>(42 + 10 * 1 + 100 * ippl::Comm->rank());
 
         // RNG pool on device
         Kokkos::Random_XorShift64_Pool<> pool(seed);
@@ -237,7 +237,7 @@ int main(int argc, char* argv[]) {
             Kokkos::parallel_for(
                 "RandomizePDevice", Kokkos::RangePolicy<>(0, static_cast<int>(P->getLocalNum())),
                 KOKKOS_LAMBDA(const int i) {
-                    auto gen = pool.get_state();
+                    auto gen = pool.get_state(i);
                     for (int d = 0; d < 3; ++d) {
                         P_view(i)[d] = gen.drand() * hr_min;  // drand in [0,1)
                     }
