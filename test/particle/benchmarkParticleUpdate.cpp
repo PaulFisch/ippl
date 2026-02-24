@@ -10,7 +10,6 @@
 #include <set>
 #include <string>
 #include <vector>
-#include <Kokkos_Random.hpp>
 
 #include "Utility/IpplTimings.h"
 
@@ -223,7 +222,8 @@ int main(int argc, char* argv[]) {
             static IpplTimings::TimerRef RandPTimer = IpplTimings::getTimer("RandomP");
             IpplTimings::startTimer(RandPTimer);
 
-            using pool_type  = Kokkos::Random_XorShift64_Pool<>;
+            using exec_space = position_execution_space;
+            using pool_type  = Kokkos::Random_XorShift64_Pool<exec_space>;
 
             // One pool per rank+iteration — each thread draws from its own independent state
             // seeded from this root seed, matching the original per-rank seeding intent.
