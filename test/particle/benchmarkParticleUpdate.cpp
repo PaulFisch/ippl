@@ -221,25 +221,37 @@ int main(int argc, char* argv[]) {
 
             static IpplTimings::TimerRef RandPTimer = IpplTimings::getTimer("RandomP");
             IpplTimings::startTimer(RandPTimer);
-            std::mt19937_64 engP;
-            engP.seed(42 + 10 * it + 100 * ippl::Comm->rank());
-            Kokkos::resize(P_host, P->P.size());
+
+            using exec_space = position_execution_space;
+            using pool_type  = Kokkos::Random_XorShift64_Pool<exec_space>;
+
+            // One pool per rank+iteration — each thread draws from its own independent state
+            // seeded from this root seed, matching the original per-rank seeding intent.
+            pool_type random_pool(42 + 10 * it + 100 * ippl::Comm->rank());
+
+            auto P_view         = P->P.getView();
+            auto R_view         = P->R.getView();
+            const size_t nLocal = P->getLocalNum();
+
             double sum_coord = 0.0;
-            Kokkos::resize(R_host, P->R.size());
-            Kokkos::deep_copy(R_host, P->R.getView());
-            for (unsigned long int i = 0; i < P->getLocalNum(); i++) {
-                for (int d = 0; d < 3; d++) {
-                    P_host(i)[d] = unifP(engP);
-                    sum_coord += R_host(i)[d];
-                }
-            }
+            Kokkos::parallel_reduce(
+                "RandomP_SumR", Kokkos::RangePolicy(0, nLocal),
+                KOKKOS_LAMBDA(const size_t i, double& lsum) {
+                    auto gen = random_pool.get_state();
+                    for (int d = 0; d < 3; ++d) {
+                        P_view(i)[d] = gen.drand(unifP.a(), unifP.b());
+                        lsum += R_view(i)[d];
+                    }
+                    random_pool.free_state(gen);
+                },
+                sum_coord);
+
             double global_sum_coord = 0.0;
             ippl::Comm->reduce(sum_coord, global_sum_coord, 1, std::plus<double>());
             if (ippl::Comm->rank() == 0) {
-                std::cout << "Sum Coord: " << std::setprecision(16) << global_sum_coord
-                          << std::endl;
+                std::cout << "Sum Coord: " << std::setprecision(16) << global_sum_coord << "\n";
             }
-            Kokkos::deep_copy(P->P.getView(), P_host);
+
             IpplTimings::stopTimer(RandPTimer);
             ippl::Comm->barrier();
 
