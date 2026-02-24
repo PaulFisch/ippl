@@ -13,7 +13,10 @@
 #include "Ippl.h"
 
 #include <Kokkos_Random.hpp>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <limits>
 #include <random>
 #include <string>
 #include <vector>
@@ -256,11 +259,47 @@ int main(int argc, char* argv[]) {
 
         IpplTimings::stopTimer(tMain);
 
-        // ---------------------------------------------------------------
-        // Output
-        // ---------------------------------------------------------------
+        // ── human-readable summary ─────────────────────────────────────────
         IpplTimings::print();
-        IpplTimings::print(std::string("timing_") + exchangeStr + ".dat");
+
+        // ── CSV output ─────────────────────────────────────────────────────
+        // Collect per-step ParticleUpdate times from every rank, then
+        // reduce to get the max across ranks per step (wall-clock bottleneck).
+        if (ippl::Comm->rank() == 0) {
+            const std::string csvPath = "particle_scaling_results.csv";
+
+            // ── compute stats from local measurements ──────────────────────
+            const auto& meas = IpplTimings::getMeasurements(tUpdate);
+
+            double total  = 0.0;
+            double minVal = std::numeric_limits<double>::max();
+            double maxVal = 0.0;
+            for (double v : meas) {
+                total += v;
+                minVal = std::min(minVal, v);
+                maxVal = std::max(maxVal, v);
+            }
+            const double mean = meas.empty() ? 0.0 : total / static_cast<double>(meas.size());
+
+            // ── write header if file does not exist yet ────────────────────
+            const bool fileExists = std::ifstream(csvPath).good();
+            std::ofstream csv(csvPath, std::ios::app);
+            if (!csv) {
+                std::cerr << "Could not open " << csvPath << " for writing\n";
+            } else {
+                if (!fileExists) {
+                    csv << "exchange_mode,num_gpus,num_nodes,"
+                           "update_total_s,update_mean_s,"
+                           "update_min_s,update_max_s,nsteps\n";
+                }
+                const int nRanks = ippl::Comm->size();
+                const int nNodes = (nRanks + 3) / 4;  // 4 GPUs per node
+                csv << std::fixed << std::setprecision(6) << exchangeStr << "," << nRanks << ","
+                    << nNodes << "," << total << "," << mean << "," << minVal << "," << maxVal
+                    << "," << nt << "\n";
+                std::cout << "Appended results to " << csvPath << "\n";
+            }
+        }
     }
     ippl::finalize();
     return 0;
