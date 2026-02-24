@@ -40,7 +40,9 @@ namespace ippl {
         // One-sided RMA: each sender writes its count directly into the receiver's window.
         RMA,
         // Two-sided GPU-direct P2P: Isend/Irecv over device pointers
-        P2P_GPU
+        P2P_GPU,
+        // AlltoALl GPU
+        Alltoall_GPU
     };
 
     /*!
@@ -69,7 +71,7 @@ namespace ippl {
 
         // constructor: this one also takes a Mesh
         ParticleSpatialLayout(FieldLayout<Dim>&, Mesh&, bool fem = false,
-                              CountExchange mode = CountExchange::P2P_GPU);
+                              CountExchange mode = CountExchange::Alltoall_GPU);
 
         ParticleSpatialLayout()
             : detail::ParticleLayout<T, Dim, PositionProperties...>() {}
@@ -199,6 +201,7 @@ namespace ippl {
 
         void countExchangeRMA();
         void countExchangeP2P();
+        void countExchangeAlltoall();
     };
 }  // namespace ippl
 

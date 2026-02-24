@@ -131,6 +131,12 @@ namespace ippl {
     }
 
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
+    void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::countExchangeAlltoall() {
+        MPI_Alltoall(rankSendCount_d_.data(), 1, MPI_INT, recvCounts_d_.data(), 1, MPI_INT,
+                     Comm->getCommunicator());
+    }
+
+    template <typename T, unsigned Dim, class Mesh, typename... Properties>
     template <class ParticleContainer>
     void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::update(ParticleContainer& pc) {
         /* Apply Boundary Conditions */
@@ -195,8 +201,10 @@ namespace ippl {
 
         if (countExchangeMode_ == CountExchange::RMA) {
             countExchangeRMA();
-        } else {
+        } else if (countExchangeMode_ == CountExchange::P2P_GPU) {
             countExchangeP2P();
+        } else {
+            countExchangeAlltoall();
         }
 
         IpplTimings::stopTimer(preprocTimer);
@@ -277,7 +285,7 @@ namespace ippl {
                 if (nRecvs_m[rank] > 0)
                     pc.recvFromRank(rank, tag, nRecvs_m[rank]);
             }
-        } else {
+        } else if (countExchangeMode_ == CountExchange::P2P_GPU) {
             auto recvCounts_h =
                 Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), recvCounts_d_);
 
@@ -287,6 +295,13 @@ namespace ippl {
                 const int cnt = recvCounts_h(r);
                 if (cnt > 0)
                     pc.recvFromRank(r, tag, cnt);
+            }
+        } else {
+            auto recvCounts_h =
+                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), recvCounts_d_);
+            for (int rank = 0; rank < nRanks_; ++rank) {
+                if (recvCounts_h(rank) > 0)
+                    pc.recvFromRank(rank, tag, recvCounts_h(rank));
             }
         }
         IpplTimings::stopTimer(recvTimer);
