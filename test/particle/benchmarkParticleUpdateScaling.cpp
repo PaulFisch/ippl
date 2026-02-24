@@ -172,9 +172,11 @@ int main(int argc, char* argv[]) {
 
         // Initial update to put particles on the right ranks
         static IpplTimings::TimerRef tUpdate = IpplTimings::getTimer("ParticleUpdate");
+        ippl::Comm->barrier();
         IpplTimings::startTimer(tUpdate);
         P->update();
         IpplTimings::stopTimer(tUpdate);
+        ippl::Comm->barrier();
 
         // ---------------------------------------------------------------
         // Warmup loop  — same body as the timed loop; discarded afterwards
