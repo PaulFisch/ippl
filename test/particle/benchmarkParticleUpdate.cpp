@@ -237,7 +237,7 @@ int main(int argc, char* argv[]) {
             Kokkos::parallel_for(
                 "RandomizePDevice", Kokkos::RangePolicy<>(0, static_cast<int>(P->getLocalNum())),
                 KOKKOS_LAMBDA(const int i) {
-                    auto gen = pool.get_state(i);
+                    auto gen = pool.get_state();
                     for (int d = 0; d < 3; ++d) {
                         P_view(i)[d] = gen.drand() * hr_min;  // drand in [0,1)
                     }
