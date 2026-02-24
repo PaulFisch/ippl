@@ -212,6 +212,16 @@ int main(int argc, char* argv[]) {
         std::uniform_real_distribution<double> unifP(0, hr_min);
         typename bunch_type::particle_position_type::HostMirror P_host = P->P.getHostMirror();
 
+        // Deterministic per-(rank,it) seed
+        const uint64_t seed = static_cast<uint64_t>(42 + 10 * it + 100 * ippl::Comm->rank());
+
+        // RNG pool on device
+        Kokkos::Random_XorShift64_Pool<> pool(seed);
+
+        // Views on device
+        auto P_view = P->P.getView();
+        auto R_view = P->R.getView();
+
         // begin main timestep loop
         msg << "Starting iterations ..." << endl;
         for (unsigned int it = 0; it < nt; it++) {
@@ -222,16 +232,6 @@ int main(int argc, char* argv[]) {
 
             static IpplTimings::TimerRef RandPTimer = IpplTimings::getTimer("RandomP");
             IpplTimings::startTimer(RandPTimer);
-
-            // Views on device
-            auto P_view = P->P.getView();
-            auto R_view = P->R.getView();
-
-            // Deterministic per-(rank,it) seed
-            const uint64_t seed = static_cast<uint64_t>(42 + 10 * it + 100 * ippl::Comm->rank());
-
-            // RNG pool on device
-            Kokkos::Random_XorShift64_Pool<> pool(seed);
 
             // 1) Fill P on device: P_view(i)[d] ~ U(0, hr_min)
             Kokkos::parallel_for(
