@@ -123,18 +123,18 @@ int main(int argc, char* argv[]) {
         unsigned long int nloc = totalP / ippl::Comm->size();
         P->create(nloc);
 
-        std::mt19937_64 eng[Dim];
-        for (unsigned i = 0; i < Dim; ++i) {
-            eng[i].seed(42 + i * Dim);
-            eng[i].discard(nloc * ippl::Comm->rank());
-        }
-        std::uniform_real_distribution<double> unif(0, 1);
+        Kokkos::Random_XorShift64_Pool<> initPool(
+            static_cast<uint64_t>(42 + ippl::Comm->rank() * nloc));
 
-        typename bunch_type::particle_position_type::HostMirror R_host = P->R.getHostMirror();
-        for (unsigned long int i = 0; i < nloc; ++i)
-            for (int d = 0; d < 3; ++d)
-                R_host(i)[d] = unif(eng[d]);
-        Kokkos::deep_copy(P->R.getView(), R_host);
+        auto R_view = P->R.getView();
+        Kokkos::parallel_for(
+            "init_positions", Kokkos::RangePolicy<>(0, (int)nloc), KOKKOS_LAMBDA(const int i) {
+                auto gen = initPool.get_state();
+                for (int d = 0; d < 3; ++d)
+                    R_view(i)[d] = gen.drand();
+                initPool.free_state(gen);
+            });
+        Kokkos::fence();
         P->qm = 1.0 / totalP;
         P->E  = 0.0;
 

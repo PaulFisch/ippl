@@ -40,6 +40,10 @@ namespace ippl {
             template <typename T, class... ViewArgs>
             void serialize(const Kokkos::View<T*, ViewArgs...>& view, size_type nsends);
 
+            template <typename T, class... ViewArgs, typename HashView>
+            void serialize(const Kokkos::View<T*, ViewArgs...>& view, const HashView& hash,
+                           size_type nsends);
+
             /*!
              * Serialize vector attributes
              *
@@ -52,12 +56,24 @@ namespace ippl {
             void serialize(const Kokkos::View<Vector<T, Dim>*, ViewArgs...>& view,
                            size_type nsends);
 
+            template <typename T, unsigned Dim, class... ViewArgs, typename HashView>
+            void serialize(const Kokkos::View<Vector<T, Dim>*, ViewArgs...>& view,
+                           const HashView& hash, size_type nsends);
+
             /*!
              * Deserialize.
              * @param view to put data to
              */
             template <typename T, class... ViewArgs>
             void deserialize(Kokkos::View<T*, ViewArgs...>& view, size_type nrecvs);
+
+            template <typename T, class... ViewArgs>
+            void deserialize(Kokkos::View<T*, ViewArgs...>& view, size_type offset,
+                             size_type nrecvs);
+
+            template <typename T, unsigned Dim, class... ViewArgs>
+            void deserialize(Kokkos::View<Vector<T, Dim>*, ViewArgs...>& view, size_type offset,
+                             size_type nrecvs);
 
             /*!
              * Deserialize vector attributes

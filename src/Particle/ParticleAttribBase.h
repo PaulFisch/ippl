@@ -66,9 +66,12 @@ namespace ippl {
 
             virtual void unpack(size_type) = 0;
 
-            virtual void serialize(Archive<memory_space>& ar, size_type nsends) = 0;
-
+            virtual void serialize(Archive<memory_space>& ar, size_type nsends)   = 0;
+            virtual void serialize(detail::Archive<memory_space>& ar, const hash_type& hash,
+                                   size_type nsends)                              = 0;
             virtual void deserialize(Archive<memory_space>& ar, size_type nrecvs) = 0;
+            virtual void deserialize(detail::Archive<memory_space>& ar, size_type offset,
+                                     size_type nrecvs)                            = 0;
 
             virtual size_type size() const = 0;
 
@@ -78,7 +81,7 @@ namespace ippl {
             size_type getParticleCount() const { return *localNum_mp; }
 
             virtual void applyPermutation(const hash_type&) = 0;
-            virtual void internalCopy(const hash_type&) = 0;
+            virtual void internalCopy(const hash_type&)     = 0;
 
         protected:
             const size_type* localNum_mp;

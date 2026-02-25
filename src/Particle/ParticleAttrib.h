@@ -71,24 +71,45 @@ namespace ippl {
         void unpack(size_type) override;
 
         void serialize(detail::Archive<memory_space>& ar, size_type nsends) override {
-            ar.serialize(buf_m, nsends);
+            ar.serialize(dview_m, nsends);
+        }
+
+        void serialize(detail::Archive<memory_space>& ar, const hash_type& hash,
+                       size_type nsends) override {
+            ar.serialize(dview_m, hash, nsends);
         }
 
         void deserialize(detail::Archive<memory_space>& ar, size_type nrecvs) override {
             ar.deserialize(buf_m, nrecvs);
         }
 
+        void deserialize(detail::Archive<memory_space>& ar, size_type offset,
+                         size_type nrecvs) override {
+            this->resize(offset + nrecvs);
+            ar.deserialize(dview_m, offset, nrecvs);
+        }
+
         KOKKOS_INLINE_FUNCTION virtual ~ParticleAttrib() = default;
 
-        size_type size() const override { return dview_m.extent(0); }
+        size_type size() const override { return size_m; }
 
         size_type packedSize(const size_type count) const override {
             return count * sizeof(value_type);
         }
 
-        void resize(size_type n) { Kokkos::resize(dview_m, n); }
+        void resize(size_type n) {
+            if (dview_m.extent(0) < n) {
+                Kokkos::resize(dview_m, n * Comm->getDefaultOverallocation());
+            }
+            size_m = n;
+        }
 
-        void realloc(size_type n) { Kokkos::realloc(dview_m, n); }
+        void realloc(size_type n) {
+            if (dview_m.extent(0) < n) {
+                Kokkos::realloc(dview_m, n * Comm->getDefaultOverallocation());
+            }
+            size_m = n;
+        }
 
         void print() {
             HostMirror hview = Kokkos::create_mirror_view(dview_m);
@@ -105,7 +126,7 @@ namespace ippl {
         const view_type& getView() const { return dview_m; }
 
         HostMirror getHostMirror() const { return Kokkos::create_mirror(dview_m); }
-        
+
         void set_name(const std::string& name_) override {
             size_t len = name_.size();
             if (len >= detail::ATTRIB_NAME_MAX_LEN) {
@@ -202,10 +223,11 @@ namespace ippl {
          * @param config Spread configuration (method, sorting, etc.)
          */
         template <typename Field, typename P2, typename Kernel>
-        void scatter_kernel(
-            Field& f, const ParticleAttrib<Vector<P2, Field::dim>, Properties...>& pp,
-            const Kernel& kernel,
-            const Interpolation::ScatterConfig<Field::dim>& config = Interpolation::ScatterConfig<Field::dim>()) const;
+        void scatter_kernel(Field& f,
+                            const ParticleAttrib<Vector<P2, Field::dim>, Properties...>& pp,
+                            const Kernel& kernel,
+                            const Interpolation::ScatterConfig<Field::dim>& config =
+                                Interpolation::ScatterConfig<Field::dim>()) const;
 
         /**
          * @brief Gather field data using a higher-order kernel
@@ -225,7 +247,8 @@ namespace ippl {
         template <typename Field, typename P2, typename Kernel>
         void gather(Field& f, const ParticleAttrib<Vector<P2, Field::dim>, Properties...>& pp,
                     const Kernel& kernel, bool addToAttribute = false,
-                    const Interpolation::GatherConfig<Field::dim>& config = Interpolation::GatherConfig<Field::dim>());
+                    const Interpolation::GatherConfig<Field::dim>& config =
+                        Interpolation::GatherConfig<Field::dim>());
 
         template <unsigned Dim, class M, class C, typename P2, typename P3, typename P4>
         void scatterPIFNUFFT(Field<P2, Dim, M, C>& f, Field<P3, Dim, M, C>& Sk,
@@ -267,8 +290,9 @@ namespace ippl {
         void internalCopy(const hash_type& indices) override;
 
     private:
-        view_type dview_m;
-        view_type buf_m;
+        view_type dview_m{"ParticleAttrib::dview", 0};
+        view_type buf_m{"ParticleAttrib::buf", 0};
+        size_type size_m = 0;
     };
 
     namespace detail {

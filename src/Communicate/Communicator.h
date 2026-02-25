@@ -185,6 +185,25 @@ namespace ippl {
             }
 
             template <typename Archive>
+            void isend(int dest, int tag, Archive& ar, MPI_Request& request) {
+                if (ar.getSize() > INT_MAX) {
+                    std::cerr << "Message size exceeds range of int" << std::endl;
+                    this->abort();
+                }
+                MPI_Isend(ar.getBuffer(), ar.getSize(), MPI_BYTE, dest, tag, *comm_m, &request);
+            }
+
+            template <typename Archive>
+            void recv(int src, int tag, Archive& ar, size_type msize) {
+                if (msize > INT_MAX) {
+                    std::cerr << "Message size exceeds range of int" << std::endl;
+                    this->abort();
+                }
+                MPI_Status status;
+                MPI_Recv(ar.getBuffer(), msize, MPI_BYTE, src, tag, *comm_m, &status);
+            }
+
+            template <typename Archive>
             void irecv(int src, int tag, Archive& ar, MPI_Request& request, size_type msize) {
                 if (msize > INT_MAX) {
                     std::cerr << "Message size exceeds range of int" << std::endl;
@@ -216,7 +235,6 @@ namespace ippl {
             int rank_m;
         };
     }  // namespace mpi
-
 
 }  // namespace ippl
 

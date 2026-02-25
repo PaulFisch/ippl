@@ -272,7 +272,6 @@ namespace ippl {
         auto hashes = hash_container_type(hash, [&]<typename MemorySpace>() {
             return attributes_m.template get<MemorySpace>().size() > 0;
         });
-        pack(hashes);
         detail::runForAllSpaces([&]<typename MemorySpace>() {
             size_type bufSize = packedSize<MemorySpace>(nSends);
             if (bufSize == 0) {
@@ -280,7 +279,11 @@ namespace ippl {
             }
             auto buf = Comm->getBuffer<MemorySpace>(bufSize);
 
-            Comm->isend(rank, tag++, *this, *buf, requests.back(), nSends);
+            forAllAttributes<MemorySpace>([&]<typename Attribute>(Attribute& att) {
+                att->serialize(*buf, hashes.template get<MemorySpace>(), nSends);
+            });
+
+            Comm->isend(rank, tag++, *buf, requests.back());
             buf->resetWritePos();
         });
     }
@@ -295,10 +298,14 @@ namespace ippl {
 
             auto buf = Comm->getBuffer<MemorySpace>(bufSize);
 
-            Comm->recv(rank, tag++, *this, *buf, bufSize, nRecvs);
+            Comm->recv(rank, tag++, *buf, bufSize);
+            forAllAttributes<MemorySpace>([&]<typename Attribute>(Attribute& att) {
+                att->deserialize(*buf, localNum_m, nRecvs);
+            });
+
             buf->resetReadPos();
         });
-        unpack(nRecvs);
+        localNum_m += nRecvs;
     }
 
     template <class PLayout, typename... IP>
