@@ -151,13 +151,12 @@ namespace ippl {
                     Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
 #if defined(KOKKOS_ENABLE_CUDA)
                     // Workaround for weird CUDA bug
-                    static cudaStream_t s_sort_stream = []() {
-                        cudaStream_t stream;
-                        cudaStreamCreate(&stream);
-                        return stream;
-                    }();
-                    Kokkos::Experimental::sort_by_key(ExecSpace(s_sort_stream), keys_sub,
+                    cudaStream_t sort_stream;
+                    cudaStreamCreate(&sort_stream);
+                    Kokkos::Experimental::sort_by_key(ExecSpace(sort_stream), keys_sub,
                                                       permute_sub);
+                    cudaStreamSynchronize(sort_stream);
+                    cudaStreamDestroy(sort_stream);
 #else
                     Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
 #endif
