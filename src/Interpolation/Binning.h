@@ -148,15 +148,9 @@ namespace ippl {
                     auto permute_sub =
                         Kokkos::subview(permute, std::make_pair(size_t(0), n_particles));
 
-                    Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
 #if defined(KOKKOS_ENABLE_CUDA)
-                    // Workaround for weird CUDA bug
-                    cudaStream_t sort_stream;
-                    cudaStreamCreate(&sort_stream);
-                    Kokkos::Experimental::sort_by_key(ExecSpace(sort_stream), keys_sub,
-                                                      permute_sub);
-                    cudaStreamSynchronize(sort_stream);
-                    cudaStreamDestroy(sort_stream);
+                    thrust::sort_by_key(thrust::device, keys_sub.data(),
+                                        keys_sub.data() + n_particles, permute_sub.data());
 #else
                     Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
 #endif
