@@ -233,14 +233,14 @@ namespace ippl {
         // Pre-allocate requests
         std::vector<MPI_Request> newRequests(sends.size(), MPI_REQUEST_NULL);
 
-        detail::parallelForMPI(sends.size(), [&](size_t i) {
+        for (int i = 0; i < static_cast<int>(sends.size()); ++i) {
             auto [rank, idx]      = sends[i];
             const size_type begin = static_cast<size_type>(sendOffsets_h_(rank));
             const size_type count = static_cast<size_type>(rankSendCount_h_(rank));
             auto ids_sub =
                 Kokkos::subview(sendIds_d_, std::make_pair((size_t)begin, (size_t)(begin + count)));
             newRequests[i] = pc.sendToRank(rank, tag, ids_sub);
-        });
+        }
 
         requests.insert(requests.end(), newRequests.begin(), newRequests.end());
         IpplTimings::stopTimer(sendTimer);

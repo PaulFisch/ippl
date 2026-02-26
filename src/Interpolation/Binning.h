@@ -149,6 +149,18 @@ namespace ippl {
                         Kokkos::subview(permute, std::make_pair(size_t(0), n_particles));
 
                     Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
+#if defined(KOKKOS_ENABLE_CUDA)
+                    // Workaround for weird CUDA bug
+                    static cudaStream_t s_sort_stream = []() {
+                        cudaStream_t stream;
+                        cudaStreamCreate(&stream);
+                        return stream;
+                    }();
+                    Kokkos::Experimental::sort_by_key(ExecSpace(s_sort_stream), keys_sub,
+                                                      permute_sub);
+#else
+                    Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
+#endif
                 }
                 Kokkos::fence();
                 IpplTimings::stopTimer(sortTimer);
