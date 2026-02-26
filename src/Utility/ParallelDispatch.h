@@ -7,6 +7,7 @@
 #define IPPL_PARALLEL_DISPATCH_H
 
 #include <Kokkos_Core.hpp>
+#include "Ippl.h"
 
 #include <tuple>
 
@@ -177,6 +178,38 @@ namespace ippl {
 
         template <e_functor_type, typename, typename, typename, typename...>
         struct FunctorWrapper;
+
+        template <typename ExecSpace>
+        constexpr bool inline isGPUSpace = false;
+
+#ifdef KOKKOS_ENABLE_CUDA
+        template <>
+        constexpr bool inline isGPUSpace<Kokkos::Cuda> = true;
+#endif
+#ifdef KOKKOS_ENABLE_HIP
+        template <>
+        constexpr bool inline isGPUSpace<Kokkos::HIP> = true;
+#endif
+
+        // Dispatches F(i) for i in [0, n) either in parallel (OpenMP) or serially
+        template <typename F>
+        void parallelForMPI(size_t n, F&& f) {
+            constexpr bool useGPU = isGPUSpace<Kokkos::DefaultExecutionSpace>;
+            const bool threadSafe = Env->threadMultiple();
+
+            if constexpr (useGPU) {
+                if (threadSafe) {
+#pragma omp parallel for schedule(dynamic)
+                    for (size_t i = 0; i < n; ++i) {
+                        f(i);
+                    }
+                    return;
+                }
+            }
+            for (size_t i = 0; i < n; ++i) {
+                f(i);
+            }
+        }
 
         /*!
          * Wrapper struct for reduction kernels

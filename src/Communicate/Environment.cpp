@@ -13,6 +13,7 @@ namespace ippl {
             if (!initialized()) {
                 int provided;
                 MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+                threadMultiple_m = (provided >= MPI_THREAD_MULTIPLE);
                 if (provided < MPI_THREAD_MULTIPLE) {
                     std::cerr << "MPI doesn't support MPI_THREAD_MULTIPLE!" << std::endl;
                 }

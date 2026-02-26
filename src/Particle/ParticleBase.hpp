@@ -263,11 +263,9 @@ namespace ippl {
 
     template <class PLayout, typename... IP>
     template <typename HashType>
-    void ParticleBase<PLayout, IP...>::sendToRank(int rank, int tag,
-                                                  std::vector<MPI_Request>& requests,
-                                                  const HashType& hash) {
-        size_type nSends = hash.size();
-        requests.resize(requests.size() + 1);
+    MPI_Request ParticleBase<PLayout, IP...>::sendToRank(int rank, int tag, const HashType& hash) {
+        size_type nSends    = hash.size();
+        MPI_Request request = MPI_REQUEST_NULL;
 
         auto hashes = hash_container_type(hash, [&]<typename MemorySpace>() {
             return attributes_m.template get<MemorySpace>().size() > 0;
@@ -283,9 +281,23 @@ namespace ippl {
                 att->serialize(*buf, hashes.template get<MemorySpace>(), nSends);
             });
 
-            Comm->isend(rank, tag++, *buf, requests.back());
+            Comm->isend(rank, tag++, *buf, request);
             buf->resetWritePos();
         });
+        return request;
+    }
+
+    template <class PLayout, typename... IP>
+    template <typename HashType>
+    void ParticleBase<PLayout, IP...>::sendToRank(int rank, int tag,
+                                                  std::vector<MPI_Request>& requests,
+                                                  const HashType& hash) {
+        requests.resize(requests.size() + 1);
+
+        auto hashes = hash_container_type(hash, [&]<typename MemorySpace>() {
+            return attributes_m.template get<MemorySpace>().size() > 0;
+        });
+        requests.push_back(sendToRank(rank, tag, hash));
     }
 
     template <class PLayout, typename... IP>
@@ -306,6 +318,38 @@ namespace ippl {
             buf->resetReadPos();
         });
         localNum_m += nRecvs;
+    }
+
+    template <class PLayout, typename... IP>
+    std::pair<MPI_Request, std::function<void(size_t)>>
+    ParticleBase<PLayout, IP...>::postRecvFromRank(int rank, int tag, size_type nRecvs) {
+        MPI_Request request = MPI_REQUEST_NULL;
+
+        // Collect (buf, nRecvs) per memory space for deferred deserialization
+        auto deferred = std::make_shared<std::vector<std::function<void(size_type)>>>();
+
+        detail::runForAllSpaces([&]<typename MemorySpace>() {
+            size_type bufSize = packedSize<MemorySpace>(nRecvs);
+            if (bufSize == 0)
+                return;
+
+            auto buf = Comm->getBuffer<MemorySpace>(bufSize);
+            Comm->irecv(rank, tag++, *buf, request, bufSize);
+
+            deferred->push_back([this, buf, nRecvs](size_type offset) {
+                forAllAttributes<MemorySpace>([&]<typename Attribute>(Attribute& att) {
+                    att->deserialize(*buf, offset, nRecvs);
+                });
+                buf->resetReadPos();
+            });
+        });
+
+        // Finalize takes the offset (localNum_m after destruction) and advances it
+        return {request, [this, deferred, nRecvs](size_type offset) {
+                    for (auto& fn : *deferred)
+                        fn(offset);
+                    localNum_m += nRecvs;
+                }};
     }
 
     template <class PLayout, typename... IP>

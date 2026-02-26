@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "Utility/IpplTimings.h"
+#include "Utility/ParallelDispatch.h"
 
 #include "Communicate/Window.h"
 
@@ -219,22 +220,65 @@ namespace ippl {
 
         int tag = Comm->next_tag(mpi::tag::P_SPATIAL_LAYOUT, mpi::tag::P_LAYOUT_CYCLE);
 
-        for (int rank : destinationRanks_host_) {
+        std::vector<std::pair<int, size_t>> sends;  // (rank, idx into destinationRanks_host_)
+        for (size_t i = 0; i < destinationRanks_host_.size(); ++i) {
+            int rank = destinationRanks_host_[i];
             if (rank == Comm->rank())
                 continue;
-
-            const size_type count = static_cast<size_type>(rankSendCount_h_(rank));
-            if (count == 0)
+            if (rankSendCount_h_(rank) == 0)
                 continue;
-
-            const size_type begin = static_cast<size_type>(sendOffsets_h_(rank));
-            auto ids_sub =
-                Kokkos::subview(sendIds_d_, std::make_pair((size_t)begin, (size_t)(begin + count)));
-
-            pc.sendToRank(rank, tag, requests, ids_sub);
+            sends.push_back({rank, i});
         }
 
+        // Pre-allocate requests
+        std::vector<MPI_Request> newRequests(sends.size(), MPI_REQUEST_NULL);
+
+        detail::parallelForMPI(sends.size(), [&](size_t i) {
+            auto [rank, idx]      = sends[i];
+            const size_type begin = static_cast<size_type>(sendOffsets_h_(rank));
+            const size_type count = static_cast<size_type>(rankSendCount_h_(rank));
+            auto ids_sub =
+                Kokkos::subview(sendIds_d_, std::make_pair((size_t)begin, (size_t)(begin + count)));
+            newRequests[i] = pc.sendToRank(rank, tag, ids_sub);
+        });
+
+        requests.insert(requests.end(), newRequests.begin(), newRequests.end());
         IpplTimings::stopTimer(sendTimer);
+
+        // 2.3 Post receives
+
+        static IpplTimings::TimerRef recvTimer = IpplTimings::getTimer("particleRecv");
+        IpplTimings::startTimer(recvTimer);
+
+        std::vector<std::pair<int, size_type>> recvList;
+
+        if (countExchangeMode_ == CountExchange::RMA) {
+            for (int rank = 0; rank < nRanks_; ++rank) {
+                if (nRecvs_m[rank] > 0) {
+                    recvList.push_back({rank, nRecvs_m[rank]});
+                }
+            }
+        } else {
+            auto recvCounts_h =
+                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), recvCounts_d_);
+            for (int rank = 0; rank < nRanks_; ++rank) {
+                if (recvCounts_h(rank) > 0) {
+                    recvList.push_back({rank, recvCounts_h(rank)});
+                }
+            }
+        }
+
+        std::vector<MPI_Request> recvRequests(recvList.size(), MPI_REQUEST_NULL);
+        std::vector<std::function<void(size_type)>> finalizers(recvList.size());
+
+        for (size_t i = 0; i < recvList.size(); ++i) {
+            auto [rank, count] = recvList[i];
+            auto [req, fin]    = pc.postRecvFromRank(rank, tag, count);
+            recvRequests[i]    = req;
+            finalizers[i]      = std::move(fin);
+        }
+
+        IpplTimings::stopTimer(recvTimer);
 
         // 3. Internal destruction of invalid particles ======================================= //
 
@@ -275,44 +319,15 @@ namespace ippl {
 
         IpplTimings::stopTimer(destroyTimer);
 
-        // 4. Receive Particles ================================================================ //
-
-        static IpplTimings::TimerRef recvTimer = IpplTimings::getTimer("particleRecv");
-        IpplTimings::startTimer(recvTimer);
-
-        if (countExchangeMode_ == CountExchange::RMA) {
-            for (int rank = 0; rank < nRanks_; ++rank) {
-                if (nRecvs_m[rank] > 0)
-                    pc.recvFromRank(rank, tag, nRecvs_m[rank]);
-            }
-        } else if (countExchangeMode_ == CountExchange::P2P_GPU) {
-            auto recvCounts_h =
-                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), recvCounts_d_);
-
-            for (int r = 0; r < nRanks_; ++r) {
-                if (r == Comm->rank())
-                    continue;
-                const int cnt = recvCounts_h(r);
-                if (cnt > 0)
-                    pc.recvFromRank(r, tag, cnt);
-            }
-        } else {
-            auto recvCounts_h =
-                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), recvCounts_d_);
-            for (int rank = 0; rank < nRanks_; ++rank) {
-                if (recvCounts_h(rank) > 0)
-                    pc.recvFromRank(rank, tag, recvCounts_h(rank));
-            }
-        }
-        IpplTimings::stopTimer(recvTimer);
-
-        // IpplTimings::startTimer(sendTimer);
-
+        requests.insert(requests.end(), recvRequests.begin(), recvRequests.end());
         if (!requests.empty()) {
             MPI_Waitall(static_cast<int>(requests.size()), requests.data(), MPI_STATUSES_IGNORE);
         }
         Comm->freeAllBuffers();
-        // IpplTimings::stopTimer(sendTimer);
+
+        // 5. Deserialize
+        for (auto& finalize : finalizers)
+            finalize(pc.getLocalNum());
 
         IpplTimings::stopTimer(ParticleUpdateTimer);
     }

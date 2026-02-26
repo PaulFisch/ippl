@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "Utility/IpplException.h"
+#include "Utility/ParallelDispatch.h"
 
 #include "Communicate/Communicator.h"
 
