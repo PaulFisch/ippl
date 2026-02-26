@@ -8,6 +8,9 @@
 #include "CoordinateTransform.h"
 #include "Particle/ParticleLayout.h"
 #include "Particle/SortBuffer.h"
+#if defined(KOKKOS_ENABLE_CUDA)
+#include <cub/cub.cuh>
+#endif
 
 namespace ippl {
     namespace Interpolation {
@@ -149,8 +152,32 @@ namespace ippl {
                         Kokkos::subview(permute, std::make_pair(size_t(0), n_particles));
 
 #if defined(KOKKOS_ENABLE_CUDA)
-                    thrust::sort_by_key(thrust::device, keys_sub.data(),
-                                        keys_sub.data() + n_particles, permute_sub.data());
+                    Kokkos::View<key_type*, typename KeyViewType::memory_space> keys_out(
+                        "keys_out", n_particles);
+                    Kokkos::View<typename PermuteViewType::non_const_value_type*,
+                                 typename PermuteViewType::memory_space>
+                        perm_out("perm_out", n_particles);
+
+                    // Query temp storage size
+                    void* d_temp      = nullptr;
+                    size_t temp_bytes = 0;
+                    cub::DeviceRadixSort::SortPairs(d_temp, temp_bytes, keys_sub.data(),
+                                                    keys_out.data(), permute_sub.data(),
+                                                    perm_out.data(), (int)n_particles);
+
+                    // Allocate temp storage
+                    cudaMalloc(&d_temp, temp_bytes);
+
+                    // Sort
+                    cub::DeviceRadixSort::SortPairs(d_temp, temp_bytes, keys_sub.data(),
+                                                    keys_out.data(), permute_sub.data(),
+                                                    perm_out.data(), (int)n_particles);
+
+                    cudaFree(d_temp);
+
+                    Kokkos::deep_copy(keys_sub, keys_out);
+                    Kokkos::deep_copy(permute_sub, perm_out);
+                    Kokkos::fence();
 #else
                     Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
 #endif
