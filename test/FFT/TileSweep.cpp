@@ -669,7 +669,7 @@ public:
             double effective_steps = params_.sa_steps * expected_proposals_per_eval;
             alpha                  = std::pow(1e-3, 1.0 / effective_steps);
         }
-        const double T_min = T0 * 1e-2;  // floor: ~1% regression still ~1% accepted
+        const double T_min = T0 * 1e-1;  // floor: ~1% regression still ~1% accepted
 
         const int restart_eval = params_.sa_steps / 2;  // restart after this many evals
         bool restarted         = false;                 // fire exactly once
