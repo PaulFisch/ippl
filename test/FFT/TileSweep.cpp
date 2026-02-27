@@ -249,8 +249,8 @@ public:
 
     static constexpr bool is_complex = !std::is_same_v<ValueT, real_type>;
     static const char* value_type_str() { return is_complex ? "complex" : "real"; }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type one()  { return value_type(1); }
+    static value_type zero() { return value_type(0); }
+    static value_type one()  { return value_type(1); }
 
     TileSweepBenchmark(const BenchParams& params)
         : params_(params) {}
@@ -514,9 +514,27 @@ public:
         double T = T0;
 
         // ---- alpha: span 3 orders of magnitude over the evaluation budget --
+        // IMPORTANT: the while-loop cools T on every non-clamped *proposal*,
+        // which is strictly >= sa_steps (real evaluations), because cached hits
+        // and rejected moves also advance the cooling counter.  If alpha is set
+        // to reach T0*1e-3 after only sa_steps steps, T will hit zero long
+        // before the budget is exhausted, freezing the chain in an infinite loop.
+        //
+        // Fix: use a gentler alpha so T reaches T0*1e-3 after an expected number
+        // of proposals, estimated as sa_steps * expected_proposals_per_eval.
+        // We conservatively assume ~3 proposals per real evaluation on average
+        // (accounts for ~50% rejection rate + some cache hits + boundary bounces).
+        // A hard floor T_min = T0*1e-4 additionally guarantees termination even
+        // if proposals/eval is higher than expected: once T == T_min, the chain
+        // still runs but effectively does greedy local search, and the while()
+        // condition on sa.evaluations ensures it always terminates.
         double alpha = params_.sa_alpha;
-        if (std::abs(alpha - 0.97) < 1e-9 && params_.sa_steps > 0)
-            alpha = std::pow(1e-3, 1.0 / params_.sa_steps);
+        if (std::abs(alpha - 0.97) < 1e-9 && params_.sa_steps > 0) {
+            constexpr double expected_proposals_per_eval = 3.0;
+            double effective_steps = params_.sa_steps * expected_proposals_per_eval;
+            alpha = std::pow(1e-3, 1.0 / effective_steps);
+        }
+        const double T_min = T0 * 1e-4;   // hard floor: prevents T→0 and exp(-inf)
 
         const int restart_eval = params_.sa_steps / 2;  // restart after this many evals
 
@@ -558,9 +576,9 @@ public:
             bool was_cached = false;
             double candidate_tp = evaluate(candidate, &was_cached);
 
-            // Metropolis acceptance
+            // Metropolis acceptance — guard exp() against underflow
             double delta = candidate_tp - current_tp;
-            if (delta > 0.0 || unif(rng) < std::exp(delta / T)) {
+            if (delta > 0.0 || unif(rng) < std::exp(std::max(delta / T, -500.0))) {
                 current    = candidate;
                 current_tp = candidate_tp;
             }
@@ -573,7 +591,7 @@ public:
             // Record history entry and cool — once per real proposal
             // (whether accepted or not, whether cached or not)
             sa.history.emplace_back(step, current[0], current[1], current[2], current_tp);
-            T *= alpha;
+            T = std::max(T * alpha, T_min);   // clamp: never let T reach zero
             ++step;
 
             if (params_.verbose && ippl::Comm->rank() == 0) {
