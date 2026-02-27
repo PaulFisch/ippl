@@ -244,8 +244,8 @@ public:
 
     static constexpr bool is_complex = !std::is_same_v<ValueT, real_type>;
     static const char* value_type_str() { return is_complex ? "complex" : "real"; }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type one() { return value_type(1); }
+    static value_type zero() { return value_type(0); }
+    static value_type one() { return value_type(1); }
 
     TileSweepBenchmark(const BenchParams& params)
         : params_(params) {}
@@ -416,23 +416,26 @@ public:
     // ------------------------------------------------------------------
     //
     // State space:  tile ∈ [min_tile, max_tile]^3  (integers, per dimension)
-    // Objective:    maximise throughput (= minimise mean time)
-    // Moves:        randomly increment or decrement one dimension's tile size
-    //               (uniform random choice of dimension and ±1 delta,
-    //                clamped to [min_tile, max_tile])
-    // Schedule:     geometric cooling:  T_k = T0 * alpha^k
-    // Acceptance:   Metropolis:  accept if delta_E > 0, else with prob exp(delta_E / T)
-    //               where delta_E = new_throughput - old_throughput
+    // Objective:    maximise throughput (Mpts/s)
+    // Moves:        randomly perturb one dimension by ±1 (clamped to bounds)
+    // Schedule:     geometric cooling T_k = T0 * alpha^k, where T0 is
+    //               AUTO-CALIBRATED to the observed throughput scale so that
+    //               the initial acceptance rate for a ~5% regression is ~50%.
+    //               This makes the schedule problem-independent and correct
+    //               across all (method, width) combinations.
+    // Restart:      after half the budget, restart from the best-seen point
+    //               with T reset to T0/4.  This is "iterated SA": the first
+    //               half explores broadly; the second half refines.
+    // Acceptance:   Metropolis: always accept improvements; accept regressions
+    //               with probability exp(delta_throughput / T).
     //
-    // Why SA?
-    //   - The search space is discrete and 3-D.
-    //   - Exhaustive grid search costs O((max-min)^3) evaluations, each of which
-    //     involves actual GPU kernels.  For max_tile=16, min_tile=1 that is 4096
-    //     evaluations — very expensive.
-    //   - SA converges in O(sa_steps) evaluations, escapes local minima, and
-    //     trivially handles the rectangular (non-uniform) tile generalisation.
-    //   - Nelder-Mead was considered but requires a continuous space and fractional
-    //     tile sizes are meaningless; rounding causes it to stall on plateaus.
+    // Fixes vs. previous version:
+    //   1. T0 was a fixed user constant (default 5.0) but throughputs are in
+    //      the hundreds of Mpts/s → exp(−100/5) ≈ 0, so the optimizer was
+    //      frozen from step ~1 for any (method, width) after the first.
+    //   2. RNG seed included only kernel.width(), so two methods at the same
+    //      width produced identical search trajectories.
+    //   3. No restart: once trapped in a basin at low T there was no escape.
     // ------------------------------------------------------------------
     SAResult run_sa(const std::string& method, const ippl::NUFFT::ESKernel<real_type>& kernel,
                     size_t n_particles) {
@@ -445,54 +448,93 @@ public:
         const int lo = params_.min_tile_size;
         const int hi = params_.max_tile_size;
 
-        // Seeded RNG (reproducible per rank, but SA is rank-0-driven only)
-        std::mt19937 rng(12345 + kernel.width());
+        // Seed includes method hash so two methods at the same width differ.
+        std::size_t method_hash = std::hash<std::string>{}(method);
+        std::mt19937 rng(
+            static_cast<uint32_t>(12345 + kernel.width() * 1000 + (method_hash & 0xFFFF)));
+
         std::uniform_int_distribution<int> dim_dist(0, Dim - 1);
-        std::uniform_int_distribution<int> delta_dist(0, 1);  // 0 → -1, 1 → +1
+        std::uniform_int_distribution<int> delta_dist(0, 1);  // 0→-1, 1→+1
         std::uniform_real_distribution<double> unif(0.0, 1.0);
 
-        // Helper: evaluate throughput for a given tile configuration.
-        // Uses a single warmup + `benchmark_runs` timed runs (same as normal bench).
+        // ---- evaluate helper -----------------------------------------------
         auto evaluate = [&](std::array<int, Dim> tile) -> double {
-            auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-            if (method == "Tiled")
-                cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
-            else
-                cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
+            auto cfg      = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method    = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
+                                                : ippl::Interpolation::ScatterMethod::OutputFocused;
             cfg.tile_size = {tile[0], tile[1], tile[2]};
 
             auto r = benchmark_scatter(method, cfg, kernel, n_particles, tile, true);
             ++sa.evaluations;
-
-            if (std::isnan(r.stats.mean_ms))
-                return 0.0;  // failed config
-            return r.throughput_Mpts_per_sec();
+            return std::isnan(r.stats.mean_ms) ? 0.0 : r.throughput_Mpts_per_sec();
         };
 
-        // Start from the midpoint of the search space
+        // ---- initial point: midpoint of search space -----------------------
         std::array<int, Dim> current;
         current.fill((lo + hi) / 2);
+        double current_tp = evaluate(current);
 
-        double current_tp         = evaluate(current);
         std::array<int, Dim> best = current;
         double best_tp            = current_tp;
 
-        double T = params_.sa_t0;
+        // ---- auto-calibrate T0 ---------------------------------------------
+        // We want exp(-0.05 * current_tp / T0) ≈ 0.5, i.e. a 5% regression
+        // is accepted ~50% of the time at the start.
+        // Solving: T0 = 0.05 * current_tp / ln(2)
+        // Guard against zero throughput (failed initial config).
+        double T0 = (current_tp > 0.0) ? 0.05 * current_tp / std::log(2.0)
+                                       : params_.sa_t0;  // fallback to user value
 
+        // Override with explicit user value only if they changed the default,
+        // signalled by sa_t0 != 5.0 (the default).  This lets advanced users
+        // override while keeping automatic calibration by default.
+        if (std::abs(params_.sa_t0 - 5.0) > 1e-9)
+            T0 = params_.sa_t0;
+
+        double T = T0;
+
+        // ---- alpha: recompute from T0 so that T reaches T0*1e-3 by end ----
+        // T0 * alpha^steps = T0 * 1e-3  →  alpha = (1e-3)^(1/steps)
+        // But only override if user left alpha at default (0.97).
+        double alpha = params_.sa_alpha;
+        if (std::abs(alpha - 0.97) < 1e-9 && params_.sa_steps > 0)
+            alpha = std::pow(1e-3, 1.0 / params_.sa_steps);
+
+        const int restart_step = params_.sa_steps / 2;
+
+        if (params_.verbose && ippl::Comm->rank() == 0) {
+            std::cout << "    SA init: tp0=" << std::fixed << std::setprecision(1) << current_tp
+                      << "  T0=" << std::setprecision(3) << T0 << "  alpha=" << std::setprecision(5)
+                      << alpha << "\n";
+        }
+
+        // ---- main annealing loop -------------------------------------------
         for (int step = 0; step < params_.sa_steps; ++step) {
-            // Generate neighbour: perturb one dimension by ±1
+            // Mid-run restart: jump back to best, reheat to T0/4.
+            // This lets the second half refine around the best basin found.
+            if (step == restart_step) {
+                current    = best;
+                current_tp = best_tp;
+                T          = T0 / 4.0;
+                if (params_.verbose && ippl::Comm->rank() == 0)
+                    std::cout << "    SA restart at step " << step << "  best=(" << best[0] << ","
+                              << best[1] << "," << best[2] << ")"
+                              << "  T reset to " << std::setprecision(3) << T << "\n";
+            }
+
+            // Generate neighbour: perturb one random dimension by ±1
             std::array<int, Dim> candidate = current;
             int d                          = dim_dist(rng);
             int dir                        = (delta_dist(rng) == 0) ? -1 : +1;
             candidate[d]                   = std::clamp(current[d] + dir, lo, hi);
 
-            // Avoid re-evaluating if the move was clamped to the same point
+            // Skip evaluation if clamped to same state (boundary hit)
             bool same           = (candidate == current);
             double candidate_tp = same ? current_tp : evaluate(candidate);
 
             // Metropolis acceptance
             double delta = candidate_tp - current_tp;
-            if (delta > 0 || (!same && unif(rng) < std::exp(delta / T))) {
+            if (delta > 0.0 || (!same && unif(rng) < std::exp(delta / T))) {
                 current    = candidate;
                 current_tp = candidate_tp;
             }
@@ -502,15 +544,13 @@ public:
                 best_tp = current_tp;
             }
 
-            // Record history
             sa.history.emplace_back(step, current[0], current[1], current[2], current_tp);
 
-            // Cool down
-            T *= params_.sa_alpha;
+            T *= alpha;
 
             if (params_.verbose && ippl::Comm->rank() == 0) {
                 std::cout << "    SA step " << std::setw(4) << step << "  T=" << std::fixed
-                          << std::setprecision(3) << T << "  tile=(" << current[0] << ","
+                          << std::setprecision(4) << T << "  tile=(" << current[0] << ","
                           << current[1] << "," << current[2] << ")"
                           << "  tp=" << std::setprecision(1) << current_tp << "  best=(" << best[0]
                           << "," << best[1] << "," << best[2] << ")"
@@ -518,16 +558,13 @@ public:
             }
         }
 
-        sa.best_tile            = best;
-        sa.best_throughput_Mpts = best_tp;
+        sa.best_tile = best;
 
-        // Re-measure best config with full statistics for the stored result
+        // ---- final re-measurement of best config with full statistics -------
         {
-            auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-            if (method == "Tiled")
-                cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
-            else
-                cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
+            auto cfg        = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method      = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
+                                                  : ippl::Interpolation::ScatterMethod::OutputFocused;
             cfg.tile_size   = {best[0], best[1], best[2]};
             auto r          = benchmark_scatter(method, cfg, kernel, n_particles, best, true);
             sa.best_time_ms = r.stats.mean_ms;
