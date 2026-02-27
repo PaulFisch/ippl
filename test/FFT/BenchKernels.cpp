@@ -213,8 +213,8 @@ public:
     static const char* value_type_str() { return is_complex ? "complex" : "real"; }
 
     // Zero-value initialiser that works for both real and complex
-    static value_type zero() { return value_type(0); }
-    static value_type one()  { return value_type(1); }
+    static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
+    static constexpr KOKKOS_INLINE_FUNCTION value_type one()  { return value_type(1); }
 
     ThroughputBenchmark(const BenchParams& params)
         : params_(params)
