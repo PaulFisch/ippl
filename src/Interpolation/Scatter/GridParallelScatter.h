@@ -275,6 +275,7 @@ struct GridParallelScatter {
                                        static_cast<grid_value_t>(hist.data_r(idx)));
                 }
             }(std::make_index_sequence<Dim>{});
+
         });
     }
 

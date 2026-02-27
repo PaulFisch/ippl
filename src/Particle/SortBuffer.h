@@ -1,302 +1,178 @@
-//
-// Class SortBufferManager
-//   Manages temporary memory buffers for particle sorting operations.
-//   Allocates once and reuses across multiple sort calls to avoid
-//   repeated allocation overhead on GPU.
-//
-#ifndef IPPL_SORT_BUFFER_MANAGER_H
-#define IPPL_SORT_BUFFER_MANAGER_H
+#ifndef IPPL_SORT_BUFFER_H
+#define IPPL_SORT_BUFFER_H
 
 #include <Kokkos_Core.hpp>
-#include <cstdint>
+
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 
 namespace ippl {
-namespace detail {
-
-    /**
-     * @brief Buffer manager for particle sorting operations
-     *
-     * This class manages temporary memory allocations needed for sorting
-     * particles by Morton codes. It grows buffers as needed but never
-     * shrinks them, avoiding repeated allocations for repeated sorts
-     * of similar-sized particle sets.
-     *
-     * @tparam MemorySpace Kokkos memory space (e.g., CudaSpace, HIPSpace, HostSpace)
-     */
-    template <typename MemorySpace>
-    class SortBufferManager {
-    public:
-        using memory_space = MemorySpace;
-        using size_type = size_t;
-
-        SortBufferManager() = default;
-
-        // Non-copyable, movable
-        SortBufferManager(const SortBufferManager&) = delete;
-        SortBufferManager& operator=(const SortBufferManager&) = delete;
-        SortBufferManager(SortBufferManager&&) = default;
-        SortBufferManager& operator=(SortBufferManager&&) = default;
+    namespace detail {
 
         /**
-         * @brief Ensure buffers are large enough for n particles
+         * @brief Persistent scratch buffers for bin-sort-based particle binning.
          *
-         * Allocates or reallocates buffers if the current capacity is
-         * insufficient. Uses a growth factor to reduce future reallocations.
+         * Grows on demand, never shrinks. Call finalizeBinSortBuffers() before
+         * Kokkos::finalize() to release device memory safely.
          *
-         * @param n Number of particles to accommodate
-         * @param growth_factor Factor by which to over-allocate (default 1.2)
+         * Buffer layout
+         *   bin_keys      uint64_t[n_particles]   sort keys (bin index per particle)
+         *   permute       size_t  [n_particles]   identity → sorted particle order
+         *   bin_offsets   size_t  [n_bins + 1]    start of each bin in permute
+         *   keys_out      uint64_t[n_particles]   CUB radix-sort output (CUDA only)
+         *   perm_out      size_t  [n_particles]   CUB radix-sort output (CUDA only)
+         *   temp_storage  char    [temp_bytes]    CUB device-temp (CUDA only)
          */
-        void ensureCapacity(size_type n, double growth_factor = 1.2) {
-            if (n <= capacity_) {
-                return;
+        template <typename MemorySpace>
+        class BinSortBuffers {
+        public:
+            using memory_space = MemorySpace;
+            using size_type    = size_t;
+
+            BinSortBuffers()                                 = default;
+            BinSortBuffers(const BinSortBuffers&)            = delete;
+            BinSortBuffers& operator=(const BinSortBuffers&) = delete;
+            BinSortBuffers(BinSortBuffers&&)                 = default;
+            BinSortBuffers& operator=(BinSortBuffers&&)      = default;
+
+            /**
+             * @brief Ensure particle-sized buffers are large enough.
+             *
+             * @param n_particles  Number of particles.
+             * @param n_bins_p1    Number of bins + 1 (size needed for bin_offsets).
+             * @param growth       Over-allocation factor (default 1.2).
+             */
+            void ensureCapacity(size_type n_particles, size_type n_bins_p1, double growth = 1.2) {
+                if (n_particles > particle_capacity_) {
+                    const size_type cap =
+                        std::max(static_cast<size_type>(n_particles * growth), n_particles);
+
+                    bin_keys_ = Kokkos::View<uint64_t*, memory_space>("bin_keys", cap);
+                    permute_  = Kokkos::View<size_type*, memory_space>("permute", cap);
+                    keys_out_ = Kokkos::View<uint64_t*, memory_space>("keys_out", cap);
+                    perm_out_ = Kokkos::View<size_type*, memory_space>("perm_out", cap);
+
+                    particle_capacity_ = cap;
+                }
+
+                if (n_bins_p1 > bin_offset_capacity_) {
+                    const size_type cap =
+                        std::max(static_cast<size_type>(n_bins_p1 * growth), n_bins_p1);
+
+                    bin_offsets_ = Kokkos::View<size_type*, memory_space>("bin_offsets", cap);
+                    bin_offset_capacity_ = cap;
+                }
             }
 
-            // Apply growth factor to reduce future reallocations
-            size_type new_capacity = static_cast<size_type>(n * growth_factor);
-            new_capacity = std::max(new_capacity, n);  // Safety check
+            /**
+             * @brief Ensure CUB/rocPRIM temp-storage buffer is large enough.
+             * @param bytes  Required bytes.
+             */
+            void ensureTempStorage(size_t bytes) {
+                if (bytes <= temp_capacity_)
+                    return;
+                const size_t cap = static_cast<size_t>(bytes * 1.1);
+                temp_storage_    = Kokkos::View<char*, memory_space>("temp_storage", cap);
+                temp_capacity_   = cap;
+            }
 
-            // Reallocate all buffers
-            morton_keys_ = Kokkos::View<uint64_t*, memory_space>(
-                "sort_buffer_morton_keys", new_capacity);
-            morton_keys_sorted_ = Kokkos::View<uint64_t*, memory_space>(
-                "sort_buffer_morton_keys_sorted", new_capacity);
-            indices_ = Kokkos::View<size_type*, memory_space>(
-                "sort_buffer_indices", new_capacity);
-            indices_sorted_ = Kokkos::View<size_type*, memory_space>(
-                "sort_buffer_indices_sorted", new_capacity);
+            // --- accessors -------------------------------------------------------
+            Kokkos::View<uint64_t*, memory_space>& binKeys() { return bin_keys_; }
+            Kokkos::View<size_type*, memory_space>& permute() { return permute_; }
+            Kokkos::View<size_type*, memory_space>& binOffsets() { return bin_offsets_; }
+            Kokkos::View<uint64_t*, memory_space>& keysOut() { return keys_out_; }
+            Kokkos::View<size_type*, memory_space>& permOut() { return perm_out_; }
+            Kokkos::View<char*, memory_space>& tempStorage() { return temp_storage_; }
 
-            capacity_ = new_capacity;
+            size_type particleCapacity() const { return particle_capacity_; }
+            size_type binOffsetCapacity() const { return bin_offset_capacity_; }
+            size_t tempCapacity() const { return temp_capacity_; }
+
+            size_t memoryUsage() const {
+                return particle_capacity_ * (2 * sizeof(uint64_t) + 2 * sizeof(size_type))
+                       + bin_offset_capacity_ * sizeof(size_type) + temp_capacity_;
+            }
+
+            void clear() {
+                bin_keys_            = {};
+                permute_             = {};
+                bin_offsets_         = {};
+                keys_out_            = {};
+                perm_out_            = {};
+                temp_storage_        = {};
+                particle_capacity_   = 0;
+                bin_offset_capacity_ = 0;
+                temp_capacity_       = 0;
+            }
+
+        private:
+            Kokkos::View<uint64_t*, memory_space> bin_keys_;
+            Kokkos::View<size_type*, memory_space> permute_;
+            Kokkos::View<size_type*, memory_space> bin_offsets_;
+            Kokkos::View<uint64_t*, memory_space> keys_out_;
+            Kokkos::View<size_type*, memory_space> perm_out_;
+            Kokkos::View<char*, memory_space> temp_storage_;
+
+            size_type particle_capacity_   = 0;
+            size_type bin_offset_capacity_ = 0;
+            size_t temp_capacity_          = 0;
+        };
+
+        // ---------------------------------------------------------------------------
+        // Singleton access
+        // ---------------------------------------------------------------------------
+
+        template <typename MemorySpace>
+        class BinSortBuffersHolder {
+        public:
+            static BinSortBuffersHolder& instance() {
+                static BinSortBuffersHolder h;
+                return h;
+            }
+
+            BinSortBuffers<MemorySpace>& get() {
+                if (!buffers_)
+                    buffers_ = std::make_unique<BinSortBuffers<MemorySpace>>();
+                return *buffers_;
+            }
+
+            void finalize() {
+                if (buffers_) {
+                    buffers_->clear();
+                    buffers_.reset();
+                }
+            }
+
+        private:
+            BinSortBuffersHolder()                                       = default;
+            ~BinSortBuffersHolder()                                      = default;
+            BinSortBuffersHolder(const BinSortBuffersHolder&)            = delete;
+            BinSortBuffersHolder& operator=(const BinSortBuffersHolder&) = delete;
+
+            std::unique_ptr<BinSortBuffers<MemorySpace>> buffers_;
+        };
+
+        template <typename MemorySpace>
+        BinSortBuffers<MemorySpace>& getDefaultBinSortBuffers() {
+            return BinSortBuffersHolder<MemorySpace>::instance().get();
         }
 
         /**
-         * @brief Ensure temporary storage buffer is large enough
-         *
-         * Separate from particle buffers as CUB/rocPRIM may need
-         * varying amounts of temp storage.
-         *
-         * @param bytes Number of bytes needed
+         * @brief Release all bin-sort buffers for known memory spaces.
+         *        Call this before Kokkos::finalize().
          */
-        void ensureTempStorageCapacity(size_t bytes) {
-            if (bytes <= temp_storage_capacity_) {
-                return;
-            }
-
-            // Add some headroom for temp storage too
-            size_t new_capacity = static_cast<size_t>(bytes * 1.1);
-            temp_storage_ = Kokkos::View<char*, memory_space>(
-                "sort_buffer_temp_storage", new_capacity);
-            temp_storage_capacity_ = new_capacity;
-        }
-
-        // Accessors for the buffers (return subviews of actual size when needed)
-        Kokkos::View<uint64_t*, memory_space>& mortonKeys() { return morton_keys_; }
-        Kokkos::View<uint64_t*, memory_space>& mortonKeysSorted() { return morton_keys_sorted_; }
-        Kokkos::View<size_type*, memory_space>& indices() { return indices_; }
-        Kokkos::View<size_type*, memory_space>& indicesSorted() { return indices_sorted_; }
-        Kokkos::View<char*, memory_space>& tempStorage() { return temp_storage_; }
-
-        // Const accessors
-        const Kokkos::View<uint64_t*, memory_space>& mortonKeys() const { return morton_keys_; }
-        const Kokkos::View<uint64_t*, memory_space>& mortonKeysSorted() const { return morton_keys_sorted_; }
-        const Kokkos::View<size_type*, memory_space>& indices() const { return indices_; }
-        const Kokkos::View<size_type*, memory_space>& indicesSorted() const { return indices_sorted_; }
-        const Kokkos::View<char*, memory_space>& tempStorage() const { return temp_storage_; }
-
-        size_type capacity() const { return capacity_; }
-        size_t tempStorageCapacity() const { return temp_storage_capacity_; }
-
-        /**
-         * @brief Release all allocated memory
-         */
-        void clear() {
-            morton_keys_ = Kokkos::View<uint64_t*, memory_space>();
-            morton_keys_sorted_ = Kokkos::View<uint64_t*, memory_space>();
-            indices_ = Kokkos::View<size_type*, memory_space>();
-            indices_sorted_ = Kokkos::View<size_type*, memory_space>();
-            temp_storage_ = Kokkos::View<char*, memory_space>();
-            capacity_ = 0;
-            temp_storage_capacity_ = 0;
-        }
-
-        /**
-         * @brief Get approximate memory usage in bytes
-         */
-        size_t memoryUsage() const {
-            return capacity_ * (2 * sizeof(uint64_t) + 2 * sizeof(size_type))
-                   + temp_storage_capacity_;
-        }
-
-    private:
-        Kokkos::View<uint64_t*, memory_space> morton_keys_;
-        Kokkos::View<uint64_t*, memory_space> morton_keys_sorted_;
-        Kokkos::View<size_type*, memory_space> indices_;
-        Kokkos::View<size_type*, memory_space> indices_sorted_;
-        Kokkos::View<char*, memory_space> temp_storage_;
-
-        size_type capacity_ = 0;
-        size_t temp_storage_capacity_ = 0;
-    };
-
-    /**
-     * @brief Extended buffer manager that also handles permutation and bin offset arrays
-     *
-     * This is useful when you need persistent storage for permute arrays
-     * and bin offsets across gather/scatter operations.
-     *
-     * @tparam MemorySpace Kokkos memory space
-     */
-    template <typename MemorySpace>
-    class ParticleSortBufferManager : public SortBufferManager<MemorySpace> {
-    public:
-        using Base = SortBufferManager<MemorySpace>;
-        using memory_space = MemorySpace;
-        using size_type = size_t;
-
-        ParticleSortBufferManager() = default;
-
-        /**
-         * @brief Ensure all buffers including permute and bin_offsets are sized
-         *
-         * @param n_particles Number of particles
-         * @param n_bins Number of bins (for bin_offsets, typically n_bins + 1)
-         * @param growth_factor Over-allocation factor
-         */
-        void ensureCapacity(size_type n_particles,
-                           double growth_factor = 1.2) {
-            Base::ensureCapacity(n_particles,  growth_factor);
-
-            /*if (n_particles > permute_capacity_) {
-                size_type new_capacity = static_cast<size_type>(n_particles * growth_factor);
-                permute_ = Kokkos::View<size_type*, memory_space>(
-                    "sort_buffer_permute", new_capacity);
-                permute_capacity_ = new_capacity;
-            }
-
-            if (n_bins > 0 && n_bins > bin_offsets_capacity_) {
-                size_type new_capacity = static_cast<size_type>(n_bins * growth_factor);
-                bin_offsets_ = Kokkos::View<size_type*, memory_space>(
-                    "sort_buffer_bin_offsets", new_capacity);
-                bin_offsets_capacity_ = new_capacity;
-            }*/
-        }
-
-        // Kokkos::View<size_type*, memory_space>& permute() { return permute_; }
-        // Kokkos::View<size_type*, memory_space>& binOffsets() { return bin_offsets_; }
-        //
-        // const Kokkos::View<size_type*, memory_space>& permute() const { return permute_; }
-        // const Kokkos::View<size_type*, memory_space>& binOffsets() const { return bin_offsets_; }
-
-        size_type permuteCapacity() const { return permute_capacity_; }
-        size_type binOffsetsCapacity() const { return bin_offsets_capacity_; }
-
-        void clear() {
-            Base::clear();
-            permute_ = Kokkos::View<size_type*, memory_space>();
-            bin_offsets_ = Kokkos::View<size_type*, memory_space>();
-            permute_capacity_ = 0;
-            bin_offsets_capacity_ = 0;
-        }
-
-        size_t memoryUsage() const {
-            return Base::memoryUsage()
-                   + permute_capacity_ * sizeof(size_type)
-                   + bin_offsets_capacity_ * sizeof(size_type);
-        }
-
-    private:
-        Kokkos::View<size_type*, memory_space> permute_;
-        Kokkos::View<size_type*, memory_space> bin_offsets_;
-        size_type permute_capacity_ = 0;
-        size_type bin_offsets_capacity_ = 0;
-    };
-
-    /**
-     * @brief Singleton holder for buffer managers with explicit cleanup support
-     *
-     * This class ensures buffer managers can be properly cleaned up before
-     * Kokkos::finalize() is called.
-     */
-    template <typename MemorySpace>
-    class SortBufferManagerHolder {
-    public:
-        static SortBufferManagerHolder& instance() {
-            static SortBufferManagerHolder holder;
-            return holder;
-        }
-
-        ParticleSortBufferManager<MemorySpace>& getManager() {
-            if (!manager_) {
-                manager_ = std::make_unique<ParticleSortBufferManager<MemorySpace>>();
-            }
-            return *manager_;
-        }
-
-        void finalize() {
-            if (manager_) {
-                manager_->clear();
-                manager_.reset();
-            }
-        }
-
-        bool isInitialized() const {
-            return manager_ != nullptr;
-        }
-
-    private:
-        SortBufferManagerHolder() = default;
-        ~SortBufferManagerHolder() = default;
-
-        SortBufferManagerHolder(const SortBufferManagerHolder&) = delete;
-        SortBufferManagerHolder& operator=(const SortBufferManagerHolder&) = delete;
-
-        std::unique_ptr<ParticleSortBufferManager<MemorySpace>> manager_;
-    };
-
-    /**
-     * @brief Get the default buffer manager for a memory space
-     *
-     * Provides a convenient way to get a buffer manager that persists
-     * across calls. IMPORTANT: Call finalizeSortBuffers() before
-     * Kokkos::finalize() to avoid deallocation errors.
-     */
-    template <typename MemorySpace>
-    ParticleSortBufferManager<MemorySpace>& getDefaultSortBufferManager() {
-        return SortBufferManagerHolder<MemorySpace>::instance().getManager();
-    }
-
-    /**
-     * @brief Finalize and release buffer manager for a specific memory space
-     *
-     * Call this before Kokkos::finalize() to properly release GPU memory.
-     */
-    template <typename MemorySpace>
-    void finalizeSortBuffers() {
-        SortBufferManagerHolder<MemorySpace>::instance().finalize();
-    }
-
-    /**
-     * @brief Finalize all sort buffers for common memory spaces
-     *
-     * Convenience function to clean up all buffer managers.
-     * Call this before Kokkos::finalize().
-     *
-     * Usage:
-     *   ippl::detail::finalizeSortBuffersAll();
-     *   Kokkos::finalize();
-     */
-    inline void finalizeSortBuffersAll() {
+        inline void finalizeBinSortBuffers() {
 #ifdef KOKKOS_ENABLE_CUDA
-        SortBufferManagerHolder<Kokkos::CudaSpace>::instance().finalize();
+            BinSortBuffersHolder<Kokkos::CudaSpace>::instance().finalize();
 #endif
 #ifdef KOKKOS_ENABLE_HIP
-        SortBufferManagerHolder<Kokkos::HIPSpace>::instance().finalize();
+            BinSortBuffersHolder<Kokkos::HIPSpace>::instance().finalize();
 #endif
-        SortBufferManagerHolder<Kokkos::HostSpace>::instance().finalize();
-    }
+            BinSortBuffersHolder<Kokkos::HostSpace>::instance().finalize();
+        }
 
-}  // namespace detail
+    }  // namespace detail
 }  // namespace ippl
 
-#endif  // IPPL_SORT_BUFFER_MANAGER_H
+#endif  // IPPL_SORT_BUFFER_H
