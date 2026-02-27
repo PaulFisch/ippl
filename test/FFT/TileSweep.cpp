@@ -38,8 +38,10 @@
 #include <iomanip>
 #include <limits>
 #include <numeric>
+#include <optional>
 #include <random>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 using namespace ippl;
@@ -245,8 +247,8 @@ public:
 
     static constexpr bool is_complex = !std::is_same_v<ValueT, real_type>;
     static const char* value_type_str() { return is_complex ? "complex" : "real"; }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type one() { return value_type(1); }
+    static value_type zero() { return value_type(0); }
+    static value_type one() { return value_type(1); }
 
     // ------------------------------------------------------------------
     // Shared-memory capacity query
@@ -546,205 +548,270 @@ public:
     // Simulated Annealing over integer tile sizes (per dimension)
     // ------------------------------------------------------------------
     //
-    // State space:  tile ∈ [min_tile, max_tile]^3  (integers, per dimension)
-    // Objective:    maximise throughput (Mpts/s)
-    // Moves:        randomly perturb one dimension by ±1 (clamped to bounds)
-    // Budget:       sa_steps = number of *distinct kernel evaluations*.
-    //               Rejected proposals and boundary-clamped no-ops do NOT
-    //               consume budget or advance the cooling schedule — only a
-    //               real GPU measurement counts as a step.  This means the
-    //               user's --sa-steps budget is never wasted on duplicates.
-    // Cache:        previously-evaluated configs are looked up in a map so
-    //               that revisiting a known tile (common when the chain
-    //               bounces around a local basin) costs zero kernel time.
-    //               Cached hits still participate in Metropolis acceptance
-    //               and DO advance the cooling counter.
-    // Schedule:     geometric cooling T_k = T0 * alpha^k, where T0 is
-    //               AUTO-CALIBRATED to the observed throughput scale so that
-    //               the initial acceptance rate for a ~5% regression is ~50%.
-    // Restart:      after half the evaluation budget, restart from the
-    //               best-seen point with T reset to T0/4 ("iterated SA").
+    // State space:  valid tiles in [min_tile, max_tile]^3 that fit in shmem.
+    // Objective:    maximise throughput (Mpts/s).
+    // Budget:       sa_steps = number of distinct *kernel evaluations*
+    //               (shmem-invalid configs are walls, not evaluations).
+    // Cache:        result map keyed by flat tile index.  Cache hits reuse
+    //               the measured value at zero GPU cost and DO cool T.
+    // Moves:        enumerate all valid (in-bounds, shmem-OK, uncached)
+    //               neighbours; if any exist pick one uniformly — this
+    //               ensures the chain always makes progress.  If ALL
+    //               neighbours are cached, pick a random cached neighbour
+    //               (free Metropolis step).  If all neighbours are
+    //               shmem-invalid (corner case), jump to a random valid
+    //               uncached point.
+    // Schedule:     T is cooled once per *uncached* eval only, so it
+    //               spans T0 → T_min over exactly sa_steps real GPU runs.
+    //               T0 is auto-calibrated: T0 = 0.05*tp0/ln2 so that a 5%
+    //               regression is accepted with ~50% probability initially.
+    //               T_min = T0 * 5e-3 (greedy-ish local search at the end).
+    // Restart:      at eval = sa_steps/2, jump back to best with T=T0/4.
     // ------------------------------------------------------------------
     SAResult run_sa(const std::string& method, const ippl::NUFFT::ESKernel<real_type>& kernel,
                     size_t n_particles) {
+        // ------------------------------------------------------------------
+        // Design principles (learned from previous bugs):
+        //
+        // Budget model
+        //   sa_steps = max GPU kernel evaluations (cache misses).
+        //   Metropolis steps are unlimited — the chain runs until the budget
+        //   is exhausted.  Cooling is tied to Metropolis *accepted moves*,
+        //   not raw proposals or evaluations, so T tracks genuine exploration
+        //   progress regardless of cache hit rate.
+        //
+        // Move generation
+        //   Each step: pick a random ±1 neighbour (cached or not, shmem-valid).
+        //   Evaluate if uncached.  Apply Metropolis.  Cool if accepted.
+        //   This lets the chain make free Metropolis decisions on cached
+        //   neighbours instead of being forced to evaluate new tiles.
+        //
+        //   Every N_STAGNANT accepted moves without improvement: teleport to
+        //   a random unvisited valid tile (if any remain).  This prevents
+        //   the chain from circling a local optimum forever.
+        //
+        // Temperature
+        //   T0 auto-calibrated: 5% regression accepted ~50% at start.
+        //   alpha derived so T reaches T_min after sa_steps *accepted moves*
+        //   (a conservative lower bound on total steps).
+        //   T_min = T0 * 1e-2  (1% regression still ~1% accepted at floor).
+        //   T never actually hits zero.
+        //
+        // Restart
+        //   At eval = sa_steps/2, jump to best with T = T0/4.
+        // ------------------------------------------------------------------
+
         SAResult sa;
         sa.method       = method;
         sa.value_type   = value_type_str();
         sa.kernel_width = kernel.width();
         sa.evaluations  = 0;
 
-        const int lo = params_.min_tile_size;
-        const int hi = params_.max_tile_size;
+        const int lo       = params_.min_tile_size;
+        const int hi       = params_.max_tile_size;
+        const int kernel_W = kernel.width();
 
-        // Seed includes method hash so two methods at the same width differ.
         std::size_t method_hash = std::hash<std::string>{}(method);
-        std::mt19937 rng(
-            static_cast<uint32_t>(12345 + kernel.width() * 1000 + (method_hash & 0xFFFF)));
-
-        std::uniform_int_distribution<int> dim_dist(0, Dim - 1);
-        std::uniform_int_distribution<int> delta_dist(0, 1);  // 0→-1, 1→+1
+        std::mt19937 rng(static_cast<uint32_t>(12345 + kernel_W * 1000 + (method_hash & 0xFFFF)));
+        std::uniform_int_distribution<int> dim_dist(0, (int)Dim - 1);
+        std::uniform_int_distribution<int> dir_dist(0, 1);  // 0→-1, 1→+1
         std::uniform_real_distribution<double> unif(0.0, 1.0);
 
-        // ---- cache: tile → throughput (avoids re-running known configs) ----
-        // Key: flat index  x*(R^2) + y*R + z  where R = hi - lo + 1
+        // ---- validity pre-computation --------------------------------------
+        // Mark every tile as shmem-valid/invalid once up front (no GPU work).
         const int R   = hi - lo + 1;
         auto tile_key = [&](const std::array<int, Dim>& t) -> int {
             return (t[0] - lo) * R * R + (t[1] - lo) * R + (t[2] - lo);
         };
+        std::unordered_set<int> shmem_invalid;
+        for (int x = lo; x <= hi; ++x)
+            for (int y = lo; y <= hi; ++y)
+                for (int z = lo; z <= hi; ++z) {
+                    std::array<int, Dim> t = {x, y, z};
+                    if (!fits_in_shmem(method, t, kernel_W))
+                        shmem_invalid.insert(tile_key(t));
+                }
+
+        // Count valid tiles; if none, bail early.
+        const int n_valid = R * R * R - (int)shmem_invalid.size();
+        if (n_valid == 0) {
+            sa.best_tile            = {lo, lo, lo};
+            sa.best_time_ms         = std::numeric_limits<double>::quiet_NaN();
+            sa.best_throughput_Mpts = 0.0;
+            if (ippl::Comm->rank() == 0)
+                std::cout << "  [SA] " << method << " w=" << kernel_W
+                          << "  entire search space is shmem-invalid, skipping\n";
+            return sa;
+        }
+
+        // ---- cache: tile_key → throughput ---------------------------------
         std::unordered_map<int, double> cache;
 
-        // ---- evaluate-or-lookup helper -------------------------------------
-        // Returns throughput, sets *was_cached=true if no kernel was run.
-        // Returns 0.0 immediately (cached as such) if the tile exceeds the
-        // device shared-memory limit — avoids a hang on OOM launches.
-        const int kernel_W = kernel.width();
-        auto evaluate      = [&](const std::array<int, Dim>& tile, bool* was_cached) -> double {
+        // ---- evaluate helper (GPU run + cache store) ----------------------
+        auto evaluate = [&](const std::array<int, Dim>& tile) -> double {
             int key = tile_key(tile);
             auto it = cache.find(key);
-            if (it != cache.end()) {
-                if (was_cached)
-                    *was_cached = true;
+            if (it != cache.end())
                 return it->second;
-            }
-            if (was_cached)
-                *was_cached = false;
-
-            // Pre-flight shmem check: cache and return 0 without launching.
-            if (!fits_in_shmem(method, tile, kernel_W)) {
-                if (params_.verbose && ippl::Comm->rank() == 0)
-                    std::cout << "    SA [shmem-skip] tile=(" << tile[0] << "," << tile[1] << ","
-                              << tile[2] << ") exceeds device shmem\n";
-                cache[key] = 0.0;
-                ++sa.evaluations;  // counts as a used evaluation
-                return 0.0;
-            }
 
             auto cfg      = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method    = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
-                                                     : ippl::Interpolation::ScatterMethod::OutputFocused;
+                                                : ippl::Interpolation::ScatterMethod::OutputFocused;
             cfg.tile_size = {tile[0], tile[1], tile[2]};
-
-            auto r = benchmark_scatter(method, cfg, kernel, n_particles, tile, true);
+            auto r        = benchmark_scatter(method, cfg, kernel, n_particles, tile, true);
             ++sa.evaluations;
             double tp  = std::isnan(r.stats.mean_ms) ? 0.0 : r.throughput_Mpts_per_sec();
             cache[key] = tp;
             return tp;
         };
 
-        // ---- initial point: midpoint of search space -----------------------
+        // ---- random valid point (for start / teleport) --------------------
+        auto random_valid = [&](bool require_uncached) -> std::optional<std::array<int, Dim>> {
+            std::vector<std::array<int, Dim>> pool;
+            pool.reserve(n_valid);
+            for (int x = lo; x <= hi; ++x)
+                for (int y = lo; y <= hi; ++y)
+                    for (int z = lo; z <= hi; ++z) {
+                        std::array<int, Dim> t = {x, y, z};
+                        int k                  = tile_key(t);
+                        if (shmem_invalid.count(k))
+                            continue;
+                        if (require_uncached && cache.count(k))
+                            continue;
+                        pool.push_back(t);
+                    }
+            if (pool.empty())
+                return std::nullopt;
+            std::uniform_int_distribution<int> pick(0, (int)pool.size() - 1);
+            return pool[pick(rng)];
+        };
+
+        // ---- initial point -------------------------------------------------
         std::array<int, Dim> current;
         current.fill((lo + hi) / 2);
-        bool dummy;
-        double current_tp = evaluate(current, &dummy);
+        if (shmem_invalid.count(tile_key(current)))
+            current = *random_valid(false);  // guaranteed non-null (n_valid>0)
 
+        double current_tp         = evaluate(current);
         std::array<int, Dim> best = current;
         double best_tp            = current_tp;
 
-        // ---- auto-calibrate T0 ---------------------------------------------
-        // Target: exp(-0.05 * tp0 / T0) = 0.5  →  T0 = 0.05*tp0 / ln2
+        // ---- T0 auto-calibration ------------------------------------------
         double T0 = (current_tp > 0.0) ? 0.05 * current_tp / std::log(2.0) : params_.sa_t0;
         if (std::abs(params_.sa_t0 - 5.0) > 1e-9)
             T0 = params_.sa_t0;  // explicit user override
 
+        // ---- cooling schedule ---------------------------------------------
+        // Cool on every *accepted* Metropolis move.
+        // We expect sa_steps accepted moves over the whole run (lower bound
+        // on total moves), so alpha^sa_steps spans T0 → T_min.
+        const double T_min = T0 * 1e-2;
+        double alpha       = params_.sa_alpha;
+        if (std::abs(alpha - 0.97) < 1e-9 && params_.sa_steps > 0)
+            alpha = std::pow(T_min / T0, 1.0 / (double)params_.sa_steps);
         double T = T0;
 
-        // ---- alpha: span 3 orders of magnitude over the evaluation budget --
-        // IMPORTANT: the while-loop cools T on every non-clamped *proposal*,
-        // which is strictly >= sa_steps (real evaluations), because cached hits
-        // and rejected moves also advance the cooling counter.  If alpha is set
-        // to reach T0*1e-3 after only sa_steps steps, T will hit zero long
-        // before the budget is exhausted, freezing the chain in an infinite loop.
-        //
-        // Fix: use a gentler alpha so T reaches T0*1e-3 after an expected number
-        // of proposals, estimated as sa_steps * expected_proposals_per_eval.
-        // We conservatively assume ~3 proposals per real evaluation on average
-        // (accounts for ~50% rejection rate + some cache hits + boundary bounces).
-        // A hard floor T_min = T0*1e-4 additionally guarantees termination even
-        // if proposals/eval is higher than expected: once T == T_min, the chain
-        // still runs but effectively does greedy local search, and the while()
-        // condition on sa.evaluations ensures it always terminates.
-        double alpha = params_.sa_alpha;
-        if (std::abs(alpha - 0.97) < 1e-9 && params_.sa_steps > 0) {
-            constexpr double expected_proposals_per_eval = 3.0;
-            double effective_steps = params_.sa_steps * expected_proposals_per_eval;
-            alpha                  = std::pow(1e-3, 1.0 / effective_steps);
-        }
-        const double T_min = T0 * 1e-1;  // floor: ~1% regression still ~1% accepted
-
-        const int restart_eval = params_.sa_steps / 2;  // restart after this many evals
-        bool restarted         = false;                 // fire exactly once
+        const int restart_eval = params_.sa_steps / 2;
+        bool restarted         = false;
+        // Teleport after this many accepted moves without improvement.
+        // Set to ~10% of budget; don't teleport more than once per 10 evals.
+        const int N_STAGNANT = std::max(10, params_.sa_steps / 10);
+        int stagnant_count   = 0;
+        int step             = 0;
 
         if (params_.verbose && ippl::Comm->rank() == 0) {
             std::cout << "    SA init: tp0=" << std::fixed << std::setprecision(1) << current_tp
-                      << "  T0=" << std::setprecision(3) << T0 << "  alpha=" << std::setprecision(6)
-                      << alpha << "\n";
+                      << "  T0=" << std::setprecision(3) << T0 << "  T_min=" << T_min
+                      << "  alpha=" << std::setprecision(6) << alpha << "  valid=" << n_valid << "/"
+                      << (R * R * R) << "\n";
         }
 
-        // ---- main annealing loop -------------------------------------------
-        // Loop until we have consumed sa_steps real evaluations.
-        // Proposals that are boundary-clamped identical to current are
-        // discarded without touching the step counter or temperature.
-        // Proposals that hit the cache count as a step (and cool T) but
-        // don't increment sa.evaluations.
-        int step = 0;
+        // ---- main loop: terminate when GPU budget exhausted ---------------
         while (sa.evaluations < params_.sa_steps) {
-            // Mid-run restart after half the *evaluation* budget — fires once only
+            // Mid-run restart — once only
             if (!restarted && sa.evaluations >= restart_eval) {
-                restarted  = true;
-                current    = best;
-                current_tp = best_tp;
-                T          = T0 / 4.0;
+                restarted      = true;
+                current        = best;
+                current_tp     = best_tp;
+                T              = T0 / 4.0;
+                stagnant_count = 0;
                 if (params_.verbose && ippl::Comm->rank() == 0)
                     std::cout << "    SA restart at eval " << sa.evaluations << "  best=("
                               << best[0] << "," << best[1] << "," << best[2] << ")"
-                              << "  T reset to " << std::setprecision(4) << T << "\n";
+                              << "  T=" << std::setprecision(4) << T << "\n";
             }
 
-            // Generate candidate neighbour
+            // Teleport if stuck in a basin too long
+            if (stagnant_count >= N_STAGNANT) {
+                auto opt = random_valid(/*require_uncached=*/true);
+                if (opt) {
+                    current    = *opt;
+                    current_tp = evaluate(current);
+                    if (current_tp > best_tp) {
+                        best    = current;
+                        best_tp = current_tp;
+                    }
+                    stagnant_count = 0;
+                    if (params_.verbose && ippl::Comm->rank() == 0)
+                        std::cout << "    SA teleport at eval " << sa.evaluations << "  → ("
+                                  << current[0] << "," << current[1] << "," << current[2]
+                                  << ")  tp=" << std::setprecision(1) << current_tp << "\n";
+                } else {
+                    stagnant_count = 0;  // all tiles visited; reset to allow revisits
+                }
+                continue;
+            }
+
+            // Generate candidate: random ±1 in a random dimension
             std::array<int, Dim> candidate = current;
             int d                          = dim_dist(rng);
-            int dir                        = (delta_dist(rng) == 0) ? -1 : +1;
-            candidate[d]                   = std::clamp(current[d] + dir, lo, hi);
+            int dir                        = (dir_dist(rng) == 0) ? -1 : +1;
+            candidate[d]                   = candidate[d] + dir;
 
-            // Discard boundary-clamped no-ops without consuming any budget
-            if (candidate == current)
+            // Reject out-of-bounds and shmem-invalid moves (try again next iter)
+            if (candidate[d] < lo || candidate[d] > hi)
+                continue;
+            if (shmem_invalid.count(tile_key(candidate)))
                 continue;
 
-            bool was_cached     = false;
-            double candidate_tp = evaluate(candidate, &was_cached);
+            // Evaluate (free if cached)
+            double candidate_tp = evaluate(candidate);
 
-            // Metropolis acceptance — guard exp() against underflow
-            double delta = candidate_tp - current_tp;
-            if (delta > 0.0 || unif(rng) < std::exp(std::max(delta / T, -500.0))) {
+            // Metropolis acceptance
+            double delta  = candidate_tp - current_tp;
+            bool accepted = (delta > 0.0) || (unif(rng) < std::exp(std::max(delta / T, -500.0)));
+
+            if (accepted) {
                 current    = candidate;
                 current_tp = candidate_tp;
-            }
+                T          = std::max(T * alpha, T_min);  // cool on accept
+                ++step;
 
-            if (current_tp > best_tp) {
-                best    = current;
-                best_tp = current_tp;
+                if (current_tp > best_tp) {
+                    best           = current;
+                    best_tp        = current_tp;
+                    stagnant_count = 0;
+                } else {
+                    ++stagnant_count;
+                }
             }
-
-            // Record history entry and cool — once per real proposal
-            // (whether accepted or not, whether cached or not)
-            sa.history.emplace_back(step, current[0], current[1], current[2], current_tp);
-            T = std::max(T * alpha, T_min);  // clamp: never let T reach zero
-            ++step;
 
             if (params_.verbose && ippl::Comm->rank() == 0) {
                 std::cout << "    SA eval " << std::setw(4) << sa.evaluations << " step "
-                          << std::setw(4) << step << (was_cached ? "C" : " ")
-                          << "  T=" << std::fixed << std::setprecision(4) << T << "  tile=("
-                          << current[0] << "," << current[1] << "," << current[2] << ")"
+                          << std::setw(5) << step << (accepted ? "A" : " ") << "  T=" << std::fixed
+                          << std::setprecision(4) << T << "  tile=(" << current[0] << ","
+                          << current[1] << "," << current[2] << ")"
                           << "  tp=" << std::setprecision(1) << current_tp << "  best=(" << best[0]
                           << "," << best[1] << "," << best[2] << ")"
                           << "  best_tp=" << best_tp << "\n";
             }
+
+            sa.history.emplace_back(step, current[0], current[1], current[2], current_tp);
         }
 
         sa.best_tile = best;
 
-        // ---- final re-measurement of best config with full statistics -------
+        // ---- final re-measurement with full warmup/run statistics ----------
         {
             auto cfg      = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method    = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
@@ -765,7 +832,7 @@ public:
                       << best[0] << "," << best[1] << "," << best[2] << ")"
                       << "  throughput=" << std::fixed << std::setprecision(1)
                       << sa.best_throughput_Mpts << " Mpts/s"
-                      << "  (" << sa.evaluations << " evals)\n";
+                      << "  (" << sa.evaluations << " evals, " << step << " accepted)\n";
         }
 
         return sa;
