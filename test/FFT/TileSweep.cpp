@@ -249,8 +249,77 @@ public:
 
     static constexpr bool is_complex = !std::is_same_v<ValueT, real_type>;
     static const char* value_type_str() { return is_complex ? "complex" : "real"; }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type one()  { return value_type(1); }
+    static value_type zero() { return value_type(0); }
+    static value_type one()  { return value_type(1); }
+
+    // ------------------------------------------------------------------
+    // Shared-memory capacity query
+    //
+    // Returns the maximum dynamically-allocatable shared memory per block
+    // on the current default device.  Falls back to 1 GiB on backends
+    // that don't have real shmem constraints (Serial, OpenMP, Threads).
+    // ------------------------------------------------------------------
+    static size_t device_shmem_bytes() {
+#if defined(KOKKOS_ENABLE_CUDA)
+        int dev = 0;
+        cudaGetDevice(&dev);
+        // Try the larger "optin" limit first (requires cudaFuncSetAttribute).
+        int bytes = 0;
+        cudaDeviceGetAttribute(&bytes,
+            cudaDevAttrMaxSharedMemoryPerBlockOptin, dev);
+        if (bytes <= 0)
+            cudaDeviceGetAttribute(&bytes,
+                cudaDevAttrMaxSharedMemoryPerBlock, dev);
+        return static_cast<size_t>(std::max(bytes, 0));
+#elif defined(KOKKOS_ENABLE_HIP)
+        int dev = 0;
+        hipGetDevice(&dev);
+        hipDeviceProp_t prop;
+        hipGetDeviceProperties(&prop, dev);
+        return prop.sharedMemPerBlock;
+#else
+        return static_cast<size_t>(1) << 30;  // 1 GiB sentinel: never rejects
+#endif
+    }
+
+    // ------------------------------------------------------------------
+    // Scratch-size formulae mirroring the actual kernel implementations.
+    //
+    // OutputFocused (Grid-Parallel):
+    //   scratch = (IsComplex?2:1) * htot * sizeof(double)   // field tile
+    //             + Dim * W * sizeof(double)                  // kernel weights
+    //             + Dim * sizeof(int)                         // int offsets
+    //   htot = prod_d(tile[d] + W)
+    //
+    // Tiled (Sorted Spread):
+    //   scratch = (IsComplex?2:1) * htot * sizeof(double)
+    //   htot = prod_d(tile[d] + W)
+    // ------------------------------------------------------------------
+    static size_t scratch_size_output_focused(const std::array<int,3>& tile, int W) {
+        size_t htot = 1;
+        for (unsigned d = 0; d < Dim; ++d)
+            htot *= static_cast<size_t>(tile[d] + W);
+        return (is_complex ? 2u : 1u) * htot * sizeof(real_type)
+               + static_cast<size_t>(Dim) * static_cast<size_t>(W) * sizeof(real_type)
+               + static_cast<size_t>(Dim) * sizeof(int);
+    }
+
+    static size_t scratch_size_tiled(const std::array<int,3>& tile, int W) {
+        size_t htot = 1;
+        for (unsigned d = 0; d < Dim; ++d)
+            htot *= static_cast<size_t>(tile[d] + W);
+        return (is_complex ? 2u : 1u) * htot * sizeof(real_type);
+    }
+
+    // Returns true if the tile+kernel combination fits in device shared memory.
+    bool fits_in_shmem(const std::string& method,
+                       const std::array<int,3>& tile,
+                       int W) const {
+        size_t required = (method == "Tiled")
+                          ? scratch_size_tiled(tile, W)
+                          : scratch_size_output_focused(tile, W);
+        return required <= device_shmem_bytes();
+    }
 
     TileSweepBenchmark(const BenchParams& params)
         : params_(params) {}
@@ -300,21 +369,33 @@ public:
                 }
 
                 {
+                    const std::array<int,3> tile_arr = {t, t, t};
                     auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                     cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
                     cfg.set_tile_size(t);
-                    auto r = benchmark_scatter("Tiled", cfg, kernel, n_particles,
-                                               {t,t,t}, false);
-                    results.push_back(r);
+                    if (fits_in_shmem("Tiled", tile_arr, actual_width)) {
+                        results.push_back(benchmark_scatter("Tiled", cfg, kernel, n_particles,
+                                                            tile_arr, false));
+                    } else {
+                        if (params_.verbose && ippl::Comm->rank() == 0)
+                            std::cout << "  [shmem-skip] Tiled tile=" << t
+                                      << " width=" << actual_width << "\n";
+                    }
                 }
                 ++current_config;
                 {
+                    const std::array<int,3> tile_arr = {t, t, t};
                     auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                     cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
                     cfg.set_tile_size(t);
-                    auto r = benchmark_scatter("OutputFocused", cfg, kernel, n_particles,
-                                               {t,t,t}, false);
-                    results.push_back(r);
+                    if (fits_in_shmem("OutputFocused", tile_arr, actual_width)) {
+                        results.push_back(benchmark_scatter("OutputFocused", cfg, kernel, n_particles,
+                                                            tile_arr, false));
+                    } else {
+                        if (params_.verbose && ippl::Comm->rank() == 0)
+                            std::cout << "  [shmem-skip] OutputFocused tile=" << t
+                                      << " width=" << actual_width << "\n";
+                    }
                 }
             }
 
@@ -472,6 +553,9 @@ public:
 
         // ---- evaluate-or-lookup helper -------------------------------------
         // Returns throughput, sets *was_cached=true if no kernel was run.
+        // Returns 0.0 immediately (cached as such) if the tile exceeds the
+        // device shared-memory limit — avoids a hang on OOM launches.
+        const int kernel_W = kernel.width();
         auto evaluate = [&](const std::array<int,Dim>& tile, bool* was_cached) -> double {
             int key = tile_key(tile);
             auto it = cache.find(key);
@@ -480,6 +564,17 @@ public:
                 return it->second;
             }
             if (was_cached) *was_cached = false;
+
+            // Pre-flight shmem check: cache and return 0 without launching.
+            if (!fits_in_shmem(method, tile, kernel_W)) {
+                if (params_.verbose && ippl::Comm->rank() == 0)
+                    std::cout << "    SA [shmem-skip] tile=("
+                              << tile[0] << "," << tile[1] << "," << tile[2]
+                              << ") exceeds device shmem\n";
+                cache[key] = 0.0;
+                ++sa.evaluations;   // counts as a used evaluation
+                return 0.0;
+            }
 
             auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = (method == "Tiled")
