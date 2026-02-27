@@ -28,8 +28,9 @@
  */
 
 #include "Ippl.h"
-#include <Kokkos_Random.hpp>
 
+#include <Kokkos_Random.hpp>
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <complex>
@@ -37,7 +38,6 @@
 #include <iomanip>
 #include <limits>
 #include <numeric>
-#include <algorithm>
 #include <random>
 #include <unordered_map>
 #include <vector>
@@ -73,16 +73,16 @@ private:
 // ============================================================================
 
 struct BenchParams {
-    int n_grid        = 128;
-    double rho        = 1.0;
-    int warmup_runs   = 3;
-    int benchmark_runs = 5;
+    int n_grid                = 128;
+    double rho                = 1.0;
+    int warmup_runs           = 3;
+    int benchmark_runs        = 5;
     std::string output_prefix = "tile_sweep";
     std::string distribution  = "uniform";
-    bool verbose   = false;
-    bool ncu_mode  = false;
-    bool use_real  = false;   // NEW: real-valued field/particles
-    bool optimize  = false;   // NEW: run SA optimiser
+    bool verbose              = false;
+    bool ncu_mode             = false;
+    bool use_real             = false;  // NEW: real-valued field/particles
+    bool optimize             = false;  // NEW: run SA optimiser
 
     // Sweep ranges
     int min_tile_size    = 1;
@@ -91,13 +91,11 @@ struct BenchParams {
     int max_kernel_width = 8;
 
     // Simulated-annealing parameters
-    int    sa_steps = 200;    // total number of annealing steps
-    double sa_t0    = 5.0;    // initial temperature
-    double sa_alpha = 0.97;   // geometric cooling factor
+    int sa_steps    = 200;   // total number of annealing steps
+    double sa_t0    = 5.0;   // initial temperature
+    double sa_alpha = 0.97;  // geometric cooling factor
 
-    size_t n_particles() const {
-        return static_cast<size_t>(rho * n_grid * n_grid * n_grid);
-    }
+    size_t n_particles() const { return static_cast<size_t>(rho * n_grid * n_grid * n_grid); }
 };
 
 BenchParams parse_bench_args(int argc, char* argv[]) {
@@ -125,12 +123,12 @@ BenchParams parse_bench_args(int argc, char* argv[]) {
         } else if (arg == "--max-width" && i + 1 < argc) {
             params.max_kernel_width = std::atoi(argv[++i]);
         } else if (arg == "--ncu-mode") {
-            params.ncu_mode        = true;
-            params.warmup_runs     = 1;
-            params.benchmark_runs  = 1;
-        } else if (arg == "--real") {          // NEW
+            params.ncu_mode       = true;
+            params.warmup_runs    = 1;
+            params.benchmark_runs = 1;
+        } else if (arg == "--real") {  // NEW
             params.use_real = true;
-        } else if (arg == "--optimize") {      // NEW
+        } else if (arg == "--optimize") {  // NEW
             params.optimize = true;
         } else if (arg == "--sa-steps" && i + 1 < argc) {
             params.sa_steps = std::atoi(argv[++i]);
@@ -161,16 +159,19 @@ struct TimingStats {
 TimingStats compute_stats(const std::vector<double>& times_sec) {
     TimingStats stats{};
     stats.count = times_sec.size();
-    if (stats.count == 0) return stats;
+    if (stats.count == 0)
+        return stats;
 
     std::vector<double> ms(stats.count);
-    for (size_t i = 0; i < stats.count; ++i) ms[i] = times_sec[i] * 1000.0;
+    for (size_t i = 0; i < stats.count; ++i)
+        ms[i] = times_sec[i] * 1000.0;
 
-    double sum = std::accumulate(ms.begin(), ms.end(), 0.0);
+    double sum    = std::accumulate(ms.begin(), ms.end(), 0.0);
     stats.mean_ms = sum / stats.count;
 
     double sq = 0.0;
-    for (double t : ms) sq += (t - stats.mean_ms) * (t - stats.mean_ms);
+    for (double t : ms)
+        sq += (t - stats.mean_ms) * (t - stats.mean_ms);
     stats.stddev_ms = (stats.count > 1) ? std::sqrt(sq / (stats.count - 1)) : 0.0;
 
     stats.min_ms = *std::min_element(ms.begin(), ms.end());
@@ -178,9 +179,8 @@ TimingStats compute_stats(const std::vector<double>& times_sec) {
 
     std::vector<double> s = ms;
     std::sort(s.begin(), s.end());
-    stats.median_ms = (stats.count % 2 == 0)
-        ? (s[stats.count/2 - 1] + s[stats.count/2]) / 2.0
-        : s[stats.count/2];
+    stats.median_ms = (stats.count % 2 == 0) ? (s[stats.count / 2 - 1] + s[stats.count / 2]) / 2.0
+                                             : s[stats.count / 2];
 
     return stats;
 }
@@ -192,25 +192,21 @@ TimingStats compute_stats(const std::vector<double>& times_sec) {
 struct BenchmarkResult {
     std::string method;
     std::string distribution;
-    std::string value_type;        // NEW: "real" or "complex"
+    std::string value_type;  // NEW: "real" or "complex"
     // Per-dimension tile sizes (rectangular support)
-    std::array<int,3> tile_sizes = {1,1,1};
-    int tile_size = 1;             // kept for backward-compat (uniform case)
+    std::array<int, 3> tile_sizes = {1, 1, 1};
+    int tile_size                 = 1;  // kept for backward-compat (uniform case)
     int kernel_width;
     size_t n_particles;
     size_t n_grid;
     double rho;
-    bool from_optimizer = false;   // NEW: true if produced by SA
+    bool from_optimizer = false;  // NEW: true if produced by SA
 
     TimingStats stats;
     std::vector<double> times_sec;
 
-    double throughput_Mpts_per_sec() const {
-        return (n_particles / (stats.mean_ms * 1e-3)) / 1e6;
-    }
-    double time_per_point_ns() const {
-        return (stats.mean_ms * 1e6) / n_particles;
-    }
+    double throughput_Mpts_per_sec() const { return (n_particles / (stats.mean_ms * 1e-3)) / 1e6; }
+    double time_per_point_ns() const { return (stats.mean_ms * 1e6) / n_particles; }
 };
 
 // ============================================================================
@@ -221,12 +217,12 @@ struct SAResult {
     std::string method;
     std::string value_type;
     int kernel_width;
-    std::array<int,3> best_tile;
+    std::array<int, 3> best_tile;
     double best_throughput_Mpts;
     double best_time_ms;
     int evaluations;
     // history: (step, tile_x, tile_y, tile_z, throughput)
-    std::vector<std::tuple<int,int,int,int,double>> history;
+    std::vector<std::tuple<int, int, int, int, double>> history;
 };
 
 // ============================================================================
@@ -237,9 +233,9 @@ template <typename ExecSpace, typename ValueT>
 class TileSweepBenchmark {
 public:
     static constexpr unsigned Dim = 3;
-    using real_type   = double;
-    using value_type  = ValueT;
-    using MemSpace    = typename ExecSpace::memory_space;
+    using real_type               = double;
+    using value_type              = ValueT;
+    using MemSpace                = typename ExecSpace::memory_space;
 
     using Mesh_t      = ippl::UniformCartesian<real_type, Dim>;
     using Centering_t = typename Mesh_t::DefaultCentering;
@@ -249,8 +245,8 @@ public:
 
     static constexpr bool is_complex = !std::is_same_v<ValueT, real_type>;
     static const char* value_type_str() { return is_complex ? "complex" : "real"; }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type one()  { return value_type(1); }
+    static value_type zero() { return value_type(0); }
+    static value_type one() { return value_type(1); }
 
     // ------------------------------------------------------------------
     // Shared-memory capacity query
@@ -263,13 +259,15 @@ public:
 #if defined(KOKKOS_ENABLE_CUDA)
         int dev = 0;
         cudaGetDevice(&dev);
-        // Try the larger "optin" limit first (requires cudaFuncSetAttribute).
+        // Use only the BASE shared-memory limit (cudaDevAttrMaxSharedMemoryPerBlock),
+        // NOT the "optin" limit.  The optin limit (up to 96/164 KiB on modern GPUs)
+        // requires calling cudaFuncSetAttribute(...MaxDynamicSharedMemorySize...) on
+        // each kernel before launch.  Kokkos does not do this automatically, so the
+        // runtime enforces the base 48 KiB limit regardless of what the hardware can
+        // physically support.  Using the optin value here would make fits_in_shmem()
+        // return true for configs that then fail at launch.
         int bytes = 0;
-        cudaDeviceGetAttribute(&bytes,
-            cudaDevAttrMaxSharedMemoryPerBlockOptin, dev);
-        if (bytes <= 0)
-            cudaDeviceGetAttribute(&bytes,
-                cudaDevAttrMaxSharedMemoryPerBlock, dev);
+        cudaDeviceGetAttribute(&bytes, cudaDevAttrMaxSharedMemoryPerBlock, dev);
         return static_cast<size_t>(std::max(bytes, 0));
 #elif defined(KOKKOS_ENABLE_HIP)
         int dev = 0;
@@ -283,42 +281,85 @@ public:
     }
 
     // ------------------------------------------------------------------
-    // Scratch-size formulae mirroring the actual kernel implementations.
+    // Shared-memory feasibility check.
     //
-    // OutputFocused (Grid-Parallel):
-    //   scratch = (IsComplex?2:1) * htot * sizeof(double)   // field tile
-    //             + Dim * W * sizeof(double)                  // kernel weights
-    //             + Dim * sizeof(int)                         // int offsets
-    //   htot = prod_d(tile[d] + W)
+    // compute_scratch_size<IsComplex>(tile_vec) is a static method on
+    // detail::TiledScatter<W, Types, Policy> and
+    // detail::GridParallelScatter<W, Types, Policy>.
     //
-    // Tiled (Sorted Spread):
-    //   scratch = (IsComplex?2:1) * htot * sizeof(double)
-    //   htot = prod_d(tile[d] + W)
+    // Both take the full Types/Policy pack as template args, but
+    // compute_scratch_size only uses W, Dim, RealType (from Types), and
+    // IsComplex — nothing that depends on view types.  We therefore
+    // construct a minimal ScatterTypes instantiation using the concrete
+    // types available here (real_type, ExecSpace, the field view type).
+    //
+    // W is a compile-time parameter on those classes; we dispatch over
+    // the supported runtime range [1, 14] via WidthDispatcher, matching
+    // the same range used in Scatter::dispatch.  Out-of-range W returns
+    // SIZE_MAX (always skip).
     // ------------------------------------------------------------------
-    static size_t scratch_size_output_focused(const std::array<int,3>& tile, int W) {
-        size_t htot = 1;
-        for (unsigned d = 0; d < Dim; ++d)
-            htot *= static_cast<size_t>(tile[d] + W);
-        return (is_complex ? 2u : 1u) * htot * sizeof(real_type)
-               + static_cast<size_t>(Dim) * static_cast<size_t>(W) * sizeof(real_type)
-               + static_cast<size_t>(Dim) * sizeof(int);
+
+    // Minimal Types bundle sufficient for compute_scratch_size.
+    // ScatterTypes<Dim, RealType, Kernel, FieldView, PosView, ValView>
+    // — we use dummy view types since compute_scratch_size doesn't touch them.
+    using DummyFieldView = typename Field_t::view_type;
+    using DummyPosView   = typename ippl::ParticleAttrib<ippl::Vector<real_type, Dim>>::view_type;
+    using DummyValView   = typename ippl::ParticleAttrib<value_type>::view_type;
+
+    template <int W>
+    using TiledTypes = ippl::Interpolation::detail::ScatterTypes<
+        Dim, real_type,
+        ippl::NUFFT::ESKernel<real_type>,  // kernel type — only W matters
+        DummyFieldView, DummyPosView, DummyValView>;
+
+    template <int W>
+    using GPTypes = TiledTypes<W>;  // same Types bundle works for both
+
+    using SortedPolicy = ippl::Interpolation::detail::SortedPolicy;
+
+    template <int W>
+    static size_t required_shmem_tiled(const ippl::Vector<int, Dim>& tv) {
+        return ippl::Interpolation::detail::TiledScatter<
+            W, TiledTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv);
     }
 
-    static size_t scratch_size_tiled(const std::array<int,3>& tile, int W) {
-        size_t htot = 1;
-        for (unsigned d = 0; d < Dim; ++d)
-            htot *= static_cast<size_t>(tile[d] + W);
-        return (is_complex ? 2u : 1u) * htot * sizeof(real_type);
+    template <int W>
+    static size_t required_shmem_gp(const ippl::Vector<int, Dim>& tv) {
+        return ippl::Interpolation::detail::GridParallelScatter<
+            W, GPTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv);
     }
 
-    // Returns true if the tile+kernel combination fits in device shared memory.
-    bool fits_in_shmem(const std::string& method,
-                       const std::array<int,3>& tile,
-                       int W) const {
-        size_t required = (method == "Tiled")
-                          ? scratch_size_tiled(tile, W)
-                          : scratch_size_output_focused(tile, W);
-        return required <= device_shmem_bytes();
+    // Runtime W → compile-time W dispatch using WidthDispatcher<1,14>.
+    static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile, int W) {
+        ippl::Vector<int, Dim> tv;
+        for (unsigned d = 0; d < Dim; ++d)
+            tv[d] = tile[d];
+
+        size_t result   = std::numeric_limits<size_t>::max();
+        bool dispatched = false;
+
+        ippl::Interpolation::WidthDispatcher<1, 14>::dispatch(W, [&]<int Wc>() {
+            if (method == "Tiled")
+                result = required_shmem_tiled<Wc>(tv);
+            else  // "OutputFocused" maps to GridParallelScatter
+                result = required_shmem_gp<Wc>(tv);
+            dispatched = true;
+        });
+
+        // WidthDispatcher does nothing for W outside [1,14]; leave SIZE_MAX.
+        (void)dispatched;
+        return result;
+    }
+
+    bool fits_in_shmem(const std::string& method, const std::array<int, 3>& tile, int W) const {
+        const size_t required  = required_shmem(method, tile, W);
+        const size_t available = device_shmem_bytes();
+        if (params_.verbose && ippl::Comm->rank() == 0)
+            std::cout << "  [shmem] " << method << " tile=(" << tile[0] << "," << tile[1] << ","
+                      << tile[2] << ")"
+                      << " W=" << W << " required=" << required << " available=" << available
+                      << (required <= available ? " OK" : " SKIP") << "\n";
+        return required <= available;
     }
 
     TileSweepBenchmark(const BenchParams& params)
@@ -331,7 +372,7 @@ public:
         print_header();
 
         std::vector<BenchmarkResult> results;
-        std::vector<SAResult>        sa_results;
+        std::vector<SAResult> sa_results;
 
         // Build list of kernel widths to sweep
         std::vector<int> widths;
@@ -343,7 +384,7 @@ public:
             tile_sizes_1d.push_back(t);
 
         const int total_configs = widths.size() * tile_sizes_1d.size() * 2;
-        int current_config = 0;
+        int current_config      = 0;
 
         for (int width : widths) {
             double tol = std::pow(10.0, -(width - 1));
@@ -351,8 +392,8 @@ public:
             int actual_width = kernel.width();
 
             if (actual_width != width && ippl::Comm->rank() == 0)
-                std::cout << "Note: Requested width " << width
-                          << ", got " << actual_width << " (tol=" << tol << ")\n";
+                std::cout << "Note: Requested width " << width << ", got " << actual_width
+                          << " (tol=" << tol << ")\n";
 
             int nghost = actual_width / 2 + 1;
             setup_domain(nghost);
@@ -364,18 +405,18 @@ public:
                 ++current_config;
                 if (ippl::Comm->rank() == 0) {
                     std::cout << "\r[sweep " << current_config << "/" << total_configs << "] "
-                              << "width=" << actual_width << ", tile=" << t
-                              << "          " << std::flush;
+                              << "width=" << actual_width << ", tile=" << t << "          "
+                              << std::flush;
                 }
 
                 {
-                    const std::array<int,3> tile_arr = {t, t, t};
-                    auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+                    const std::array<int, 3> tile_arr = {t, t, t};
+                    auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                     cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
                     cfg.set_tile_size(t);
                     if (fits_in_shmem("Tiled", tile_arr, actual_width)) {
-                        results.push_back(benchmark_scatter("Tiled", cfg, kernel, n_particles,
-                                                            tile_arr, false));
+                        results.push_back(
+                            benchmark_scatter("Tiled", cfg, kernel, n_particles, tile_arr, false));
                     } else {
                         if (params_.verbose && ippl::Comm->rank() == 0)
                             std::cout << "  [shmem-skip] Tiled tile=" << t
@@ -384,13 +425,13 @@ public:
                 }
                 ++current_config;
                 {
-                    const std::array<int,3> tile_arr = {t, t, t};
-                    auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+                    const std::array<int, 3> tile_arr = {t, t, t};
+                    auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                     cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
                     cfg.set_tile_size(t);
                     if (fits_in_shmem("OutputFocused", tile_arr, actual_width)) {
-                        results.push_back(benchmark_scatter("OutputFocused", cfg, kernel, n_particles,
-                                                            tile_arr, false));
+                        results.push_back(benchmark_scatter("OutputFocused", cfg, kernel,
+                                                            n_particles, tile_arr, false));
                     } else {
                         if (params_.verbose && ippl::Comm->rank() == 0)
                             std::cout << "  [shmem-skip] OutputFocused tile=" << t
@@ -402,29 +443,34 @@ public:
             // ---- Simulated-annealing optimiser --------------------------------
             if (params_.optimize) {
                 if (ippl::Comm->rank() == 0)
-                    std::cout << "\n  [SA] Optimising tile sizes for width=" << actual_width << "...\n";
+                    std::cout << "\n  [SA] Optimising tile sizes for width=" << actual_width
+                              << "...\n";
 
                 for (const std::string& method : {"Tiled", "OutputFocused"}) {
                     auto sa = run_sa(method, kernel, n_particles);
                     sa_results.push_back(sa);
 
                     // Store the best SA point as a result row (flagged)
-                    auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-                    if (method == "Tiled")
-                        cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
-                    else
-                        cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
-                    cfg.tile_size = {sa.best_tile[0], sa.best_tile[1], sa.best_tile[2]};
-                    auto r = benchmark_scatter(method, cfg, kernel, n_particles,
-                                               sa.best_tile, true);
-                    results.push_back(r);
+                    if (fits_in_shmem(method, sa.best_tile, actual_width)) {
+                        auto cfg =
+                            ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+                        if (method == "Tiled")
+                            cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
+                        else
+                            cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
+                        cfg.tile_size = {sa.best_tile[0], sa.best_tile[1], sa.best_tile[2]};
+                        auto r =
+                            benchmark_scatter(method, cfg, kernel, n_particles, sa.best_tile, true);
+                        results.push_back(r);
+                    }
                 }
             }
 
             cleanup();
         }
 
-        if (ippl::Comm->rank() == 0) std::cout << "\n";
+        if (ippl::Comm->rank() == 0)
+            std::cout << "\n";
 
         // Output
         write_full_csv(results);
@@ -444,15 +490,14 @@ public:
     BenchmarkResult benchmark_scatter(const std::string& method,
                                       const ippl::Interpolation::ScatterConfig<Dim>& cfg,
                                       const ippl::NUFFT::ESKernel<real_type>& kernel,
-                                      size_t n_particles,
-                                      std::array<int,3> tile_arr,
+                                      size_t n_particles, std::array<int, 3> tile_arr,
                                       bool from_optimizer) {
         BenchmarkResult r;
         r.method         = method;
         r.distribution   = params_.distribution;
         r.value_type     = value_type_str();
         r.tile_sizes     = tile_arr;
-        r.tile_size      = tile_arr[0];   // uniform representation for heatmap
+        r.tile_size      = tile_arr[0];  // uniform representation for heatmap
         r.kernel_width   = kernel.width();
         r.n_particles    = n_particles;
         r.n_grid         = params_.n_grid;
@@ -485,14 +530,14 @@ public:
 
         } catch (const std::runtime_error& e) {
             if (ippl::Comm->rank() == 0 && params_.verbose)
-                std::cout << "\n    [SKIP] " << method
-                          << " tile=(" << tile_arr[0] << "," << tile_arr[1] << "," << tile_arr[2]
-                          << ") width=" << kernel.width() << ": " << e.what() << "\n";
+                std::cout << "\n    [SKIP] " << method << " tile=(" << tile_arr[0] << ","
+                          << tile_arr[1] << "," << tile_arr[2] << ") width=" << kernel.width()
+                          << ": " << e.what() << "\n";
 
             const double nan = std::numeric_limits<double>::quiet_NaN();
-            r.stats.mean_ms = r.stats.stddev_ms = r.stats.min_ms
-                            = r.stats.max_ms    = r.stats.median_ms = nan;
-            r.stats.count   = 0;
+            r.stats.mean_ms = r.stats.stddev_ms = r.stats.min_ms = r.stats.max_ms =
+                r.stats.median_ms                                = nan;
+            r.stats.count                                        = 0;
         }
         return r;
     }
@@ -520,10 +565,8 @@ public:
     // Restart:      after half the evaluation budget, restart from the
     //               best-seen point with T reset to T0/4 ("iterated SA").
     // ------------------------------------------------------------------
-    SAResult run_sa(const std::string& method,
-                    const ippl::NUFFT::ESKernel<real_type>& kernel,
+    SAResult run_sa(const std::string& method, const ippl::NUFFT::ESKernel<real_type>& kernel,
                     size_t n_particles) {
-
         SAResult sa;
         sa.method       = method;
         sa.value_type   = value_type_str();
@@ -535,19 +578,18 @@ public:
 
         // Seed includes method hash so two methods at the same width differ.
         std::size_t method_hash = std::hash<std::string>{}(method);
-        std::mt19937 rng(static_cast<uint32_t>(12345
-                         + kernel.width() * 1000
-                         + (method_hash & 0xFFFF)));
+        std::mt19937 rng(
+            static_cast<uint32_t>(12345 + kernel.width() * 1000 + (method_hash & 0xFFFF)));
 
-        std::uniform_int_distribution<int>     dim_dist(0, Dim - 1);
-        std::uniform_int_distribution<int>     delta_dist(0, 1);  // 0→-1, 1→+1
+        std::uniform_int_distribution<int> dim_dist(0, Dim - 1);
+        std::uniform_int_distribution<int> delta_dist(0, 1);  // 0→-1, 1→+1
         std::uniform_real_distribution<double> unif(0.0, 1.0);
 
         // ---- cache: tile → throughput (avoids re-running known configs) ----
         // Key: flat index  x*(R^2) + y*R + z  where R = hi - lo + 1
-        const int R = hi - lo + 1;
-        auto tile_key = [&](const std::array<int,Dim>& t) -> int {
-            return (t[0]-lo)*R*R + (t[1]-lo)*R + (t[2]-lo);
+        const int R   = hi - lo + 1;
+        auto tile_key = [&](const std::array<int, Dim>& t) -> int {
+            return (t[0] - lo) * R * R + (t[1] - lo) * R + (t[2] - lo);
         };
         std::unordered_map<int, double> cache;
 
@@ -556,55 +598,53 @@ public:
         // Returns 0.0 immediately (cached as such) if the tile exceeds the
         // device shared-memory limit — avoids a hang on OOM launches.
         const int kernel_W = kernel.width();
-        auto evaluate = [&](const std::array<int,Dim>& tile, bool* was_cached) -> double {
+        auto evaluate      = [&](const std::array<int, Dim>& tile, bool* was_cached) -> double {
             int key = tile_key(tile);
             auto it = cache.find(key);
             if (it != cache.end()) {
-                if (was_cached) *was_cached = true;
+                if (was_cached)
+                    *was_cached = true;
                 return it->second;
             }
-            if (was_cached) *was_cached = false;
+            if (was_cached)
+                *was_cached = false;
 
             // Pre-flight shmem check: cache and return 0 without launching.
             if (!fits_in_shmem(method, tile, kernel_W)) {
                 if (params_.verbose && ippl::Comm->rank() == 0)
-                    std::cout << "    SA [shmem-skip] tile=("
-                              << tile[0] << "," << tile[1] << "," << tile[2]
-                              << ") exceeds device shmem\n";
+                    std::cout << "    SA [shmem-skip] tile=(" << tile[0] << "," << tile[1] << ","
+                              << tile[2] << ") exceeds device shmem\n";
                 cache[key] = 0.0;
-                ++sa.evaluations;   // counts as a used evaluation
+                ++sa.evaluations;  // counts as a used evaluation
                 return 0.0;
             }
 
-            auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-            cfg.method = (method == "Tiled")
-                ? ippl::Interpolation::ScatterMethod::Tiled
-                : ippl::Interpolation::ScatterMethod::OutputFocused;
+            auto cfg      = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method    = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
+                                                     : ippl::Interpolation::ScatterMethod::OutputFocused;
             cfg.tile_size = {tile[0], tile[1], tile[2]};
 
             auto r = benchmark_scatter(method, cfg, kernel, n_particles, tile, true);
             ++sa.evaluations;
-            double tp = std::isnan(r.stats.mean_ms) ? 0.0 : r.throughput_Mpts_per_sec();
+            double tp  = std::isnan(r.stats.mean_ms) ? 0.0 : r.throughput_Mpts_per_sec();
             cache[key] = tp;
             return tp;
         };
 
         // ---- initial point: midpoint of search space -----------------------
-        std::array<int,Dim> current;
+        std::array<int, Dim> current;
         current.fill((lo + hi) / 2);
         bool dummy;
         double current_tp = evaluate(current, &dummy);
 
-        std::array<int,Dim> best    = current;
-        double              best_tp = current_tp;
+        std::array<int, Dim> best = current;
+        double best_tp            = current_tp;
 
         // ---- auto-calibrate T0 ---------------------------------------------
         // Target: exp(-0.05 * tp0 / T0) = 0.5  →  T0 = 0.05*tp0 / ln2
-        double T0 = (current_tp > 0.0)
-                    ? 0.05 * current_tp / std::log(2.0)
-                    : params_.sa_t0;
+        double T0 = (current_tp > 0.0) ? 0.05 * current_tp / std::log(2.0) : params_.sa_t0;
         if (std::abs(params_.sa_t0 - 5.0) > 1e-9)
-            T0 = params_.sa_t0;    // explicit user override
+            T0 = params_.sa_t0;  // explicit user override
 
         double T = T0;
 
@@ -627,17 +667,17 @@ public:
         if (std::abs(alpha - 0.97) < 1e-9 && params_.sa_steps > 0) {
             constexpr double expected_proposals_per_eval = 3.0;
             double effective_steps = params_.sa_steps * expected_proposals_per_eval;
-            alpha = std::pow(1e-3, 1.0 / effective_steps);
+            alpha                  = std::pow(1e-3, 1.0 / effective_steps);
         }
-        const double T_min = T0 * 1e-2;   // floor: ~1% regression still ~1% accepted
+        const double T_min = T0 * 1e-2;  // floor: ~1% regression still ~1% accepted
 
         const int restart_eval = params_.sa_steps / 2;  // restart after this many evals
-        bool restarted = false;                          // fire exactly once
+        bool restarted         = false;                 // fire exactly once
 
         if (params_.verbose && ippl::Comm->rank() == 0) {
             std::cout << "    SA init: tp0=" << std::fixed << std::setprecision(1) << current_tp
-                      << "  T0=" << std::setprecision(3) << T0
-                      << "  alpha=" << std::setprecision(6) << alpha << "\n";
+                      << "  T0=" << std::setprecision(3) << T0 << "  alpha=" << std::setprecision(6)
+                      << alpha << "\n";
         }
 
         // ---- main annealing loop -------------------------------------------
@@ -648,7 +688,6 @@ public:
         // don't increment sa.evaluations.
         int step = 0;
         while (sa.evaluations < params_.sa_steps) {
-
             // Mid-run restart after half the *evaluation* budget — fires once only
             if (!restarted && sa.evaluations >= restart_eval) {
                 restarted  = true;
@@ -656,21 +695,22 @@ public:
                 current_tp = best_tp;
                 T          = T0 / 4.0;
                 if (params_.verbose && ippl::Comm->rank() == 0)
-                    std::cout << "    SA restart at eval " << sa.evaluations
-                              << "  best=(" << best[0] << "," << best[1] << "," << best[2] << ")"
+                    std::cout << "    SA restart at eval " << sa.evaluations << "  best=("
+                              << best[0] << "," << best[1] << "," << best[2] << ")"
                               << "  T reset to " << std::setprecision(4) << T << "\n";
             }
 
             // Generate candidate neighbour
-            std::array<int,Dim> candidate = current;
-            int d   = dim_dist(rng);
-            int dir = (delta_dist(rng) == 0) ? -1 : +1;
-            candidate[d] = std::clamp(current[d] + dir, lo, hi);
+            std::array<int, Dim> candidate = current;
+            int d                          = dim_dist(rng);
+            int dir                        = (delta_dist(rng) == 0) ? -1 : +1;
+            candidate[d]                   = std::clamp(current[d] + dir, lo, hi);
 
             // Discard boundary-clamped no-ops without consuming any budget
-            if (candidate == current) continue;
+            if (candidate == current)
+                continue;
 
-            bool was_cached = false;
+            bool was_cached     = false;
             double candidate_tp = evaluate(candidate, &was_cached);
 
             // Metropolis acceptance — guard exp() against underflow
@@ -688,17 +728,16 @@ public:
             // Record history entry and cool — once per real proposal
             // (whether accepted or not, whether cached or not)
             sa.history.emplace_back(step, current[0], current[1], current[2], current_tp);
-            T = std::max(T * alpha, T_min);   // clamp: never let T reach zero
+            T = std::max(T * alpha, T_min);  // clamp: never let T reach zero
             ++step;
 
             if (params_.verbose && ippl::Comm->rank() == 0) {
-                std::cout << "    SA eval " << std::setw(4) << sa.evaluations
-                          << " step " << std::setw(4) << step
-                          << (was_cached ? "C" : " ")
-                          << "  T=" << std::fixed << std::setprecision(4) << T
-                          << "  tile=(" << current[0] << "," << current[1] << "," << current[2] << ")"
-                          << "  tp=" << std::setprecision(1) << current_tp
-                          << "  best=(" << best[0] << "," << best[1] << "," << best[2] << ")"
+                std::cout << "    SA eval " << std::setw(4) << sa.evaluations << " step "
+                          << std::setw(4) << step << (was_cached ? "C" : " ")
+                          << "  T=" << std::fixed << std::setprecision(4) << T << "  tile=("
+                          << current[0] << "," << current[1] << "," << current[2] << ")"
+                          << "  tp=" << std::setprecision(1) << current_tp << "  best=(" << best[0]
+                          << "," << best[1] << "," << best[2] << ")"
                           << "  best_tp=" << best_tp << "\n";
             }
         }
@@ -707,19 +746,23 @@ public:
 
         // ---- final re-measurement of best config with full statistics -------
         {
-            auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-            cfg.method = (method == "Tiled")
-                ? ippl::Interpolation::ScatterMethod::Tiled
-                : ippl::Interpolation::ScatterMethod::OutputFocused;
+            auto cfg      = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method    = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
+                                                : ippl::Interpolation::ScatterMethod::OutputFocused;
             cfg.tile_size = {best[0], best[1], best[2]};
-            auto r = benchmark_scatter(method, cfg, kernel, n_particles, best, true);
-            sa.best_time_ms         = r.stats.mean_ms;
-            sa.best_throughput_Mpts = r.throughput_Mpts_per_sec();
+            if (fits_in_shmem(method, best, kernel.width())) {
+                auto r          = benchmark_scatter(method, cfg, kernel, n_particles, best, true);
+                sa.best_time_ms = r.stats.mean_ms;
+                sa.best_throughput_Mpts = r.throughput_Mpts_per_sec();
+            } else {
+                sa.best_time_ms         = std::numeric_limits<double>::quiet_NaN();
+                sa.best_throughput_Mpts = 0.0;
+            }
         }
 
         if (ippl::Comm->rank() == 0) {
-            std::cout << "  [SA] " << method << " w=" << kernel.width()
-                      << "  best tile=(" << best[0] << "," << best[1] << "," << best[2] << ")"
+            std::cout << "  [SA] " << method << " w=" << kernel.width() << "  best tile=("
+                      << best[0] << "," << best[1] << "," << best[2] << ")"
                       << "  throughput=" << std::fixed << std::setprecision(1)
                       << sa.best_throughput_Mpts << " Mpts/s"
                       << "  (" << sa.evaluations << " evals)\n";
@@ -733,14 +776,17 @@ public:
     // ------------------------------------------------------------------
 
     void setup_domain(int /*nghost*/) {
-        for (unsigned d = 0; d < Dim; ++d) n_grid_[d] = params_.n_grid;
+        for (unsigned d = 0; d < Dim; ++d)
+            n_grid_[d] = params_.n_grid;
 
         ippl::NDIndex<Dim> domain;
-        for (unsigned d = 0; d < Dim; ++d) domain[d] = ippl::Index(n_grid_[d]);
+        for (unsigned d = 0; d < Dim; ++d)
+            domain[d] = ippl::Index(n_grid_[d]);
 
-        std::array<bool, Dim> isParallel; isParallel.fill(true);
-        layout_ = std::make_unique<ippl::FieldLayout<Dim>>(
-            MPI_COMM_WORLD, domain, isParallel, true);
+        std::array<bool, Dim> isParallel;
+        isParallel.fill(true);
+        layout_ =
+            std::make_unique<ippl::FieldLayout<Dim>>(MPI_COMM_WORLD, domain, isParallel, true);
 
         for (unsigned d = 0; d < Dim; ++d) {
             origin_[d] = 0.0;
@@ -765,32 +811,34 @@ public:
         Kokkos::Random_XorShift64_Pool<> rand_pool(42 + ippl::Comm->rank());
 
         if (params_.distribution == "uniform") {
-            Kokkos::parallel_for("init_uniform", n_local,
-                KOKKOS_LAMBDA(const size_t i) {
+            Kokkos::parallel_for(
+                "init_uniform", n_local, KOKKOS_LAMBDA(const size_t i) {
                     auto gen = rand_pool.get_state();
                     for (unsigned d = 0; d < Dim; ++d)
                         R_view(i)[d] = gen.drand() * 2.0 * M_PI;
                     rand_pool.free_state(gen);
                 });
         } else if (params_.distribution == "clustered") {
-            Kokkos::parallel_for("init_clustered", n_local,
-                KOKKOS_LAMBDA(const size_t i) {
+            Kokkos::parallel_for(
+                "init_clustered", n_local, KOKKOS_LAMBDA(const size_t i) {
                     auto gen = rand_pool.get_state();
                     for (unsigned d = 0; d < Dim; ++d) {
                         double u1 = gen.drand(), u2 = gen.drand();
                         double z = Kokkos::sqrt(-2.0 * Kokkos::log(u1 + 1e-10))
                                    * Kokkos::cos(2.0 * M_PI * u2);
                         R_view(i)[d] = M_PI + 0.3 * z;
-                        while (R_view(i)[d] < 0)           R_view(i)[d] += 2.0 * M_PI;
-                        while (R_view(i)[d] >= 2.0 * M_PI) R_view(i)[d] -= 2.0 * M_PI;
+                        while (R_view(i)[d] < 0)
+                            R_view(i)[d] += 2.0 * M_PI;
+                        while (R_view(i)[d] >= 2.0 * M_PI)
+                            R_view(i)[d] -= 2.0 * M_PI;
                     }
                     rand_pool.free_state(gen);
                 });
         }
 
         auto Q_view = Q_.getView();
-        Kokkos::parallel_for("init_values", n_local,
-            KOKKOS_LAMBDA(const size_t i) { Q_view(i) = one(); });
+        Kokkos::parallel_for(
+            "init_values", n_local, KOKKOS_LAMBDA(const size_t i) { Q_view(i) = one(); });
 
         Kokkos::fence();
     }
@@ -808,7 +856,8 @@ public:
     // ------------------------------------------------------------------
 
     void print_header() {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
         std::cout << "\n"
                   << "================================================================\n"
                   << "     Tile Size × Kernel Width Sweep Benchmark\n"
@@ -817,22 +866,22 @@ public:
                   << "Particles/grid:  " << params_.rho << "\n"
                   << "Total particles: " << params_.n_particles() << "\n"
                   << "Distribution:    " << params_.distribution << "\n"
-                  << "Value type:      " << value_type_str() << "\n"     // NEW
-                  << "Tile sizes:      " << params_.min_tile_size
-                                         << " - " << params_.max_tile_size << "\n"
-                  << "Kernel widths:   " << params_.min_kernel_width
-                                         << " - " << params_.max_kernel_width << "\n"
+                  << "Value type:      " << value_type_str() << "\n"  // NEW
+                  << "Tile sizes:      " << params_.min_tile_size << " - " << params_.max_tile_size
+                  << "\n"
+                  << "Kernel widths:   " << params_.min_kernel_width << " - "
+                  << params_.max_kernel_width << "\n"
                   << "Warmup runs:     " << params_.warmup_runs << "\n"
                   << "Benchmark runs:  " << params_.benchmark_runs << "\n";
         if (params_.optimize)
             std::cout << "SA optimiser:    enabled  (steps=" << params_.sa_steps
-                      << ", T0=" << params_.sa_t0
-                      << ", alpha=" << params_.sa_alpha << ")\n";
+                      << ", T0=" << params_.sa_t0 << ", alpha=" << params_.sa_alpha << ")\n";
         std::cout << "================================================================\n\n";
     }
 
     void write_full_csv(const std::vector<BenchmarkResult>& results) {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
 
         std::string filename = params_.output_prefix + "_full.csv";
         std::ofstream out(filename);
@@ -844,38 +893,28 @@ public:
             << "throughput_Mpts_s,time_per_pt_ns,from_optimizer,status\n";
 
         for (const auto& r : results) {
-            out << r.method << ","
-                << r.distribution << ","
-                << r.value_type << ","
-                << r.tile_sizes[0] << ","
-                << r.tile_sizes[1] << ","
-                << r.tile_sizes[2] << ","
-                << r.kernel_width << ","
-                << r.n_particles << ","
-                << r.n_grid << ","
-                << std::fixed << std::setprecision(1) << r.rho << ",";
+            out << r.method << "," << r.distribution << "," << r.value_type << ","
+                << r.tile_sizes[0] << "," << r.tile_sizes[1] << "," << r.tile_sizes[2] << ","
+                << r.kernel_width << "," << r.n_particles << "," << r.n_grid << "," << std::fixed
+                << std::setprecision(1) << r.rho << ",";
 
             if (std::isnan(r.stats.mean_ms)) {
-                out << "nan,nan,nan,nan,nan,nan,nan,"
-                    << (r.from_optimizer ? "1" : "0") << ",failed\n";
+                out << "nan,nan,nan,nan,nan,nan,nan," << (r.from_optimizer ? "1" : "0")
+                    << ",failed\n";
             } else {
-                out << std::setprecision(4) << r.stats.mean_ms << ","
-                    << r.stats.stddev_ms << ","
-                    << r.stats.min_ms << ","
-                    << r.stats.max_ms << ","
-                    << r.stats.median_ms << ","
+                out << std::setprecision(4) << r.stats.mean_ms << "," << r.stats.stddev_ms << ","
+                    << r.stats.min_ms << "," << r.stats.max_ms << "," << r.stats.median_ms << ","
                     << std::setprecision(2) << r.throughput_Mpts_per_sec() << ","
-                    << r.time_per_point_ns() << ","
-                    << (r.from_optimizer ? "1" : "0") << ",ok\n";
+                    << r.time_per_point_ns() << "," << (r.from_optimizer ? "1" : "0") << ",ok\n";
             }
         }
         out.close();
         std::cout << "Wrote full results to: " << filename << "\n";
     }
 
-    void write_heatmap_csv(const std::vector<BenchmarkResult>& results,
-                           const std::string& method) {
-        if (ippl::Comm->rank() != 0) return;
+    void write_heatmap_csv(const std::vector<BenchmarkResult>& results, const std::string& method) {
+        if (ippl::Comm->rank() != 0)
+            return;
 
         // Heatmap only uses uniform-tile results (tile_x == tile_y == tile_z)
         std::string filename = params_.output_prefix + "_heatmap_" + method + ".csv";
@@ -894,7 +933,8 @@ public:
         std::sort(tiles.begin(), tiles.end());
 
         out << "tile_size";
-        for (int w : widths) out << ",width_" << w;
+        for (int w : widths)
+            out << ",width_" << w;
         out << "\n";
 
         for (int t : tiles) {
@@ -902,8 +942,8 @@ public:
             for (int w : widths) {
                 bool found = false;
                 for (const auto& r : results) {
-                    if (r.method == method && !r.from_optimizer
-                            && r.tile_sizes[0] == t && r.kernel_width == w) {
+                    if (r.method == method && !r.from_optimizer && r.tile_sizes[0] == t
+                        && r.kernel_width == w) {
                         out << (std::isnan(r.stats.mean_ms)
                                     ? ",nan"
                                     : "," + std::to_string(r.throughput_Mpts_per_sec()));
@@ -911,7 +951,8 @@ public:
                         break;
                     }
                 }
-                if (!found) out << ",nan";
+                if (!found)
+                    out << ",nan";
             }
             out << "\n";
         }
@@ -920,7 +961,8 @@ public:
     }
 
     void write_optimal_csv(const std::vector<BenchmarkResult>& results) {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
 
         std::string filename = params_.output_prefix + "_optimal.csv";
         std::ofstream out(filename);
@@ -937,18 +979,21 @@ public:
         for (const auto& method : methods) {
             for (int w : widths) {
                 const BenchmarkResult* best = nullptr;
-                double best_tp = 0.0;
+                double best_tp              = 0.0;
                 for (const auto& r : results) {
-                    if (r.method == method && r.kernel_width == w
-                            && !r.from_optimizer && !std::isnan(r.stats.mean_ms)) {
+                    if (r.method == method && r.kernel_width == w && !r.from_optimizer
+                        && !std::isnan(r.stats.mean_ms)) {
                         double tp = r.throughput_Mpts_per_sec();
-                        if (tp > best_tp) { best_tp = tp; best = &r; }
+                        if (tp > best_tp) {
+                            best_tp = tp;
+                            best    = &r;
+                        }
                     }
                 }
                 if (best)
-                    out << method << "," << w << "," << best->tile_sizes[0] << ","
-                        << std::fixed << std::setprecision(2) << best->throughput_Mpts_per_sec()
-                        << "," << std::setprecision(4) << best->stats.mean_ms << "\n";
+                    out << method << "," << w << "," << best->tile_sizes[0] << "," << std::fixed
+                        << std::setprecision(2) << best->throughput_Mpts_per_sec() << ","
+                        << std::setprecision(4) << best->stats.mean_ms << "\n";
                 else
                     out << method << "," << w << ",nan,nan,nan\n";
             }
@@ -958,7 +1003,8 @@ public:
     }
 
     void write_sa_csv(const std::vector<SAResult>& sa_results) {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
 
         std::string filename = params_.output_prefix + "_sa_optimal.csv";
         std::ofstream out(filename);
@@ -967,22 +1013,18 @@ public:
             << "throughput_Mpts_s,time_ms,evaluations\n";
 
         for (const auto& sa : sa_results) {
-            out << sa.method << ","
-                << sa.value_type << ","
-                << sa.kernel_width << ","
-                << sa.best_tile[0] << ","
-                << sa.best_tile[1] << ","
-                << sa.best_tile[2] << ","
+            out << sa.method << "," << sa.value_type << "," << sa.kernel_width << ","
+                << sa.best_tile[0] << "," << sa.best_tile[1] << "," << sa.best_tile[2] << ","
                 << std::fixed << std::setprecision(2) << sa.best_throughput_Mpts << ","
-                << std::setprecision(4) << sa.best_time_ms << ","
-                << sa.evaluations << "\n";
+                << std::setprecision(4) << sa.best_time_ms << "," << sa.evaluations << "\n";
         }
         out.close();
         std::cout << "Wrote SA optimal results to: " << filename << "\n";
     }
 
     void write_sa_history_csv(const std::vector<SAResult>& sa_results) {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
 
         std::string filename = params_.output_prefix + "_sa_history.csv";
         std::ofstream out(filename);
@@ -990,12 +1032,9 @@ public:
 
         for (const auto& sa : sa_results) {
             for (const auto& [step, tx, ty, tz, tp] : sa.history) {
-                out << sa.method << ","
-                    << sa.value_type << ","
-                    << sa.kernel_width << ","
-                    << step << ","
-                    << tx << "," << ty << "," << tz << ","
-                    << std::fixed << std::setprecision(2) << tp << "\n";
+                out << sa.method << "," << sa.value_type << "," << sa.kernel_width << "," << step
+                    << "," << tx << "," << ty << "," << tz << "," << std::fixed
+                    << std::setprecision(2) << tp << "\n";
             }
         }
         out.close();
@@ -1004,11 +1043,13 @@ public:
 
     void print_summary(const std::vector<BenchmarkResult>& results,
                        const std::vector<SAResult>& sa_results) {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
 
         int failed = 0;
         for (const auto& r : results)
-            if (std::isnan(r.stats.mean_ms)) ++failed;
+            if (std::isnan(r.stats.mean_ms))
+                ++failed;
 
         std::cout << "\n"
                   << "================================================================\n"
@@ -1022,40 +1063,42 @@ public:
         std::vector<int> widths;
         for (const auto& r : results) {
             if (!r.from_optimizer
-                    && std::find(widths.begin(), widths.end(), r.kernel_width) == widths.end())
+                && std::find(widths.begin(), widths.end(), r.kernel_width) == widths.end())
                 widths.push_back(r.kernel_width);
         }
         std::sort(widths.begin(), widths.end());
 
         for (const auto& method : methods) {
-            std::cout << "\n" << method << " — optimal uniform tile by kernel width:\n"
+            std::cout << "\n"
+                      << method << " — optimal uniform tile by kernel width:\n"
                       << std::string(60, '-') << "\n"
-                      << std::left << std::setw(8) << "Width"
-                      << std::right << std::setw(12) << "Best Tile"
-                      << std::setw(14) << "Mpts/s"
-                      << std::setw(12) << "Time (ms)" << "\n"
+                      << std::left << std::setw(8) << "Width" << std::right << std::setw(12)
+                      << "Best Tile" << std::setw(14) << "Mpts/s" << std::setw(12) << "Time (ms)"
+                      << "\n"
                       << std::string(60, '-') << "\n";
 
             for (int w : widths) {
                 const BenchmarkResult* best = nullptr;
-                double best_tp = 0.0;
+                double best_tp              = 0.0;
                 for (const auto& r : results) {
-                    if (r.method == method && r.kernel_width == w
-                            && !r.from_optimizer && !std::isnan(r.stats.mean_ms)) {
+                    if (r.method == method && r.kernel_width == w && !r.from_optimizer
+                        && !std::isnan(r.stats.mean_ms)) {
                         double tp = r.throughput_Mpts_per_sec();
-                        if (tp > best_tp) { best_tp = tp; best = &r; }
+                        if (tp > best_tp) {
+                            best_tp = tp;
+                            best    = &r;
+                        }
                     }
                 }
                 if (best)
-                    std::cout << std::left << std::setw(8) << w
-                              << std::right << std::setw(12) << best->tile_sizes[0]
-                              << std::fixed << std::setprecision(1)
+                    std::cout << std::left << std::setw(8) << w << std::right << std::setw(12)
+                              << best->tile_sizes[0] << std::fixed << std::setprecision(1)
                               << std::setw(14) << best->throughput_Mpts_per_sec()
-                              << std::setprecision(3)
-                              << std::setw(12) << best->stats.mean_ms << "\n";
+                              << std::setprecision(3) << std::setw(12) << best->stats.mean_ms
+                              << "\n";
                 else
-                    std::cout << std::left << std::setw(8) << w
-                              << std::right << std::setw(38) << "all failed\n";
+                    std::cout << std::left << std::setw(8) << w << std::right << std::setw(38)
+                              << "all failed\n";
             }
         }
 
@@ -1065,23 +1108,18 @@ public:
                       << "================================================================\n"
                       << "        SA-Optimised Rectangular Tile Sizes\n"
                       << "================================================================\n"
-                      << std::left  << std::setw(16) << "Method"
-                      << std::right << std::setw(8)  << "Width"
-                      << std::setw(22) << "Best tile (x,y,z)"
-                      << std::setw(14) << "Mpts/s"
-                      << std::setw(10) << "Evals" << "\n"
+                      << std::left << std::setw(16) << "Method" << std::right << std::setw(8)
+                      << "Width" << std::setw(22) << "Best tile (x,y,z)" << std::setw(14)
+                      << "Mpts/s" << std::setw(10) << "Evals" << "\n"
                       << std::string(70, '-') << "\n";
 
             for (const auto& sa : sa_results) {
                 std::ostringstream tile_str;
-                tile_str << "(" << sa.best_tile[0] << ","
-                               << sa.best_tile[1] << ","
-                               << sa.best_tile[2] << ")";
-                std::cout << std::left  << std::setw(16) << sa.method
-                          << std::right << std::setw(8)  << sa.kernel_width
-                          << std::setw(22) << tile_str.str()
-                          << std::fixed << std::setprecision(1)
-                          << std::setw(14) << sa.best_throughput_Mpts
+                tile_str << "(" << sa.best_tile[0] << "," << sa.best_tile[1] << ","
+                         << sa.best_tile[2] << ")";
+                std::cout << std::left << std::setw(16) << sa.method << std::right << std::setw(8)
+                          << sa.kernel_width << std::setw(22) << tile_str.str() << std::fixed
+                          << std::setprecision(1) << std::setw(14) << sa.best_throughput_Mpts
                           << std::setw(10) << sa.evaluations << "\n";
             }
         }
@@ -1093,17 +1131,17 @@ private:
     BenchParams params_;
 
     ippl::Vector<std::size_t, Dim> n_grid_;
-    ippl::Vector<real_type, Dim>   origin_;
-    ippl::Vector<real_type, Dim>   hx_;
+    ippl::Vector<real_type, Dim> origin_;
+    ippl::Vector<real_type, Dim> hx_;
 
     std::unique_ptr<ippl::FieldLayout<Dim>> layout_;
-    std::unique_ptr<Mesh_t>    mesh_;
-    std::unique_ptr<Field_t>   grid_;
+    std::unique_ptr<Mesh_t> mesh_;
+    std::unique_ptr<Field_t> grid_;
     std::unique_ptr<PLayout_t> playout_;
-    std::unique_ptr<Bunch_t>   bunch_;
+    std::unique_ptr<Bunch_t> bunch_;
 
     ippl::ParticleAttrib<ippl::Vector<real_type, Dim>> R_;
-    ippl::ParticleAttrib<value_type>                   Q_;   // real or complex
+    ippl::ParticleAttrib<value_type> Q_;  // real or complex
 };
 
 // ============================================================================
@@ -1120,8 +1158,8 @@ int main(int argc, char* argv[]) {
             TileSweepBenchmark<Kokkos::DefaultExecutionSpace, double> bench(params);
             bench.run();
         } else {
-            TileSweepBenchmark<Kokkos::DefaultExecutionSpace,
-                               Kokkos::complex<double>> bench(params);
+            TileSweepBenchmark<Kokkos::DefaultExecutionSpace, Kokkos::complex<double>> bench(
+                params);
             bench.run();
         }
     }
