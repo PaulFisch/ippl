@@ -249,8 +249,8 @@ public:
 
     static constexpr bool is_complex = !std::is_same_v<ValueT, real_type>;
     static const char* value_type_str() { return is_complex ? "complex" : "real"; }
-    static value_type zero() { return value_type(0); }
-    static value_type one()  { return value_type(1); }
+    static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
+    static constexpr KOKKOS_INLINE_FUNCTION value_type one()  { return value_type(1); }
 
     TileSweepBenchmark(const BenchParams& params)
         : params_(params) {}
@@ -534,9 +534,10 @@ public:
             double effective_steps = params_.sa_steps * expected_proposals_per_eval;
             alpha = std::pow(1e-3, 1.0 / effective_steps);
         }
-        const double T_min = T0 * 1e-4;   // hard floor: prevents T→0 and exp(-inf)
+        const double T_min = T0 * 1e-2;   // floor: ~1% regression still ~1% accepted
 
         const int restart_eval = params_.sa_steps / 2;  // restart after this many evals
+        bool restarted = false;                          // fire exactly once
 
         if (params_.verbose && ippl::Comm->rank() == 0) {
             std::cout << "    SA init: tp0=" << std::fixed << std::setprecision(1) << current_tp
@@ -553,8 +554,9 @@ public:
         int step = 0;
         while (sa.evaluations < params_.sa_steps) {
 
-            // Mid-run restart after half the *evaluation* budget
-            if (sa.evaluations == restart_eval && step > 0) {
+            // Mid-run restart after half the *evaluation* budget — fires once only
+            if (!restarted && sa.evaluations >= restart_eval) {
+                restarted  = true;
                 current    = best;
                 current_tp = best_tp;
                 T          = T0 / 4.0;
