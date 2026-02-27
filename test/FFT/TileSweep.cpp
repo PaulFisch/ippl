@@ -244,8 +244,8 @@ public:
 
     static constexpr bool is_complex = !std::is_same_v<ValueT, real_type>;
     static const char* value_type_str() { return is_complex ? "complex" : "real"; }
-    static value_type zero() { return value_type(0); }
-    static value_type one() { return value_type(1); }
+    static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
+    static constexpr KOKKOS_INLINE_FUNCTION value_type one() { return value_type(1); }
 
     TileSweepBenchmark(const BenchParams& params)
         : params_(params) {}
