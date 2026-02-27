@@ -104,7 +104,7 @@ BenchParams parse_bench_args(int argc, char* argv[]) {
             params.ncu_mode = true;
             params.warmup_runs = 1;
             params.benchmark_runs = 1;
-        } else if (arg == "--real") {          // NEW
+        } else if (arg == "--real") {
             params.use_real = true;
         } else if (arg == "-v" || arg == "--verbose") {
             params.verbose = true;
