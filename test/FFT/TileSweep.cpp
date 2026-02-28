@@ -20,11 +20,12 @@
  *   --dist D           Particle distribution: uniform, clustered (default: uniform)
  *   --ncu-mode         Single run mode for Nsight Compute profiling
  *   --real             Use real-valued field and particles instead of complex
- *   --optimize         Run simulated-annealing optimiser for rectangular tile sizes
- *   --sa-steps N       SA: number of annealing steps (default: 200)
- *   --sa-t0 T          SA: initial temperature (default: 5.0)
- *   --sa-alpha A       SA: cooling factor per step (default: 0.97)
+ *   --optimize         Run Bayesian Optimisation for rectangular tile sizes
+ *   --bo-budget N      BO: total number of kernel evaluations (default: 60)
+ *   --bo-xi X          BO: EI exploration parameter xi (default: 0.01)
+ *   --bo-ucb-prob P    BO: probability of using UCB vs EI acquisition (default: 0.3)
  *   -v, --verbose      Verbose output
+ *
  */
 
 #include "Ippl.h"
@@ -81,8 +82,8 @@ struct BenchParams {
     std::string distribution  = "uniform";
     bool verbose              = false;
     bool ncu_mode             = false;
-    bool use_real             = false;  // NEW: real-valued field/particles
-    bool optimize             = false;  // NEW: run SA optimiser
+    bool use_real             = false;
+    bool optimize             = false;
 
     // Sweep ranges
     int min_tile_size    = 1;
@@ -90,10 +91,15 @@ struct BenchParams {
     int min_kernel_width = 2;
     int max_kernel_width = 8;
 
-    // Simulated-annealing parameters
-    int sa_steps    = 200;   // total number of annealing steps
-    double sa_t0    = 5.0;   // initial temperature
-    double sa_alpha = 0.97;  // geometric cooling factor
+    // Bayesian Optimisation parameters
+    // (sa_steps kept as alias for bo_budget for CLI backward compatibility)
+    int bo_budget      = 60;    // total number of kernel evaluations
+    double bo_xi       = 0.01;  // EI exploration parameter
+    double bo_ucb_prob = 0.30;  // fraction of steps that use UCB instead of EI
+
+    // Legacy SA parameters — accepted but ignored (kept for backward compat)
+    double sa_t0    = 5.0;
+    double sa_alpha = 0.97;
 
     size_t n_particles() const { return static_cast<size_t>(rho * n_grid * n_grid * n_grid); }
 };
@@ -126,16 +132,20 @@ BenchParams parse_bench_args(int argc, char* argv[]) {
             params.ncu_mode       = true;
             params.warmup_runs    = 1;
             params.benchmark_runs = 1;
-        } else if (arg == "--real") {  // NEW
+        } else if (arg == "--real") {
             params.use_real = true;
-        } else if (arg == "--optimize") {  // NEW
+        } else if (arg == "--optimize") {
             params.optimize = true;
-        } else if (arg == "--sa-steps" && i + 1 < argc) {
-            params.sa_steps = std::atoi(argv[++i]);
+        } else if ((arg == "--bo-budget" || arg == "--sa-steps") && i + 1 < argc) {
+            params.bo_budget = std::atoi(argv[++i]);
+        } else if (arg == "--bo-xi" && i + 1 < argc) {
+            params.bo_xi = std::atof(argv[++i]);
+        } else if (arg == "--bo-ucb-prob" && i + 1 < argc) {
+            params.bo_ucb_prob = std::atof(argv[++i]);
         } else if (arg == "--sa-t0" && i + 1 < argc) {
-            params.sa_t0 = std::atof(argv[++i]);
+            params.sa_t0 = std::atof(argv[++i]);  // accepted, ignored
         } else if (arg == "--sa-alpha" && i + 1 < argc) {
-            params.sa_alpha = std::atof(argv[++i]);
+            params.sa_alpha = std::atof(argv[++i]);  // accepted, ignored
         } else if (arg == "-v" || arg == "--verbose") {
             params.verbose = true;
         }
@@ -192,15 +202,14 @@ TimingStats compute_stats(const std::vector<double>& times_sec) {
 struct BenchmarkResult {
     std::string method;
     std::string distribution;
-    std::string value_type;  // NEW: "real" or "complex"
-    // Per-dimension tile sizes (rectangular support)
+    std::string value_type;
     std::array<int, 3> tile_sizes = {1, 1, 1};
-    int tile_size                 = 1;  // kept for backward-compat (uniform case)
+    int tile_size                 = 1;
     int kernel_width;
     size_t n_particles;
     size_t n_grid;
     double rho;
-    bool from_optimizer = false;  // NEW: true if produced by SA
+    bool from_optimizer = false;
 
     TimingStats stats;
     std::vector<double> times_sec;
@@ -210,7 +219,7 @@ struct BenchmarkResult {
 };
 
 // ============================================================================
-// SA Optimizer Result
+// Optimiser Result  (named SAResult for API compatibility)
 // ============================================================================
 
 struct SAResult {
@@ -221,8 +230,244 @@ struct SAResult {
     double best_throughput_Mpts;
     double best_time_ms;
     int evaluations;
-    // history: (step, tile_x, tile_y, tile_z, throughput)
     std::vector<std::tuple<int, int, int, int, double>> history;
+};
+
+// ============================================================================
+// Minimal self-contained Gaussian Process (RBF kernel, no external deps)
+// ============================================================================
+//
+// Represents observations on a 3-D integer lattice.
+// Points are normalised to [0,1]^3 internally.
+// Hyperparameters (length-scale l, noise sigma_n) are selected by a quick
+// grid search over log marginal likelihood.
+//
+// Predictions return (posterior mean, posterior variance).
+// Acquisition functions: Expected Improvement (EI) and UCB.
+// ============================================================================
+
+struct GPModel {
+    std::vector<std::array<int, 3>> X;
+    std::vector<double> y;
+    double y_mean = 0.0, y_std = 1.0;
+    std::vector<double> y_norm;
+
+    double length_scale = 0.4;
+    double sigma_n      = 0.1;
+
+    // Cholesky factor of K + sigma_n^2 I  (row-major lower triangular)
+    std::vector<std::vector<double>> L;
+    std::vector<double> alpha;  // K^{-1} y_norm
+
+    int lo, hi;
+
+    GPModel(int lo_, int hi_) : lo(lo_), hi(hi_) {}
+
+    std::array<double, 3> normalise(const std::array<int, 3>& t) const {
+        double range = std::max(hi - lo, 1);
+        return {(t[0] - lo) / range, (t[1] - lo) / range, (t[2] - lo) / range};
+    }
+
+    double sq_dist(const std::array<double, 3>& a, const std::array<double, 3>& b) const {
+        double s = 0;
+        for (int d = 0; d < 3; ++d)
+            s += (a[d] - b[d]) * (a[d] - b[d]);
+        return s;
+    }
+
+    double kernel_val(const std::array<double, 3>& a, const std::array<double, 3>& b,
+                      double l) const {
+        return std::exp(-sq_dist(a, b) / (2.0 * l * l));
+    }
+
+    // ------------------------------------------------------------------
+    // Fit: normalise observations, select hyperparameters by MLE grid search,
+    //      compute Cholesky decomposition and alpha = K^{-1} y_norm.
+    // ------------------------------------------------------------------
+    void fit() {
+        int n = (int)y.size();
+        if (n == 0)
+            return;
+
+        // Normalise y using statistics of *valid* (non-zero) observations
+        std::vector<double> valid;
+        for (double v : y)
+            if (v > 0)
+                valid.push_back(v);
+        if (valid.empty()) {
+            y_mean = 0;
+            y_std  = 1;
+        } else {
+            y_mean = std::accumulate(valid.begin(), valid.end(), 0.0) / valid.size();
+            double var = 0;
+            for (double v : valid)
+                var += (v - y_mean) * (v - y_mean);
+            y_std = std::sqrt(var / valid.size() + 1e-12);
+        }
+        y_norm.resize(n);
+        for (int i = 0; i < n; ++i)
+            y_norm[i] = (y[i] - y_mean) / y_std;
+
+        // Hyperparameter grid search
+        double best_lml = -1e300;
+        for (double l : {0.05, 0.1, 0.2, 0.4, 0.8, 1.5, 3.0}) {
+            for (double sn : {0.005, 0.02, 0.08, 0.2, 0.5}) {
+                double lml = log_marginal_likelihood(l, sn);
+                if (lml > best_lml) {
+                    best_lml   = lml;
+                    length_scale = l;
+                    sigma_n      = sn;
+                }
+            }
+        }
+
+        build_cholesky(length_scale, sigma_n, L);
+        solve_alpha();
+    }
+
+    // Returns log p(y | X, l, sn).  Builds its own Cholesky internally.
+    double log_marginal_likelihood(double l, double sn) const {
+        int n = (int)X.size();
+        std::vector<std::vector<double>> Lc(n, std::vector<double>(n, 0.0));
+        for (int i = 0; i < n; ++i) {
+            auto xi = normalise(X[i]);
+            for (int j = 0; j <= i; ++j) {
+                auto xj = normalise(X[j]);
+                double s = kernel_val(xi, xj, l);
+                if (i == j)
+                    s += sn * sn + 1e-8;
+                for (int k = 0; k < j; ++k)
+                    s -= Lc[i][k] * Lc[j][k];
+                if (i == j) {
+                    if (s <= 0)
+                        return -1e300;
+                    Lc[i][j] = std::sqrt(s);
+                } else {
+                    Lc[i][j] = s / (Lc[j][j] > 1e-12 ? Lc[j][j] : 1e-12);
+                }
+            }
+        }
+        // Solve L v = y_norm, then L^T alpha = v
+        std::vector<double> v(n), alph(n);
+        for (int i = 0; i < n; ++i) {
+            double s = y_norm[i];
+            for (int j = 0; j < i; ++j)
+                s -= Lc[i][j] * v[j];
+            v[i] = s / (Lc[i][i] > 1e-12 ? Lc[i][i] : 1e-12);
+        }
+        for (int i = n - 1; i >= 0; --i) {
+            double s = v[i];
+            for (int j = i + 1; j < n; ++j)
+                s -= Lc[j][i] * alph[j];
+            alph[i] = s / (Lc[i][i] > 1e-12 ? Lc[i][i] : 1e-12);
+        }
+        double fit_term = 0;
+        for (int i = 0; i < n; ++i)
+            fit_term += y_norm[i] * alph[i];
+        double log_det = 0;
+        for (int i = 0; i < n; ++i)
+            log_det += std::log(std::max(Lc[i][i], 1e-300));
+        return -0.5 * fit_term - log_det - 0.5 * n * std::log(2 * M_PI);
+    }
+
+    void build_cholesky(double l, double sn, std::vector<std::vector<double>>& Lout) const {
+        int n = (int)X.size();
+        Lout.assign(n, std::vector<double>(n, 0.0));
+        for (int i = 0; i < n; ++i) {
+            auto xi = normalise(X[i]);
+            for (int j = 0; j <= i; ++j) {
+                auto xj = normalise(X[j]);
+                double s = kernel_val(xi, xj, l);
+                if (i == j)
+                    s += sn * sn + 1e-8;
+                for (int k = 0; k < j; ++k)
+                    s -= Lout[i][k] * Lout[j][k];
+                if (i == j) {
+                    for (int k = 0; k < i; ++k)
+                        s -= Lout[i][k] * Lout[i][k];
+                    Lout[i][j] = (s > 1e-16) ? std::sqrt(s) : 1e-8;
+                } else {
+                    Lout[i][j] = s / (Lout[j][j] > 1e-12 ? Lout[j][j] : 1e-12);
+                }
+            }
+        }
+    }
+
+    void solve_alpha() {
+        int n = (int)X.size();
+        std::vector<double> v(n);
+        for (int i = 0; i < n; ++i) {
+            double s = y_norm[i];
+            for (int j = 0; j < i; ++j)
+                s -= L[i][j] * v[j];
+            v[i] = s / (L[i][i] > 1e-12 ? L[i][i] : 1e-12);
+        }
+        alpha.resize(n);
+        for (int i = n - 1; i >= 0; --i) {
+            double s = v[i];
+            for (int j = i + 1; j < n; ++j)
+                s -= L[j][i] * alpha[j];
+            alpha[i] = s / (L[i][i] > 1e-12 ? L[i][i] : 1e-12);
+        }
+    }
+
+    // Posterior (mean, variance) at point t — both in original (unnormalised) scale
+    std::pair<double, double> predict(const std::array<int, 3>& t) const {
+        int n = (int)X.size();
+        if (n == 0)
+            return {y_mean, y_std * y_std};
+
+        auto xt = normalise(t);
+        std::vector<double> k_star(n);
+        for (int i = 0; i < n; ++i)
+            k_star[i] = kernel_val(normalise(X[i]), xt, length_scale);
+
+        double mu_norm = 0;
+        for (int i = 0; i < n; ++i)
+            mu_norm += k_star[i] * alpha[i];
+
+        // Posterior variance: k** - k*^T K^{-1} k*  = 1 - ||L^{-1}k*||^2
+        std::vector<double> v(n);
+        for (int i = 0; i < n; ++i) {
+            double s = k_star[i];
+            for (int j = 0; j < i; ++j)
+                s -= L[i][j] * v[j];
+            v[i] = s / (L[i][i] > 1e-12 ? L[i][i] : 1e-12);
+        }
+        double var_norm = 1.0;
+        for (int i = 0; i < n; ++i)
+            var_norm -= v[i] * v[i];
+        var_norm = std::max(var_norm, 1e-10);
+
+        return {mu_norm * y_std + y_mean, var_norm * y_std * y_std};
+    }
+
+    // Expected Improvement: integrates over the predictive distribution
+    // how much we expect to beat f_best by.
+    // xi > 0 encourages exploration (larger xi → more exploration).
+    double expected_improvement(const std::array<int, 3>& t, double f_best,
+                                double xi = 0.01) const {
+        auto [mu, var] = predict(t);
+        double sigma   = std::sqrt(std::max(var, 0.0));
+        if (sigma < 1e-10)
+            return std::max(0.0, mu - f_best);
+        double improvement = mu - f_best - xi * y_std;
+        double Z           = improvement / sigma;
+        double Phi         = 0.5 * (1.0 + std::erf(Z / std::sqrt(2.0)));
+        double phi         = std::exp(-0.5 * Z * Z) / std::sqrt(2.0 * M_PI);
+        return std::max(0.0, improvement * Phi + sigma * phi);
+    }
+
+    // Upper Confidence Bound: mu + beta * sigma  (optimistic under uncertainty)
+    double ucb(const std::array<int, 3>& t, double beta = 2.0) const {
+        auto [mu, var] = predict(t);
+        return mu + beta * std::sqrt(std::max(var, 0.0));
+    }
+
+    void add_observation(const std::array<int, 3>& tile, double tp) {
+        X.push_back(tile);
+        y.push_back(tp);
+    }
 };
 
 // ============================================================================
@@ -248,24 +493,10 @@ public:
     static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
     static constexpr KOKKOS_INLINE_FUNCTION value_type one() { return value_type(1); }
 
-    // ------------------------------------------------------------------
-    // Shared-memory capacity query
-    //
-    // Returns the maximum dynamically-allocatable shared memory per block
-    // on the current default device.  Falls back to 1 GiB on backends
-    // that don't have real shmem constraints (Serial, OpenMP, Threads).
-    // ------------------------------------------------------------------
     static size_t device_shmem_bytes() {
 #if defined(KOKKOS_ENABLE_CUDA)
         int dev = 0;
         cudaGetDevice(&dev);
-        // Use only the BASE shared-memory limit (cudaDevAttrMaxSharedMemoryPerBlock),
-        // NOT the "optin" limit.  The optin limit (up to 96/164 KiB on modern GPUs)
-        // requires calling cudaFuncSetAttribute(...MaxDynamicSharedMemorySize...) on
-        // each kernel before launch.  Kokkos does not do this automatically, so the
-        // runtime enforces the base 48 KiB limit regardless of what the hardware can
-        // physically support.  Using the optin value here would make fits_in_shmem()
-        // return true for configs that then fail at launch.
         int bytes = 0;
         cudaDeviceGetAttribute(&bytes, cudaDevAttrMaxSharedMemoryPerBlock, dev);
         return static_cast<size_t>(std::max(bytes, 0));
@@ -276,32 +507,10 @@ public:
         hipGetDeviceProperties(&prop, dev);
         return prop.sharedMemPerBlock;
 #else
-        return static_cast<size_t>(1) << 30;  // 1 GiB sentinel: never rejects
+        return static_cast<size_t>(1) << 30;
 #endif
     }
 
-    // ------------------------------------------------------------------
-    // Shared-memory feasibility check.
-    //
-    // compute_scratch_size<IsComplex>(tile_vec) is a static method on
-    // detail::TiledScatter<W, Types, Policy> and
-    // detail::GridParallelScatter<W, Types, Policy>.
-    //
-    // Both take the full Types/Policy pack as template args, but
-    // compute_scratch_size only uses W, Dim, RealType (from Types), and
-    // IsComplex — nothing that depends on view types.  We therefore
-    // construct a minimal ScatterTypes instantiation using the concrete
-    // types available here (real_type, ExecSpace, the field view type).
-    //
-    // W is a compile-time parameter on those classes; we dispatch over
-    // the supported runtime range [1, 14] via WidthDispatcher, matching
-    // the same range used in Scatter::dispatch.  Out-of-range W returns
-    // SIZE_MAX (always skip).
-    // ------------------------------------------------------------------
-
-    // Minimal Types bundle sufficient for compute_scratch_size.
-    // ScatterTypes<Dim, RealType, Kernel, FieldView, PosView, ValView>
-    // — we use dummy view types since compute_scratch_size doesn't touch them.
     using DummyFieldView = typename Field_t::view_type;
     using DummyPosView   = typename ippl::ParticleAttrib<ippl::Vector<real_type, Dim>>::view_type;
     using DummyValView   = typename ippl::ParticleAttrib<value_type>::view_type;
@@ -309,11 +518,11 @@ public:
     template <int W>
     using TiledTypes = ippl::Interpolation::detail::ScatterTypes<
         Dim, real_type,
-        ippl::NUFFT::ESKernel<real_type>,  // kernel type — only W matters
+        ippl::NUFFT::ESKernel<real_type>,
         DummyFieldView, DummyPosView, DummyValView>;
 
     template <int W>
-    using GPTypes = TiledTypes<W>;  // same Types bundle works for both
+    using GPTypes = TiledTypes<W>;
 
     using SortedPolicy = ippl::Interpolation::detail::SortedPolicy;
 
@@ -329,25 +538,19 @@ public:
             W, GPTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv);
     }
 
-    // Runtime W → compile-time W dispatch using WidthDispatcher<1,14>.
-    static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile, int W) {
+    static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile,
+                                 int W) {
         ippl::Vector<int, Dim> tv;
         for (unsigned d = 0; d < Dim; ++d)
             tv[d] = tile[d];
 
-        size_t result   = std::numeric_limits<size_t>::max();
-        bool dispatched = false;
-
+        size_t result = std::numeric_limits<size_t>::max();
         ippl::Interpolation::WidthDispatcher<1, 14>::dispatch(W, [&]<int Wc>() {
             if (method == "Tiled")
                 result = required_shmem_tiled<Wc>(tv);
-            else  // "OutputFocused" maps to GridParallelScatter
+            else
                 result = required_shmem_gp<Wc>(tv);
-            dispatched = true;
         });
-
-        // WidthDispatcher does nothing for W outside [1,14]; leave SIZE_MAX.
-        (void)dispatched;
         return result;
     }
 
@@ -374,7 +577,6 @@ public:
         std::vector<BenchmarkResult> results;
         std::vector<SAResult> sa_results;
 
-        // Build list of kernel widths to sweep
         std::vector<int> widths;
         for (int w = params_.min_kernel_width; w <= params_.max_kernel_width; ++w)
             widths.push_back(w);
@@ -417,10 +619,9 @@ public:
                     if (fits_in_shmem("Tiled", tile_arr, actual_width)) {
                         results.push_back(
                             benchmark_scatter("Tiled", cfg, kernel, n_particles, tile_arr, false));
-                    } else {
-                        if (params_.verbose && ippl::Comm->rank() == 0)
-                            std::cout << "  [shmem-skip] Tiled tile=" << t
-                                      << " width=" << actual_width << "\n";
+                    } else if (params_.verbose && ippl::Comm->rank() == 0) {
+                        std::cout << "  [shmem-skip] Tiled tile=" << t
+                                  << " width=" << actual_width << "\n";
                     }
                 }
                 ++current_config;
@@ -432,35 +633,34 @@ public:
                     if (fits_in_shmem("OutputFocused", tile_arr, actual_width)) {
                         results.push_back(benchmark_scatter("OutputFocused", cfg, kernel,
                                                             n_particles, tile_arr, false));
-                    } else {
-                        if (params_.verbose && ippl::Comm->rank() == 0)
-                            std::cout << "  [shmem-skip] OutputFocused tile=" << t
-                                      << " width=" << actual_width << "\n";
+                    } else if (params_.verbose && ippl::Comm->rank() == 0) {
+                        std::cout << "  [shmem-skip] OutputFocused tile=" << t
+                                  << " width=" << actual_width << "\n";
                     }
                 }
             }
 
-            // ---- Simulated-annealing optimiser --------------------------------
+            // ---- Bayesian Optimisation -------------------------------------
             if (params_.optimize) {
                 if (ippl::Comm->rank() == 0)
-                    std::cout << "\n  [SA] Optimising tile sizes for width=" << actual_width
-                              << "...\n";
+                    std::cout << "\n  [BO] Optimising tile sizes for width=" << actual_width
+                              << " (budget=" << params_.bo_budget << " evals)...\n";
 
                 for (const std::string& method : {"Tiled", "OutputFocused"}) {
-                    auto sa = run_sa(method, kernel, n_particles);
-                    sa_results.push_back(sa);
+                    auto bo = run_bo(method, kernel, n_particles);
+                    sa_results.push_back(bo);
 
-                    // Store the best SA point as a result row (flagged)
-                    if (fits_in_shmem(method, sa.best_tile, actual_width)) {
+                    // Store the best BO point as a flagged result row
+                    if (fits_in_shmem(method, bo.best_tile, actual_width)) {
                         auto cfg =
                             ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                         if (method == "Tiled")
                             cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
                         else
                             cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
-                        cfg.tile_size = {sa.best_tile[0], sa.best_tile[1], sa.best_tile[2]};
-                        auto r =
-                            benchmark_scatter(method, cfg, kernel, n_particles, sa.best_tile, true);
+                        cfg.tile_size = {bo.best_tile[0], bo.best_tile[1], bo.best_tile[2]};
+                        auto r = benchmark_scatter(method, cfg, kernel, n_particles, bo.best_tile,
+                                                   true);
                         results.push_back(r);
                     }
                 }
@@ -472,7 +672,6 @@ public:
         if (ippl::Comm->rank() == 0)
             std::cout << "\n";
 
-        // Output
         write_full_csv(results);
         write_heatmap_csv(results, "Tiled");
         write_heatmap_csv(results, "OutputFocused");
@@ -497,7 +696,7 @@ public:
         r.distribution   = params_.distribution;
         r.value_type     = value_type_str();
         r.tile_sizes     = tile_arr;
-        r.tile_size      = tile_arr[0];  // uniform representation for heatmap
+        r.tile_size      = tile_arr[0];
         r.kernel_width   = kernel.width();
         r.n_particles    = n_particles;
         r.n_grid         = params_.n_grid;
@@ -534,241 +733,294 @@ public:
                           << tile_arr[1] << "," << tile_arr[2] << ") width=" << kernel.width()
                           << ": " << e.what() << "\n";
 
-            const double nan = std::numeric_limits<double>::quiet_NaN();
-            r.stats.mean_ms = r.stats.stddev_ms = r.stats.min_ms = r.stats.max_ms =
-                r.stats.median_ms                                = nan;
-            r.stats.count                                        = 0;
+            const double nan     = std::numeric_limits<double>::quiet_NaN();
+            r.stats.mean_ms      = r.stats.stddev_ms = r.stats.min_ms = r.stats.max_ms =
+                r.stats.median_ms                                      = nan;
+            r.stats.count                                              = 0;
         }
         return r;
     }
 
-    // ------------------------------------------------------------------
-    // Simulated Annealing over integer tile sizes (per dimension)
-    // ------------------------------------------------------------------
+    // ============================================================================
+    // run_bo: Bayesian Optimisation over integer tile sizes
+    // ============================================================================
     //
-    // State space:  tile ∈ [min_tile, max_tile]^3  (integers, per dimension)
-    // Objective:    maximise throughput (Mpts/s)
-    // Moves:        randomly perturb one dimension by ±1 (clamped to bounds)
-    // Budget:       sa_steps = number of *distinct kernel evaluations*.
-    //               Rejected proposals and boundary-clamped no-ops do NOT
-    //               consume budget or advance the cooling schedule — only a
-    //               real GPU measurement counts as a step.  This means the
-    //               user's --sa-steps budget is never wasted on duplicates.
-    // Cache:        previously-evaluated configs are looked up in a map so
-    //               that revisiting a known tile (common when the chain
-    //               bounces around a local basin) costs zero kernel time.
-    //               Cached hits still participate in Metropolis acceptance
-    //               and DO advance the cooling counter.
-    // Schedule:     geometric cooling T_k = T0 * alpha^k, where T0 is
-    //               AUTO-CALIBRATED to the observed throughput scale so that
-    //               the initial acceptance rate for a ~5% regression is ~50%.
-    // Restart:      after half the evaluation budget, restart from the
-    //               best-seen point with T reset to T0/4 ("iterated SA").
-    // ------------------------------------------------------------------
-    SAResult run_sa(const std::string& method, const ippl::NUFFT::ESKernel<real_type>& kernel,
+    // Algorithm overview:
+    //
+    //   Phase 1 — Latin Hypercube Sampling initialisation  (~20% of budget)
+    //     Distribute initial evaluations across the space to avoid clustering
+    //     and give the GP a good prior fit before acquisition optimisation starts.
+    //
+    //   Phase 2 — Bayesian Optimisation loop  (~75% of budget)
+    //     At each step:
+    //       1. Fit GP to all observations (hyperparameter MLE grid search)
+    //       2. Maximise acquisition over candidate set:
+    //          - Space ≤ 5000 pts:  exhaustive sweep of integer lattice
+    //          - Larger spaces:     2000 random candidates + neighbourhood of best
+    //       3. Evaluate the chosen candidate (kernel benchmark)
+    //       4. Update GP
+    //     Acquisition alternates between EI (exploitation) and UCB (exploration)
+    //     with UCB probability decreasing from 0.5 to 0.1 as progress increases.
+    //
+    //   Phase 3 — Local neighbourhood polish  (≤ 6 extra evaluations)
+    //     ±1 grid search around the best point found.  Corrects for GP inaccuracy
+    //     in high-gradient regions.
+    //
+    // Key properties:
+    //   - OOM configs are cached with throughput=0 and NEVER re-proposed.
+    //   - Termination is strictly on sa.evaluations (real kernel runs), so
+    //     there is NO risk of an infinite loop regardless of cache hit rate.
+    //   - For small spaces the search is nearly exhaustive within the budget.
+    //   - For large spaces (e.g. tile ∈ [1,30]^3 = 27,000 pts) the GP
+    //     surrogate focuses measurements on promising regions.
+    // ============================================================================
+    SAResult run_bo(const std::string& method, const ippl::NUFFT::ESKernel<real_type>& kernel,
                     size_t n_particles) {
-        SAResult sa;
-        sa.method       = method;
-        sa.value_type   = value_type_str();
-        sa.kernel_width = kernel.width();
-        sa.evaluations  = 0;
+        SAResult bo;
+        bo.method       = method;
+        bo.value_type   = value_type_str();
+        bo.kernel_width = kernel.width();
+        bo.evaluations  = 0;
 
-        const int lo = params_.min_tile_size;
-        const int hi = params_.max_tile_size;
+        const int lo        = params_.min_tile_size;
+        const int hi        = params_.max_tile_size;
+        const int R_range   = hi - lo + 1;
+        const long space_vol = (long)R_range * R_range * R_range;
 
-        // Seed includes method hash so two methods at the same width differ.
-        std::size_t method_hash = std::hash<std::string>{}(method);
-        std::mt19937 rng(
-            static_cast<uint32_t>(12345 + kernel.width() * 1000 + (method_hash & 0xFFFF)));
-
-        std::uniform_int_distribution<int> dim_dist(0, Dim - 1);
-        std::uniform_int_distribution<int> delta_dist(0, 1);  // 0→-1, 1→+1
-        std::uniform_real_distribution<double> unif(0.0, 1.0);
-
-        // ---- cache: tile → throughput (avoids re-running known configs) ----
-        // Key: flat index  x*(R^2) + y*R + z  where R = hi - lo + 1
-        const int R   = hi - lo + 1;
-        auto tile_key = [&](const std::array<int, Dim>& t) -> int {
-            return (t[0] - lo) * R * R + (t[1] - lo) * R + (t[2] - lo);
-        };
-        std::unordered_map<int, double> cache;
-
-        // ---- evaluate-or-lookup helper -------------------------------------
-        // Returns throughput, sets *was_cached=true if no kernel was run.
-        // Returns 0.0 immediately (cached as such) if the tile exceeds the
-        // device shared-memory limit — avoids a hang on OOM launches.
+        // Constraint and throughput caches
         const int kernel_W = kernel.width();
-        auto evaluate      = [&](const std::array<int, Dim>& tile, bool* was_cached) -> double {
-            int key = tile_key(tile);
-            auto it = cache.find(key);
-            if (it != cache.end()) {
-                if (was_cached)
-                    *was_cached = true;
-                return it->second;
-            }
-            if (was_cached)
-                *was_cached = false;
+        std::unordered_map<int, bool>   feasible_cache;
+        std::unordered_map<int, double> tp_cache;
 
-            // Pre-flight shmem check: cache and return 0 without launching.
-            if (!fits_in_shmem(method, tile, kernel_W)) {
+        auto tile_key = [&](const std::array<int, 3>& t) -> int {
+            return (t[0] - lo) * R_range * R_range + (t[1] - lo) * R_range + (t[2] - lo);
+        };
+
+        auto is_feasible = [&](const std::array<int, 3>& t) -> bool {
+            int key = tile_key(t);
+            auto it = feasible_cache.find(key);
+            if (it != feasible_cache.end())
+                return it->second;
+            bool ok           = fits_in_shmem(method, t, kernel_W);
+            feasible_cache[key] = ok;
+            return ok;
+        };
+
+        // evaluate(): run kernel benchmark or return cached value.
+        // Always terminates — no looping.
+        auto evaluate = [&](const std::array<int, 3>& tile) -> double {
+            int key = tile_key(tile);
+            auto it = tp_cache.find(key);
+            if (it != tp_cache.end())
+                return it->second;  // cached — no increment of bo.evaluations
+
+            if (!is_feasible(tile)) {
+                // OOM: record 0, count as evaluation to prevent endless OOM probing
+                tp_cache[key] = 0.0;
+                ++bo.evaluations;
                 if (params_.verbose && ippl::Comm->rank() == 0)
-                    std::cout << "    SA [shmem-skip] tile=(" << tile[0] << "," << tile[1] << ","
-                              << tile[2] << ") exceeds device shmem\n";
-                cache[key] = 0.0;
-                ++sa.evaluations;  // counts as a used evaluation
+                    std::cout << "    BO [OOM] tile=(" << tile[0] << "," << tile[1] << ","
+                              << tile[2] << ")\n";
                 return 0.0;
             }
 
-            auto cfg      = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-            cfg.method    = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
-                                                     : ippl::Interpolation::ScatterMethod::OutputFocused;
+            auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
+                                             : ippl::Interpolation::ScatterMethod::OutputFocused;
             cfg.tile_size = {tile[0], tile[1], tile[2]};
+            auto r        = benchmark_scatter(method, cfg, kernel, n_particles, tile, true);
+            ++bo.evaluations;
+            double tp    = std::isnan(r.stats.mean_ms) ? 0.0 : r.throughput_Mpts_per_sec();
+            tp_cache[key] = tp;
 
-            auto r = benchmark_scatter(method, cfg, kernel, n_particles, tile, true);
-            ++sa.evaluations;
-            double tp  = std::isnan(r.stats.mean_ms) ? 0.0 : r.throughput_Mpts_per_sec();
-            cache[key] = tp;
+            if (params_.verbose && ippl::Comm->rank() == 0)
+                std::cout << "    BO eval " << std::setw(4) << bo.evaluations << "  tile=("
+                          << tile[0] << "," << tile[1] << "," << tile[2] << ")"
+                          << "  tp=" << std::fixed << std::setprecision(1) << tp << " Mpts/s\n";
             return tp;
         };
 
-        // ---- initial point: midpoint of search space -----------------------
-        std::array<int, Dim> current;
-        current.fill((lo + hi) / 2);
-        bool dummy;
-        double current_tp = evaluate(current, &dummy);
+        // Seeded RNG — different per method so two methods explore differently
+        std::size_t method_hash = std::hash<std::string>{}(method);
+        std::mt19937 rng(static_cast<uint32_t>(98765 + kernel.width() * 1000
+                                               + (method_hash & 0xFFFF)));
+        std::uniform_real_distribution<double> unif(0.0, 1.0);
+        std::uniform_int_distribution<int>     coord_dist(lo, hi);
 
-        std::array<int, Dim> best = current;
-        double best_tp            = current_tp;
+        const int total_budget = params_.bo_budget;
+        const int n_init       = std::max(4, total_budget / 5);  // 20% for LHS
+        const int n_bo_steps   = total_budget - n_init;
 
-        // ---- auto-calibrate T0 ---------------------------------------------
-        // Target: exp(-0.05 * tp0 / T0) = 0.5  →  T0 = 0.05*tp0 / ln2
-        double T0 = (current_tp > 0.0) ? 0.05 * current_tp / std::log(2.0) : params_.sa_t0;
-        if (std::abs(params_.sa_t0 - 5.0) > 1e-9)
-            T0 = params_.sa_t0;  // explicit user override
+        GPModel gp(lo, hi);
 
-        double T = T0;
+        std::array<int, 3> best_tile;
+        best_tile.fill((lo + hi) / 2);
+        double best_tp = 0.0;
 
-        // ---- alpha: span 3 orders of magnitude over the evaluation budget --
-        // IMPORTANT: the while-loop cools T on every non-clamped *proposal*,
-        // which is strictly >= sa_steps (real evaluations), because cached hits
-        // and rejected moves also advance the cooling counter.  If alpha is set
-        // to reach T0*1e-3 after only sa_steps steps, T will hit zero long
-        // before the budget is exhausted, freezing the chain in an infinite loop.
-        //
-        // Fix: use a gentler alpha so T reaches T0*1e-3 after an expected number
-        // of proposals, estimated as sa_steps * expected_proposals_per_eval.
-        // We conservatively assume ~3 proposals per real evaluation on average
-        // (accounts for ~50% rejection rate + some cache hits + boundary bounces).
-        // A hard floor T_min = T0*1e-4 additionally guarantees termination even
-        // if proposals/eval is higher than expected: once T == T_min, the chain
-        // still runs but effectively does greedy local search, and the while()
-        // condition on sa.evaluations ensures it always terminates.
-        double alpha = params_.sa_alpha;
-        if (std::abs(alpha - 0.97) < 1e-9 && params_.sa_steps > 0) {
-            constexpr double expected_proposals_per_eval = 3.0;
-            double effective_steps = params_.sa_steps * expected_proposals_per_eval;
-            alpha                  = std::pow(1e-3, 1.0 / effective_steps);
-        }
-        const double T_min = T0 * 1e-1;  // floor: ~1% regression still ~1% accepted
+        // ------------------------------------------------------------------
+        // Phase 1: Latin Hypercube Sampling
+        // ------------------------------------------------------------------
+        if (ippl::Comm->rank() == 0)
+            std::cout << "    BO [init] LHS initialisation (" << n_init << " evals)\n";
 
-        const int restart_eval = params_.sa_steps / 2;  // restart after this many evals
-        bool restarted         = false;                 // fire exactly once
-
-        if (params_.verbose && ippl::Comm->rank() == 0) {
-            std::cout << "    SA init: tp0=" << std::fixed << std::setprecision(1) << current_tp
-                      << "  T0=" << std::setprecision(3) << T0 << "  alpha=" << std::setprecision(6)
-                      << alpha << "\n";
-        }
-
-        // ---- main annealing loop -------------------------------------------
-        // Loop until we have consumed sa_steps real evaluations.
-        // Proposals that are boundary-clamped identical to current are
-        // discarded without touching the step counter or temperature.
-        // Proposals that hit the cache count as a step (and cool T) but
-        // don't increment sa.evaluations.
-        int step = 0;
-        while (sa.evaluations < params_.sa_steps) {
-            // Mid-run restart after half the *evaluation* budget — fires once only
-            if (!restarted && sa.evaluations >= restart_eval) {
-                restarted  = true;
-                current    = best;
-                current_tp = best_tp;
-                T          = T0 / 4.0;
-                if (params_.verbose && ippl::Comm->rank() == 0)
-                    std::cout << "    SA restart at eval " << sa.evaluations << "  best=("
-                              << best[0] << "," << best[1] << "," << best[2] << ")"
-                              << "  T reset to " << std::setprecision(4) << T << "\n";
-            }
-
-            // Generate candidate neighbour
-            std::array<int, Dim> candidate = current;
-            int d                          = dim_dist(rng);
-            int dir                        = (delta_dist(rng) == 0) ? -1 : +1;
-            candidate[d]                   = std::clamp(current[d] + dir, lo, hi);
-
-            // Discard boundary-clamped no-ops without consuming any budget
-            if (candidate == current)
-                continue;
-
-            bool was_cached     = false;
-            double candidate_tp = evaluate(candidate, &was_cached);
-
-            // Metropolis acceptance — guard exp() against underflow
-            double delta = candidate_tp - current_tp;
-            if (delta > 0.0 || unif(rng) < std::exp(std::max(delta / T, -500.0))) {
-                current    = candidate;
-                current_tp = candidate_tp;
-            }
-
-            if (current_tp > best_tp) {
-                best    = current;
-                best_tp = current_tp;
-            }
-
-            // Record history entry and cool — once per real proposal
-            // (whether accepted or not, whether cached or not)
-            sa.history.emplace_back(step, current[0], current[1], current[2], current_tp);
-            T = std::max(T * alpha, T_min);  // clamp: never let T reach zero
-            ++step;
-
-            if (params_.verbose && ippl::Comm->rank() == 0) {
-                std::cout << "    SA eval " << std::setw(4) << sa.evaluations << " step "
-                          << std::setw(4) << step << (was_cached ? "C" : " ")
-                          << "  T=" << std::fixed << std::setprecision(4) << T << "  tile=("
-                          << current[0] << "," << current[1] << "," << current[2] << ")"
-                          << "  tp=" << std::setprecision(1) << current_tp << "  best=(" << best[0]
-                          << "," << best[1] << "," << best[2] << ")"
-                          << "  best_tp=" << best_tp << "\n";
-            }
-        }
-
-        sa.best_tile = best;
-
-        // ---- final re-measurement of best config with full statistics -------
         {
-            auto cfg      = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-            cfg.method    = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
-                                                : ippl::Interpolation::ScatterMethod::OutputFocused;
-            cfg.tile_size = {best[0], best[1], best[2]};
-            if (fits_in_shmem(method, best, kernel.width())) {
-                auto r          = benchmark_scatter(method, cfg, kernel, n_particles, best, true);
-                sa.best_time_ms = r.stats.mean_ms;
-                sa.best_throughput_Mpts = r.throughput_Mpts_per_sec();
+            std::vector<int> px(n_init), py(n_init), pz(n_init);
+            std::iota(px.begin(), px.end(), 0);
+            std::iota(py.begin(), py.end(), 0);
+            std::iota(pz.begin(), pz.end(), 0);
+            std::shuffle(px.begin(), px.end(), rng);
+            std::shuffle(py.begin(), py.end(), rng);
+            std::shuffle(pz.begin(), pz.end(), rng);
+
+            for (int i = 0; i < n_init && bo.evaluations < total_budget; ++i) {
+                auto cell = [&](int c) -> int {
+                    double frac = (c + unif(rng)) / n_init;
+                    return std::clamp(lo + (int)std::round(frac * (hi - lo)), lo, hi);
+                };
+                std::array<int, 3> tile = {cell(px[i]), cell(py[i]), cell(pz[i])};
+                double tp               = evaluate(tile);
+                gp.add_observation(tile, tp);
+                bo.history.emplace_back(bo.evaluations, tile[0], tile[1], tile[2], tp);
+                if (tp > best_tp) { best_tp = tp; best_tile = tile; }
+            }
+        }
+
+        // Pre-build full candidate list for small spaces
+        std::vector<std::array<int, 3>> all_candidates;
+        if (space_vol <= 5000) {
+            all_candidates.reserve(space_vol);
+            for (int x = lo; x <= hi; ++x)
+                for (int y = lo; y <= hi; ++y)
+                    for (int z = lo; z <= hi; ++z)
+                        all_candidates.push_back({x, y, z});
+        }
+
+        // ------------------------------------------------------------------
+        // Phase 2: Bayesian Optimisation loop
+        // ------------------------------------------------------------------
+        if (ippl::Comm->rank() == 0)
+            std::cout << "    BO [opt] acquisition loop (" << n_bo_steps << " evals)\n";
+
+        int bo_step = 0;
+        while (bo.evaluations < total_budget) {
+            gp.fit();
+
+            // Decreasing UCB probability: start exploratory, end exploitative
+            double progress = (double)bo_step / std::max(n_bo_steps, 1);
+            double ucb_prob = params_.bo_ucb_prob * (1.0 - 0.7 * progress);  // e.g. 0.30→0.09
+            double beta_ucb = 2.0 * (1.0 - progress) + 0.3;                  // 2.0→0.3
+            bool use_ucb    = (unif(rng) < ucb_prob);
+
+            std::array<int, 3> next_tile = best_tile;
+            double best_acq              = -1e300;
+
+            auto score = [&](const std::array<int, 3>& c) {
+                if (tp_cache.count(tile_key(c)))
+                    return;  // already evaluated — skip
+                double acq = use_ucb ? gp.ucb(c, beta_ucb)
+                                     : gp.expected_improvement(c, best_tp, params_.bo_xi);
+                if (acq > best_acq) { best_acq = acq; next_tile = c; }
+            };
+
+            if (!all_candidates.empty()) {
+                for (auto& c : all_candidates)
+                    score(c);
             } else {
-                sa.best_time_ms         = std::numeric_limits<double>::quiet_NaN();
-                sa.best_throughput_Mpts = 0.0;
+                // Random candidates
+                for (int s = 0; s < 2000; ++s) {
+                    std::array<int, 3> c = {coord_dist(rng), coord_dist(rng), coord_dist(rng)};
+                    score(c);
+                }
+                // Local neighbourhood of best (ensures descent in well-explored regions)
+                for (int d = 0; d < 3; ++d)
+                    for (int delta : {-3, -2, -1, +1, +2, +3}) {
+                        std::array<int, 3> c = best_tile;
+                        c[d] = std::clamp(best_tile[d] + delta, lo, hi);
+                        score(c);
+                    }
+            }
+
+            // If all candidates exhausted, stop early
+            if (best_acq <= -1e200) {
+                if (ippl::Comm->rank() == 0)
+                    std::cout << "    BO [done] space fully explored after " << bo.evaluations
+                              << " evaluations\n";
+                break;
+            }
+
+            double tp = evaluate(next_tile);
+            gp.add_observation(next_tile, tp);
+            bo.history.emplace_back(bo.evaluations, next_tile[0], next_tile[1], next_tile[2], tp);
+            if (tp > best_tp) { best_tp = tp; best_tile = next_tile; }
+
+            ++bo_step;
+        }
+
+        // ------------------------------------------------------------------
+        // Phase 3: Local neighbourhood polish
+        // Greedy ±1 hill-climb from best — corrects GP inaccuracy near optimum.
+        // Budget limit: use at most 6 extra evaluations (cost is negligible).
+        // ------------------------------------------------------------------
+        if (ippl::Comm->rank() == 0)
+            std::cout << "    BO [polish] hill-climb from best=(" << best_tile[0] << ","
+                      << best_tile[1] << "," << best_tile[2] << ")\n";
+        {
+            bool improved = true;
+            int polish_evals = 0;
+            while (improved && polish_evals < 12) {
+                improved = false;
+                for (int d = 0; d < 3 && !improved; ++d) {
+                    for (int delta : {-1, +1}) {
+                        std::array<int, 3> c = best_tile;
+                        c[d] = std::clamp(best_tile[d] + delta, lo, hi);
+                        int key = tile_key(c);
+                        double tp;
+                        if (tp_cache.count(key)) {
+                            tp = tp_cache[key];
+                        } else {
+                            tp = evaluate(c);
+                            ++polish_evals;
+                            bo.history.emplace_back(bo.evaluations, c[0], c[1], c[2], tp);
+                        }
+                        if (tp > best_tp) {
+                            best_tp   = tp;
+                            best_tile = c;
+                            improved  = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Final re-measurement of best config with full statistics
+        // ------------------------------------------------------------------
+        bo.best_tile = best_tile;
+        {
+            auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
+                                             : ippl::Interpolation::ScatterMethod::OutputFocused;
+            cfg.tile_size = {best_tile[0], best_tile[1], best_tile[2]};
+            if (is_feasible(best_tile)) {
+                auto r              = benchmark_scatter(method, cfg, kernel, n_particles, best_tile, true);
+                bo.best_time_ms         = r.stats.mean_ms;
+                bo.best_throughput_Mpts = r.throughput_Mpts_per_sec();
+            } else {
+                bo.best_time_ms         = std::numeric_limits<double>::quiet_NaN();
+                bo.best_throughput_Mpts = 0.0;
             }
         }
 
         if (ippl::Comm->rank() == 0) {
-            std::cout << "  [SA] " << method << " w=" << kernel.width() << "  best tile=("
-                      << best[0] << "," << best[1] << "," << best[2] << ")"
+            std::cout << "  [BO] " << method << " w=" << kernel.width() << "  best tile=("
+                      << best_tile[0] << "," << best_tile[1] << "," << best_tile[2] << ")"
                       << "  throughput=" << std::fixed << std::setprecision(1)
-                      << sa.best_throughput_Mpts << " Mpts/s"
-                      << "  (" << sa.evaluations << " evals)\n";
+                      << bo.best_throughput_Mpts << " Mpts/s"
+                      << "  (" << bo.evaluations << " evals)\n";
         }
 
-        return sa;
+        return bo;
     }
 
     // ------------------------------------------------------------------
@@ -866,7 +1118,7 @@ public:
                   << "Particles/grid:  " << params_.rho << "\n"
                   << "Total particles: " << params_.n_particles() << "\n"
                   << "Distribution:    " << params_.distribution << "\n"
-                  << "Value type:      " << value_type_str() << "\n"  // NEW
+                  << "Value type:      " << value_type_str() << "\n"
                   << "Tile sizes:      " << params_.min_tile_size << " - " << params_.max_tile_size
                   << "\n"
                   << "Kernel widths:   " << params_.min_kernel_width << " - "
@@ -874,8 +1126,9 @@ public:
                   << "Warmup runs:     " << params_.warmup_runs << "\n"
                   << "Benchmark runs:  " << params_.benchmark_runs << "\n";
         if (params_.optimize)
-            std::cout << "SA optimiser:    enabled  (steps=" << params_.sa_steps
-                      << ", T0=" << params_.sa_t0 << ", alpha=" << params_.sa_alpha << ")\n";
+            std::cout << "BO optimiser:    enabled  (budget=" << params_.bo_budget
+                      << ", xi=" << params_.bo_xi
+                      << ", ucb_prob=" << params_.bo_ucb_prob << ")\n";
         std::cout << "================================================================\n\n";
     }
 
@@ -886,7 +1139,6 @@ public:
         std::string filename = params_.output_prefix + "_full.csv";
         std::ofstream out(filename);
 
-        // New columns: value_type, tile_x, tile_y, tile_z, from_optimizer
         out << "method,distribution,value_type,"
             << "tile_x,tile_y,tile_z,kernel_width,n_particles,n_grid,rho,"
             << "mean_ms,stddev_ms,min_ms,max_ms,median_ms,"
@@ -912,11 +1164,11 @@ public:
         std::cout << "Wrote full results to: " << filename << "\n";
     }
 
-    void write_heatmap_csv(const std::vector<BenchmarkResult>& results, const std::string& method) {
+    void write_heatmap_csv(const std::vector<BenchmarkResult>& results,
+                           const std::string& method) {
         if (ippl::Comm->rank() != 0)
             return;
 
-        // Heatmap only uses uniform-tile results (tile_x == tile_y == tile_z)
         std::string filename = params_.output_prefix + "_heatmap_" + method + ".csv";
         std::ofstream out(filename);
 
@@ -984,10 +1236,7 @@ public:
                     if (r.method == method && r.kernel_width == w && !r.from_optimizer
                         && !std::isnan(r.stats.mean_ms)) {
                         double tp = r.throughput_Mpts_per_sec();
-                        if (tp > best_tp) {
-                            best_tp = tp;
-                            best    = &r;
-                        }
+                        if (tp > best_tp) { best_tp = tp; best = &r; }
                     }
                 }
                 if (best)
@@ -1002,6 +1251,7 @@ public:
         std::cout << "Wrote optimal configurations to: " << filename << "\n";
     }
 
+    // write_sa_csv / write_sa_history_csv kept with original names for CSV compat
     void write_sa_csv(const std::vector<SAResult>& sa_results) {
         if (ippl::Comm->rank() != 0)
             return;
@@ -1012,14 +1262,14 @@ public:
             << "best_tile_x,best_tile_y,best_tile_z,"
             << "throughput_Mpts_s,time_ms,evaluations\n";
 
-        for (const auto& sa : sa_results) {
-            out << sa.method << "," << sa.value_type << "," << sa.kernel_width << ","
-                << sa.best_tile[0] << "," << sa.best_tile[1] << "," << sa.best_tile[2] << ","
-                << std::fixed << std::setprecision(2) << sa.best_throughput_Mpts << ","
-                << std::setprecision(4) << sa.best_time_ms << "," << sa.evaluations << "\n";
+        for (const auto& r : sa_results) {
+            out << r.method << "," << r.value_type << "," << r.kernel_width << ","
+                << r.best_tile[0] << "," << r.best_tile[1] << "," << r.best_tile[2] << ","
+                << std::fixed << std::setprecision(2) << r.best_throughput_Mpts << ","
+                << std::setprecision(4) << r.best_time_ms << "," << r.evaluations << "\n";
         }
         out.close();
-        std::cout << "Wrote SA optimal results to: " << filename << "\n";
+        std::cout << "Wrote BO optimal results to: " << filename << "\n";
     }
 
     void write_sa_history_csv(const std::vector<SAResult>& sa_results) {
@@ -1030,15 +1280,15 @@ public:
         std::ofstream out(filename);
         out << "method,value_type,kernel_width,step,tile_x,tile_y,tile_z,throughput_Mpts_s\n";
 
-        for (const auto& sa : sa_results) {
-            for (const auto& [step, tx, ty, tz, tp] : sa.history) {
-                out << sa.method << "," << sa.value_type << "," << sa.kernel_width << "," << step
+        for (const auto& r : sa_results) {
+            for (const auto& [step, tx, ty, tz, tp] : r.history) {
+                out << r.method << "," << r.value_type << "," << r.kernel_width << "," << step
                     << "," << tx << "," << ty << "," << tz << "," << std::fixed
                     << std::setprecision(2) << tp << "\n";
             }
         }
         out.close();
-        std::cout << "Wrote SA convergence history to: " << filename << "\n";
+        std::cout << "Wrote BO convergence history to: " << filename << "\n";
     }
 
     void print_summary(const std::vector<BenchmarkResult>& results,
@@ -1058,7 +1308,6 @@ public:
         if (failed > 0)
             std::cout << "\nNote: " << failed << " configuration(s) failed.\n";
 
-        // Per-method optimal uniform-tile table
         std::vector<std::string> methods = {"Tiled", "OutputFocused"};
         std::vector<int> widths;
         for (const auto& r : results) {
@@ -1073,8 +1322,8 @@ public:
                       << method << " — optimal uniform tile by kernel width:\n"
                       << std::string(60, '-') << "\n"
                       << std::left << std::setw(8) << "Width" << std::right << std::setw(12)
-                      << "Best Tile" << std::setw(14) << "Mpts/s" << std::setw(12) << "Time (ms)"
-                      << "\n"
+                      << "Best Tile" << std::setw(14) << "Mpts/s" << std::setw(12)
+                      << "Time (ms)\n"
                       << std::string(60, '-') << "\n";
 
             for (int w : widths) {
@@ -1084,10 +1333,7 @@ public:
                     if (r.method == method && r.kernel_width == w && !r.from_optimizer
                         && !std::isnan(r.stats.mean_ms)) {
                         double tp = r.throughput_Mpts_per_sec();
-                        if (tp > best_tp) {
-                            best_tp = tp;
-                            best    = &r;
-                        }
+                        if (tp > best_tp) { best_tp = tp; best = &r; }
                     }
                 }
                 if (best)
@@ -1102,25 +1348,24 @@ public:
             }
         }
 
-        // SA results table (if available)
         if (!sa_results.empty()) {
             std::cout << "\n"
                       << "================================================================\n"
-                      << "        SA-Optimised Rectangular Tile Sizes\n"
+                      << "        BO-Optimised Rectangular Tile Sizes\n"
                       << "================================================================\n"
                       << std::left << std::setw(16) << "Method" << std::right << std::setw(8)
                       << "Width" << std::setw(22) << "Best tile (x,y,z)" << std::setw(14)
-                      << "Mpts/s" << std::setw(10) << "Evals" << "\n"
+                      << "Mpts/s" << std::setw(10) << "Evals\n"
                       << std::string(70, '-') << "\n";
 
-            for (const auto& sa : sa_results) {
-                std::ostringstream tile_str;
-                tile_str << "(" << sa.best_tile[0] << "," << sa.best_tile[1] << ","
-                         << sa.best_tile[2] << ")";
-                std::cout << std::left << std::setw(16) << sa.method << std::right << std::setw(8)
-                          << sa.kernel_width << std::setw(22) << tile_str.str() << std::fixed
-                          << std::setprecision(1) << std::setw(14) << sa.best_throughput_Mpts
-                          << std::setw(10) << sa.evaluations << "\n";
+            for (const auto& r : sa_results) {
+                std::ostringstream ts;
+                ts << "(" << r.best_tile[0] << "," << r.best_tile[1] << "," << r.best_tile[2]
+                   << ")";
+                std::cout << std::left << std::setw(16) << r.method << std::right << std::setw(8)
+                          << r.kernel_width << std::setw(22) << ts.str() << std::fixed
+                          << std::setprecision(1) << std::setw(14) << r.best_throughput_Mpts
+                          << std::setw(10) << r.evaluations << "\n";
             }
         }
 
@@ -1141,7 +1386,7 @@ private:
     std::unique_ptr<Bunch_t> bunch_;
 
     ippl::ParticleAttrib<ippl::Vector<real_type, Dim>> R_;
-    ippl::ParticleAttrib<value_type> Q_;  // real or complex
+    ippl::ParticleAttrib<value_type> Q_;
 };
 
 // ============================================================================
