@@ -31,6 +31,9 @@ namespace ippl {
             // Team size for team-based methods
             int team_size = 16;
 
+            // Factor for Gridparallel
+            int oversubscription_factor = 4;
+
             /**
              * @brief Default constructor - initializes tile sizes based on Dim
              */

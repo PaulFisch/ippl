@@ -60,6 +60,7 @@ namespace ippl::Interpolation::detail {
             Vector<int, Dim> num_tiles;
             Vector<int, Dim> tile_size;
             int team_size;
+            int oversubscription_factor;
 
             template <class Field, class Positions, class Values, class Kernel>
             static Arguments create(Field& field, const Positions& pos, const Values& vals,
@@ -67,11 +68,12 @@ namespace ippl::Interpolation::detail {
                                     const BinningResult<Dim, memory_space>& binning) {
                 Arguments a;
                 a.initBase(field, pos, vals, k);
-                a.permute     = binning.permute;
-                a.bin_offsets = binning.bin_offsets;
-                a.num_tiles   = binning.num_tiles;
-                a.tile_size   = config.get_tile_size();
-                a.team_size   = config.team_size;
+                a.permute                 = binning.permute;
+                a.bin_offsets             = binning.bin_offsets;
+                a.num_tiles               = binning.num_tiles;
+                a.tile_size               = config.get_tile_size();
+                a.team_size               = config.team_size;
+                a.oversubscription_factor = config.oversubscription_factor;
                 return a;
             }
         };
@@ -123,14 +125,18 @@ namespace ippl::Interpolation::detail {
             const size_t sub_id    = league_r % sub_teams_per_tile_;
             const size_t bin_start = args.bin_offsets(tile_id);
             const size_t bin_end   = args.bin_offsets(tile_id + 1);
-            const size_t pstart    = bin_start + sub_id * particles_per_team_;
+            const size_t bin_size  = bin_end - bin_start;
+            const size_t particles_per_sub =
+                (bin_size + sub_teams_per_tile_ - 1) / sub_teams_per_tile_;
+
+            const size_t pstart = bin_start + sub_id * particles_per_sub;
+            if (pstart >= bin_end)
+                return;
+
+            const size_t pend = Kokkos::min(bin_end, pstart + particles_per_sub);
 
             if (pstart >= bin_end)
                 return;  // this sub-team has no work
-
-            const size_t pend = (sub_id + 1 == sub_teams_per_tile_)
-                                    ? bin_end
-                                    : Kokkos::min(bin_end, pstart + particles_per_team_);
 
             const auto tile_base = decode_tile_base(tile_id);
             const auto hs        = hist_size();
@@ -295,16 +301,8 @@ namespace ippl::Interpolation::detail {
         // particles_per_team_ = avg
         // sub_teams_per_tile_ = oversubscription_factor  (default 4)
         //
-        // This launches n_tiles * factor teams.  Each team i is responsible for
-        // the particle chunk [bin_start + sub_id * avg, bin_start + (sub_id+1) * avg).
-        //
-        //  - Cold tile  (< avg particles):  only sub_id == 0 does work, rest early-exit.
-        //  - Average tile (~avg particles): sub_id == 0 processes them; rest early-exit.
-        //  - Hot tile   (k * avg particles, k <= factor): k sub-teams share the work evenly.
-        //  - Very hot tile (> factor * avg): last sub-team processes the overflow; increase
-        //    oversubscription_factor if this is common in your workload.
         // ─────────────────────────────────────────────────────────────────────────
-        void run(size_t n_particles, size_t oversubscription_factor = 4) {
+        void run(size_t n_particles) {
             using grid_value_t  = typename decltype(args.grid)::non_const_value_type;
             constexpr bool cplx = std::is_same_v<grid_value_t, Kokkos::complex<RealType>>;
 
@@ -316,7 +314,7 @@ namespace ippl::Interpolation::detail {
                 return;
 
             particles_per_team_ = std::max(size_t(1), n_particles / n_tiles);
-            sub_teams_per_tile_ = std::max(size_t(1), oversubscription_factor);
+            sub_teams_per_tile_ = std::max(size_t(1), size_t(args.oversubscription_factor));
 
             const size_t scratch = compute_scratch_size<cplx>(args.tile_size);
 
