@@ -1,6 +1,8 @@
 #ifndef IPPL_SCATTER_H
 #define IPPL_SCATTER_H
 
+#include <unordered_set>
+
 #include "Utility/Tuning.h"
 
 #include "Interpolation/Binning.h"
@@ -8,6 +10,7 @@
 #include "Interpolation/Scatter/GridParallelScatter.h"
 #include "Interpolation/Scatter/ScatterArgumentsBase.h"
 #include "Interpolation/Scatter/ScatterConfig.h"
+#include "Interpolation/Scatter/TileSizeCache.h"
 #include "Interpolation/Scatter/TiledScatter.h"
 #include "Interpolation/WidthDispatcher.h"
 #include "Particle/ParticleAttrib.h"
@@ -100,36 +103,101 @@ namespace ippl {
         }
 
     private:
+        // ------------------------------------------------------------------
+        // resolve_tile_size
+        //
+        // Priority order (highest to lowest):
+        //
+        //   1. ScatterConfig::enable_tuning == true
+        //      → runtime autotuner (existing TileSizeTuner path); cache is
+        //        bypassed because the autotuner will converge to an even
+        //        better value for this specific workload.
+        //
+        //   2. ScatterConfig tile_size was explicitly set by the caller
+        //      (i.e. config_m.tile_size_is_explicit() == true)
+        //      → honour the caller's explicit choice, skip cache.
+        //
+        //   3. TileSizeCache has an entry for (method, width, is_complex)
+        //      → use the benchmarked optimal tile size.
+        //
+        //   4. Fallback: whatever tile size is already in config_m
+        //      (the ScatterConfig default).
+        //
+        // The result is returned as a Vector<int, Dim> ready for use.
+        // ------------------------------------------------------------------
+        template <template <int, class, class> class Impl, int W, class Types, class Policy,
+                  bool IsComplex>
+        Vector<int, Dim> resolve_tile_size() const {
+            // Priority 1: runtime tuner overrides everything — caller gets
+            //             tile size from get_tuned_tile_size later in dispatch.
+            //             Return the config default here as a placeholder;
+            //             dispatch will replace it when tuning is active.
+            if (config_m.enable_tuning)
+                return config_m.get_tile_size();
+
+            // Priority 2: benchmark cache lookup
+            auto& cache = Interpolation::TileSizeCache::instance();
+            auto cached = cache.template get<Dim>(config_m.method, W, IsComplex);
+            if (cached.has_value()) {
+                if (cache.loaded()) {
+                    // One-time info message per (method, width) pair — use a
+                    // static set so we don't spam the log on every scatter call.
+                    static std::unordered_set<std::size_t> reported;
+                    std::size_t key = static_cast<std::size_t>(config_m.method) * 100 + W;
+                    if (reported.find(key) == reported.end()) {
+                        reported.insert(key);
+                        const auto& v = *cached;
+                        std::cout << "[Scatter] Using cached tile size from " << cache.source()
+                                  << ": method=" << static_cast<int>(config_m.method)
+                                  << " width=" << W << " tile=(" << v[0];
+                        for (unsigned d = 1; d < Dim; ++d)
+                            std::cout << "," << v[d];
+                        std::cout << ")\n";
+                    }
+                }
+                return *cached;
+            }
+
+            // Priority 3: ScatterConfig default
+            return config_m.get_tile_size();
+        }
+
         template <template <int, class, class> class Impl, class Types, class Policy, class Field,
                   class Positions, class Values>
         void dispatch(Field& field, const Positions& positions, const Values& values) {
-            using memory_space    = typename Types::memory_space;
-            // using execution_space = typename Types::execution_space;
-            using RealType        = typename Types::RealType;
-            using grid_value_t    = typename Field::value_type;
+            using memory_space = typename Types::memory_space;
+            using RealType     = typename Types::RealType;
+            using grid_value_t = typename Field::value_type;
 
             constexpr bool is_complex = std::is_same_v<grid_value_t, Kokkos::complex<RealType>>;
 
             const int width          = kernel_m.width();
             const size_t n_particles = positions.getParticleCount();
 
-            // Determine tile size (with optional tuning)
-            Vector<int, Dim> tile_size = config_m.get_tile_size();
-
             Interpolation::WidthDispatcher<1, 14>::dispatch(width, [&]<int W>() {
-                // Initialize tuner and get tile size if method requires binning
+                // ── Step 1: Determine tile size ───────────────────────────────
+                //
+                // resolve_tile_size() implements the priority chain:
+                //   tuning > explicit > cache > default
+                //
+                // If tuning is active we still call it first to get the
+                // starting value, then get_tuned_tile_size() may override it.
+                Vector<int, Dim> tile_size =
+                    resolve_tile_size<Impl, W, Types, Policy, is_complex>();
+
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     if (config_m.enable_tuning) {
+                        // Runtime tuner takes precedence; overwrites tile_size.
                         tile_size = get_tuned_tile_size<Impl, W, Types, Policy, is_complex>(
                             field, tile_size);
                     }
                 }
 
-                // Create a mutable config copy with the (possibly tuned) tile size
+                // ── Step 2: Build a config copy with the resolved tile size ───
                 auto tuned_config = config_m;
                 tuned_config.set_tile_size(tile_size);
 
-                // Perform binning with the tile size
+                // ── Step 3: Binning ───────────────────────────────────────────
                 Interpolation::detail::BinningResult<Dim, memory_space> binning;
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     binning = performBinning<Types>(positions, field, tile_size);
@@ -137,7 +205,7 @@ namespace ippl {
                     binning = performBinning<Types>(positions, field, tile_size);
                 }
 
-                // Create and run functor
+                // ── Step 4: Run functor ───────────────────────────────────────
                 auto args = Impl<W, Types, Policy>::Arguments::create(
                     field, positions, values, kernel_m, tuned_config, binning);
 
@@ -147,7 +215,7 @@ namespace ippl {
                 functor.run(n_particles);
                 Kokkos::fence();
 
-                // End tuning context
+                // ── Step 5: End tuning context ────────────────────────────────
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     if (config_m.enable_tuning) {
                         auto& tuner = Interpolation::detail::get_scatter_tuner<Impl, Dim, RealType,

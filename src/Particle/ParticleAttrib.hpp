@@ -322,27 +322,7 @@ namespace ippl {
 
         IpplTimings::stopTimer(scatterPIFNUFFTTimer);
 
-        // int nRanksSpace;
-        // MPI_Comm_size(spaceComm, &nRanksSpace);
-
-        // static IpplTimings::TimerRef scatterAllReducePIFTimer =
-        //     IpplTimings::getTimer("scatterAllReducePIF");
-        // IpplTimings::startTimer(scatterAllReducePIFTimer);
-        // if (nRanksSpace > 1) {
-        //     // Cray MPI has problems reducing complex data type GPU-aware so do this trick to
-        //     // speed up
-        //     double* raw_ptr_viewLocal = reinterpret_cast<double*>(viewLocal.data());
-        //     double* raw_ptr_fview     = reinterpret_cast<double*>(fview.data());
-        //     int viewSize              = fview.extent(0) * fview.extent(1) * fview.extent(2);
-        //     // MPI_Allreduce(viewLocal.data(), fview.data(), viewSize,
-        //     //               MPI_C_DOUBLE_COMPLEX, MPI_SUM, spaceComm);
-        //     MPI_Allreduce(raw_ptr_viewLocal, raw_ptr_fview, 2 * viewSize, MPI_DOUBLE, MPI_SUM,
-        //                   spaceComm);
-
-        //} else {
         Kokkos::deep_copy(fview, viewLocal);
-        //}
-        // IpplTimings::stopTimer(scatterAllReducePIFTimer);
 
         IpplTimings::startTimer(scatterPIFNUFFTTimer);
 
