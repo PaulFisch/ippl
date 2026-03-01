@@ -24,12 +24,20 @@
  *   --bo-budget N         BO: total number of kernel evaluations (default: 80)
  *   --bo-xi X             BO: EI exploration parameter xi (default: 0.01)
  *   --bo-ucb-prob P       BO: probability of using UCB vs EI (default: 0.3)
- *   --team-sizes LIST     Comma-separated list of team sizes to try (default: 8,16,32,64)
+ *   --team-sizes LIST     Comma-separated list of Tiled thread counts to try (default: 8,16,32,64)
+ *   --gp-team-sizes LIST  Comma-separated list of OutputFocused warp counts to try (default: 1,2,3,4,8)
  *   --min-osub N          Minimum oversubscription factor (default: 1)
  *   --max-osub N          Maximum oversubscription factor (default: 8)
  *   -v, --verbose         Verbose output
  *
  * Note: --sa-steps is accepted as an alias for --bo-budget (backward compat).
+ *
+ * Team-size conventions:
+ *   Tiled              : team_size = actual GPU thread count (e.g. 8, 16, 32, 64)
+ *   OutputFocused (GP) : team_size = number of warps          (e.g. 1, 2, 3, 4, 8)
+ *                        → real thread count = team_size * warp_size (32)
+ *   is_config_valid() and the hardware thread-limit check account for this via
+ *   actual_threads(method, team_size).
  */
 
 #include "Ippl.h"
@@ -98,8 +106,16 @@ struct BenchParams {
     double bo_xi       = 0.01;
     double bo_ucb_prob = 0.30;
 
-    // team_size candidates for BO (categorical axis, indexed 0..n-1 in the GP)
+    // GPU warp size — used to convert OutputFocused warp counts to thread counts
+    // for hardware-limit checks.
+    static constexpr int warp_size = 32;
+
+    // Tiled: team_size = actual GPU thread count (8, 16, 32, 64, ...)
     std::vector<int> team_size_candidates = {8, 16, 32, 64};
+
+    // OutputFocused / GridParallelScatter: team_size = number of warps (1, 2, 3, 4, 8, ...)
+    // The real thread count seen by the hardware is warp_count * warp_size.
+    std::vector<int> gp_team_size_candidates = {1, 2, 3, 4, 8};
 
     // oversubscription_factor range
     int min_osub = 1;
@@ -163,6 +179,10 @@ BenchParams parse_bench_args(int argc, char* argv[]) {
             auto v = parse_int_list(argv[++i]);
             if (!v.empty())
                 p.team_size_candidates = v;
+        } else if (a == "--gp-team-sizes" && i + 1 < argc) {
+            auto v = parse_int_list(argv[++i]);
+            if (!v.empty())
+                p.gp_team_size_candidates = v;
         } else if (a == "--min-osub" && i + 1 < argc)
             p.min_osub = std::atoi(argv[++i]);
         else if (a == "--max-osub" && i + 1 < argc)
@@ -469,11 +489,14 @@ struct GPModel {
 //   [0] tile_x       in [min_tile, max_tile]
 //   [1] tile_y       in [min_tile, max_tile]
 //   [2] tile_z       in [min_tile, max_tile]
-//   [3] ts_idx       in [0, n_team_opts-1]   (index into team_size_candidates)
+//   [3] ts_idx       in [0, n_team_opts-1]   (index into the method-specific candidate list)
 //   [4] osub         in [min_osub, max_osub]
 //
-// team_size is stored as an index so the GP sees uniform spacing regardless
-// of whether candidates are {8,16,32} or {1,4,16,64}.
+// For Tiled:        ts_candidates[ts_idx] = actual GPU thread count
+// For OutputFocused:ts_candidates[ts_idx] = number of warps; real threads = warp_count * 32
+//
+// Storing as an index means the GP sees uniform spacing regardless of
+// whether candidates are {8,16,32} or {1,4,16,64}.
 //
 struct SearchPoint {
     std::array<int, 5> v = {1, 1, 1, 0, 1};
@@ -553,24 +576,43 @@ public:
         return ippl::Interpolation::detail::TiledScatter<
             W, TiledTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv, team_size);
     }
+
+    // For GridParallelScatter, team_size is a warp count; the scratch-size
+    // calculation must receive the warp count directly (the kernel internally
+    // multiplies by warp_size where needed).
     template <int W>
-    static size_t required_shmem_gp(const ippl::Vector<int, Dim>& tv, int team_size) {
+    static size_t required_shmem_gp(const ippl::Vector<int, Dim>& tv, int team_size_warps) {
         return ippl::Interpolation::detail::GridParallelScatter<
-            W, GPTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv, team_size);
+            W, GPTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv, team_size_warps);
     }
 
-    static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile, int W, int team_size) {
+    static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile, int W,
+                                  int team_size) {
         ippl::Vector<int, Dim> tv;
         for (unsigned d = 0; d < Dim; ++d)
             tv[d] = tile[d];
         size_t result = std::numeric_limits<size_t>::max();
         ippl::Interpolation::WidthDispatcher<1, 14>::dispatch(W, [&]<int Wc>() {
-            result = (method == "Tiled") ? required_shmem_tiled<Wc>(tv, team_size) : required_shmem_gp<Wc>(tv, team_size);
+            result = (method == "Tiled") ? required_shmem_tiled<Wc>(tv, team_size)
+                                         : required_shmem_gp<Wc>(tv, team_size);
         });
         return result;
     }
 
-    // Maximum legal team size for this device.  Queried once and cached.
+    // -----------------------------------------------------------------------
+    // actual_threads(): translate the raw config team_size to real GPU threads.
+    //
+    //   Tiled           → team_size IS the thread count, return as-is.
+    //   OutputFocused   → team_size is a warp count; multiply by warp_size.
+    //
+    // Used exclusively for the hardware max-threads-per-block guard; the
+    // shmem calculation receives the raw value (warp count for GP).
+    // -----------------------------------------------------------------------
+    static int actual_threads(const std::string& method, int team_size) {
+        return (method == "OutputFocused") ? team_size * BenchParams::warp_size : team_size;
+    }
+
+    // Maximum legal team size (thread count) for this device.  Queried once and cached.
     // On CPU execution spaces returns INT_MAX (no hardware limit).
     static int max_team_size() {
         static int cached = -1;
@@ -594,24 +636,33 @@ public:
         return cached;
     }
 
-    bool fits_in_shmem(const std::string& method, const std::array<int, 3>& tile, int W, int team_size) const {
+    bool fits_in_shmem(const std::string& method, const std::array<int, 3>& tile, int W,
+                       int team_size) const {
         size_t req = required_shmem(method, tile, W, team_size), avail = device_shmem_bytes();
         if (params_.verbose && ippl::Comm->rank() == 0)
             std::cout << "  [shmem] " << method << " tile=(" << tile[0] << "," << tile[1] << ","
-                      << tile[2] << ") W=" << W << " req=" << req << " avail=" << avail
-                      << (req <= avail ? " OK" : " SKIP") << "\n";
+                      << tile[2] << ") W=" << W << " team=" << team_size << " req=" << req
+                      << " avail=" << avail << (req <= avail ? " OK" : " SKIP") << "\n";
         return req <= avail;
     }
 
-    // Combined pre-flight check: team_size limit AND shared memory.
-    // Use this in the BO loop where team_size varies.
-    // Returns false without launching any kernel — no freeze risk.
+    // -----------------------------------------------------------------------
+    // is_config_valid(): combined pre-flight check before launching any kernel.
+    //
+    //   1. Hardware thread-count limit — uses actual_threads() so that
+    //      OutputFocused warp counts are correctly converted before comparison.
+    //   2. Shared memory budget — passes the raw team_size (warp count for GP,
+    //      thread count for Tiled) to the shmem estimator.
+    //
+    // Returns false without launching any kernel — no freeze / OOM risk.
+    // -----------------------------------------------------------------------
     bool is_config_valid(const std::string& method, const std::array<int, 3>& tile, int W,
                          int team_size) const {
-        if (team_size > max_team_size()) {
+        int threads = actual_threads(method, team_size);
+        if (threads > max_team_size()) {
             if (params_.verbose && ippl::Comm->rank() == 0)
                 std::cout << "  [team-skip] " << method << " team=" << team_size
-                          << " > max=" << max_team_size() << "\n";
+                          << " → threads=" << threads << " > max=" << max_team_size() << "\n";
             return false;
         }
         return fits_in_shmem(method, tile, W, team_size);
@@ -657,17 +708,22 @@ public:
                         std::cout << "\r[sweep " << current_config << "/" << total_configs << "] "
                                   << "width=" << actual_width << ", tile=" << t << ", " << method
                                   << "     " << std::flush;
+
                     const std::array<int, 3> ta = {t, t, t};
+
+                    // Build the default config for this method, then check validity.
+                    // cfg.team_size is the raw value (warp count for GP, threads for Tiled).
                     auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                     cfg.method = (method == "Tiled")
                                      ? ippl::Interpolation::ScatterMethod::Tiled
                                      : ippl::Interpolation::ScatterMethod::OutputFocused;
                     cfg.set_tile_size(t);
-                    if (fits_in_shmem(method, ta, actual_width))
+
+                    if (is_config_valid(method, ta, actual_width, cfg.team_size))
                         results.push_back(
                             benchmark_scatter(method, cfg, kernel, n_particles, ta, false));
                     else if (params_.verbose && ippl::Comm->rank() == 0)
-                        std::cout << "\n  [shmem-skip] " << method << " tile=" << t << "\n";
+                        std::cout << "\n  [skip] " << method << " tile=" << t << "\n";
                 }
             }
 
@@ -773,28 +829,21 @@ public:
     //   [0] tile_x  in [min_tile, max_tile]
     //   [1] tile_y  in [min_tile, max_tile]
     //   [2] tile_z  in [min_tile, max_tile]
-    //   [3] ts_idx  in [0, n_team_opts-1]      (maps to actual team_size values)
+    //   [3] ts_idx  in [0, n_team_opts-1]      (maps to method-specific candidate list)
     //   [4] osub    in [min_osub, max_osub]
+    //
+    // Team-size candidate lists are method-specific:
+    //   Tiled          → params_.team_size_candidates    (GPU thread counts)
+    //   OutputFocused  → params_.gp_team_size_candidates (warp counts)
+    //
+    // is_config_valid() converts warp counts to threads via actual_threads() for
+    // the hardware limit check, but passes the raw value to the shmem estimator.
     //
     // Three phases:
     //   1. Latin Hypercube Sampling  (~20% budget) — stratified coverage of all 5 axes
     //   2. BO acquisition loop       (~75% budget) — GP fit + EI/UCB maximisation
     //   3. Local hill-climb polish   (≤30 extra)   — greedy ±1 in each dimension
     //
-    // The GP uses per-axis normalisation via set_bounds(), so the isotropic RBF
-    // kernel is meaningful despite the different scales of tile/team/osub axes.
-    //
-    // Candidate sampling in Phase 2:
-    //   - 3000 uniformly random points from the full 5D space  (global search)
-    //   - ±1,±2 neighbourhood of the current best in each dim  (local refinement)
-    // This mix prevents the GP from myopically hill-climbing a local optimum
-    // while still ensuring convergence near the true optimum.
-    //
-    // Acquisition cooling:
-    //   UCB probability decays from bo_ucb_prob → 10% of that over the BO phase.
-    //   beta_ucb decays 2.5 → 0.5 (encourages decreasing exploration over time).
-    //   This implements a practical version of the GP-UCB schedule from
-    //   Srinivas et al. (2010) without requiring the exact theoretical constants.
     // ============================================================================
     BOResult run_bo(const std::string& method, const ippl::NUFFT::ESKernel<real_type>& kernel,
                     size_t n_particles) {
@@ -806,11 +855,19 @@ public:
 
         const int kernel_W = kernel.width();
         const int lo_tile = params_.min_tile_size, hi_tile = params_.max_tile_size;
-        const int n_ts  = (int)params_.team_size_candidates.size();
+
+        // Select method-appropriate team-size candidate list.
+        // For Tiled:         values are GPU thread counts (e.g. 8, 16, 32, 64).
+        // For OutputFocused: values are warp counts        (e.g. 1, 2, 3, 4, 8).
+        const std::vector<int>& ts_candidates =
+            (method == "Tiled") ? params_.team_size_candidates
+                                : params_.gp_team_size_candidates;
+        const int n_ts  = (int)ts_candidates.size();
         const int lo_ts = 0, hi_ts = n_ts - 1;
+
         const int lo_osub = params_.min_osub, hi_osub = params_.max_osub;
 
-        // GP bounds: per-axis [lo,hi] for normalisation
+        // GP bounds: per-axis [lo, hi] for normalisation
         std::array<int, 5> lo_bounds = {lo_tile, lo_tile, lo_tile, lo_ts, lo_osub};
         std::array<int, 5> hi_bounds = {hi_tile, hi_tile, hi_tile, hi_ts, hi_osub};
 
@@ -820,10 +877,15 @@ public:
         std::unordered_map<SearchPoint, bool, SearchPointHash> feasible_cache;
         std::unordered_map<SearchPoint, double, SearchPointHash> tp_cache;
 
+        // ts_of: index → raw team_size value from the method-specific candidate list.
+        // For Tiled this is a thread count; for OutputFocused it is a warp count.
         auto ts_of = [&](int idx) -> int {
-            return params_.team_size_candidates[std::clamp(idx, 0, n_ts - 1)];
+            return ts_candidates[std::clamp(idx, 0, n_ts - 1)];
         };
 
+        // is_feasible: hardware + shmem check.
+        // is_config_valid internally calls actual_threads() for the thread-count guard,
+        // so both Tiled and OutputFocused team_size conventions are handled correctly.
         auto is_feasible = [&](const SearchPoint& pt) -> bool {
             auto it = feasible_cache.find(pt);
             if (it != feasible_cache.end())
@@ -838,14 +900,13 @@ public:
             cfg.method    = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
                                                 : ippl::Interpolation::ScatterMethod::OutputFocused;
             cfg.tile_size = {pt.tile_x(), pt.tile_y(), pt.tile_z()};
-            cfg.team_size = ts_of(pt.ts_idx());
+            cfg.team_size = ts_of(pt.ts_idx());  // raw value: threads for Tiled, warps for GP
             cfg.oversubscription_factor = pt.osub();
             return cfg;
         };
 
         // evaluate(): one increment of bo.evaluations per new measurement.
         // Cache hits are free. OOM counts as 1 eval (prevents endless OOM probing).
-        // NEVER loops — always returns.
         auto evaluate = [&](const SearchPoint& pt) -> double {
             auto it = tp_cache.find(pt);
             if (it != tp_cache.end())
@@ -856,7 +917,7 @@ public:
                 ++bo.evaluations;
                 if (params_.verbose && ippl::Comm->rank() == 0)
                     std::cout << "    BO [OOM] tile=(" << pt.tile_x() << "," << pt.tile_y() << ","
-                              << pt.tile_z() << ")\n";
+                              << pt.tile_z() << ") team=" << ts_of(pt.ts_idx()) << "\n";
                 return 0.0;
             }
 
@@ -870,7 +931,9 @@ public:
             if (params_.verbose && ippl::Comm->rank() == 0)
                 std::cout << "    BO eval " << std::setw(4) << bo.evaluations << "  tile=("
                           << pt.tile_x() << "," << pt.tile_y() << "," << pt.tile_z() << ")"
-                          << " team=" << ts_of(pt.ts_idx()) << " osub=" << pt.osub()
+                          << " team=" << ts_of(pt.ts_idx())
+                          << " (threads=" << actual_threads(method, ts_of(pt.ts_idx())) << ")"
+                          << " osub=" << pt.osub()
                           << "  tp=" << std::fixed << std::setprecision(1) << tp << " Mpts/s\n";
             return tp;
         };
@@ -888,17 +951,12 @@ public:
         const int n_bo_steps   = total_budget - n_init;
 
         SearchPoint best_pt;
-        best_pt.v      = {(lo_tile + hi_tile) / 2, (lo_tile + hi_tile) / 2, (lo_tile + hi_tile) / 2,
-                          n_ts / 2, (lo_osub + hi_osub) / 2};
+        best_pt.v      = {(lo_tile + hi_tile) / 2, (lo_tile + hi_tile) / 2,
+                          (lo_tile + hi_tile) / 2, n_ts / 2, (lo_osub + hi_osub) / 2};
         double best_tp = 0.0;
 
         // -----------------------------------------------------------------------
         // Phase 1: Latin Hypercube Sampling (all 5 dimensions simultaneously)
-        //
-        // Divide each axis into n_init equal strata and draw exactly one point
-        // per stratum per axis, permuted independently.  This guarantees that
-        // every region of the 5D space is represented in the initial design,
-        // giving the GP a good global prior before acquisition optimisation starts.
         // -----------------------------------------------------------------------
         if (ippl::Comm->rank() == 0)
             std::cout << "    BO [init] 5D LHS (" << n_init << " evals)\n";
@@ -934,14 +992,10 @@ public:
         // -----------------------------------------------------------------------
         // Phase 2: BO acquisition loop
         //
-        // At each step: fit GP to all observations, then maximise acquisition
-        // over a candidate set and evaluate the winner.
-        //
         // Candidate set = 3000 random points (global coverage) +
-        //                 ±1,±2 neighbourhood of current best in each dim (local)
+        //                 ±1,±2 neighbourhood of current best (local refinement)
         //
-        // Acquisition cooling: UCB probability and beta decay over time so the
-        // search starts exploratory and becomes increasingly exploitative.
+        // Acquisition cooling: UCB probability and beta decay over time.
         // -----------------------------------------------------------------------
         if (ippl::Comm->rank() == 0)
             std::cout << "    BO [opt] acquisition loop (" << n_bo_steps << " evals)\n";
@@ -952,7 +1006,7 @@ public:
 
                 double progress = (double)bo_step / std::max(n_bo_steps, 1);
                 double ucb_prob = params_.bo_ucb_prob * (1.0 - 0.9 * progress);  // decay to 10%
-                double beta_ucb = 2.0 * std::sqrt(1.0 - progress) + 0.5;         // ~2.5 -> 0.5
+                double beta_ucb = 2.0 * std::sqrt(1.0 - progress) + 0.5;         // ~2.5 → 0.5
                 bool use_ucb    = (unif(rng) < ucb_prob);
 
                 SearchPoint next = best_pt;
@@ -979,7 +1033,7 @@ public:
                     c.v[4] = rand_int(lo_osub, hi_osub);
                     score(c);
                 }
-                // Local neighbourhood: ±1,±2 in each dim (holds others fixed)
+                // Local neighbourhood: ±1, ±2 in each dim
                 for (int d = 0; d < 5; ++d) {
                     for (int delta : {-2, -1, +1, +2}) {
                         SearchPoint c = best_pt;
@@ -1010,13 +1064,13 @@ public:
         // -----------------------------------------------------------------------
         // Phase 3: Local neighbourhood polish
         // Greedy ±1 hill-climb in each of the 5 dimensions.
-        // Budget capped at 30 extra evals (negligible cost vs. BO loop).
-        // Corrects for GP inaccuracy near the optimum in discrete spaces.
         // -----------------------------------------------------------------------
         if (ippl::Comm->rank() == 0)
             std::cout << "    BO [polish] hill-climb from tile=(" << best_pt.tile_x() << ","
                       << best_pt.tile_y() << "," << best_pt.tile_z()
-                      << ") team=" << ts_of(best_pt.ts_idx()) << " osub=" << best_pt.osub() << "\n";
+                      << ") team=" << ts_of(best_pt.ts_idx())
+                      << " (threads=" << actual_threads(method, ts_of(best_pt.ts_idx())) << ")"
+                      << " osub=" << best_pt.osub() << "\n";
         {
             bool improved = true;
             int budget    = 30;
@@ -1050,7 +1104,7 @@ public:
 
         // Final re-measurement with full warmup+runs statistics
         bo.best_tile                    = {best_pt.tile_x(), best_pt.tile_y(), best_pt.tile_z()};
-        bo.best_team_size               = ts_of(best_pt.ts_idx());
+        bo.best_team_size               = ts_of(best_pt.ts_idx());  // raw: warps or threads
         bo.best_oversubscription_factor = best_pt.osub();
         {
             auto cfg = make_cfg(best_pt);
@@ -1068,6 +1122,7 @@ public:
             std::cout << "  [BO] " << method << " w=" << kernel_W << "  best tile=("
                       << bo.best_tile[0] << "," << bo.best_tile[1] << "," << bo.best_tile[2] << ")"
                       << " team=" << bo.best_team_size
+                      << " (threads=" << actual_threads(method, bo.best_team_size) << ")"
                       << " osub=" << bo.best_oversubscription_factor
                       << "  throughput=" << std::fixed << std::setprecision(1)
                       << bo.best_throughput_Mpts << " Mpts/s"
@@ -1172,10 +1227,15 @@ public:
             std::cout << "BO budget:        " << params_.bo_budget << " evals\n"
                       << "BO xi:            " << params_.bo_xi << "\n"
                       << "BO UCB prob:      " << params_.bo_ucb_prob << "\n"
-                      << "Team sizes tried: ";
+                      << "Tiled team sizes: ";
             for (int ts : params_.team_size_candidates)
                 std::cout << ts << " ";
-            std::cout << "\nOsub range:       [" << params_.min_osub << ", " << params_.max_osub
+            std::cout << "(GPU thread counts)\n"
+                      << "GP warp counts:   ";
+            for (int ts : params_.gp_team_size_candidates)
+                std::cout << ts << " ";
+            std::cout << "(× " << BenchParams::warp_size << " = GPU threads)\n"
+                      << "Osub range:       [" << params_.min_osub << ", " << params_.max_osub
                       << "]\n";
         }
         std::cout << "================================================================\n\n";
@@ -1383,18 +1443,20 @@ public:
                       << "================================================================\n"
                       << std::left << std::setw(16) << "Method" << std::right << std::setw(8)
                       << "Width" << std::setw(18) << "Tile (x,y,z)" << std::setw(8) << "Team"
-                      << std::setw(6) << "Osub" << std::setw(12) << "Mpts/s" << std::setw(8)
-                      << "Evals\n"
-                      << std::string(76, '-') << "\n";
+                      << std::setw(8) << "Threads" << std::setw(6) << "Osub" << std::setw(12)
+                      << "Mpts/s" << std::setw(8) << "Evals\n"
+                      << std::string(84, '-') << "\n";
             for (const auto& r : bo_results) {
                 std::ostringstream ts;
                 ts << "(" << r.best_tile[0] << "," << r.best_tile[1] << "," << r.best_tile[2]
                    << ")";
+                int threads = actual_threads(r.method, r.best_team_size);
                 std::cout << std::left << std::setw(16) << r.method << std::right << std::setw(8)
                           << r.kernel_width << std::setw(18) << ts.str() << std::setw(8)
-                          << r.best_team_size << std::setw(6) << r.best_oversubscription_factor
-                          << std::fixed << std::setprecision(1) << std::setw(12)
-                          << r.best_throughput_Mpts << std::setw(8) << r.evaluations << "\n";
+                          << r.best_team_size << std::setw(8) << threads << std::setw(6)
+                          << r.best_oversubscription_factor << std::fixed << std::setprecision(1)
+                          << std::setw(12) << r.best_throughput_Mpts << std::setw(8)
+                          << r.evaluations << "\n";
             }
         }
         std::cout << "\n";
