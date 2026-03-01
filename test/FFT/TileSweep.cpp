@@ -549,23 +549,23 @@ public:
     using SortedPolicy = ippl::Interpolation::detail::SortedPolicy;
 
     template <int W>
-    static size_t required_shmem_tiled(const ippl::Vector<int, Dim>& tv) {
+    static size_t required_shmem_tiled(const ippl::Vector<int, Dim>& tv, int team_size) {
         return ippl::Interpolation::detail::TiledScatter<
-            W, TiledTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv);
+            W, TiledTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv, team_size);
     }
     template <int W>
-    static size_t required_shmem_gp(const ippl::Vector<int, Dim>& tv) {
+    static size_t required_shmem_gp(const ippl::Vector<int, Dim>& tv, int team_size) {
         return ippl::Interpolation::detail::GridParallelScatter<
-            W, GPTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv);
+            W, GPTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv, team_size);
     }
 
-    static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile, int W) {
+    static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile, int W, int team_size) {
         ippl::Vector<int, Dim> tv;
         for (unsigned d = 0; d < Dim; ++d)
             tv[d] = tile[d];
         size_t result = std::numeric_limits<size_t>::max();
         ippl::Interpolation::WidthDispatcher<1, 14>::dispatch(W, [&]<int Wc>() {
-            result = (method == "Tiled") ? required_shmem_tiled<Wc>(tv) : required_shmem_gp<Wc>(tv);
+            result = (method == "Tiled") ? required_shmem_tiled<Wc>(tv, team_size) : required_shmem_gp<Wc>(tv, team_size);
         });
         return result;
     }
@@ -594,8 +594,8 @@ public:
         return cached;
     }
 
-    bool fits_in_shmem(const std::string& method, const std::array<int, 3>& tile, int W) const {
-        size_t req = required_shmem(method, tile, W), avail = device_shmem_bytes();
+    bool fits_in_shmem(const std::string& method, const std::array<int, 3>& tile, int W, int team_size) const {
+        size_t req = required_shmem(method, tile, W, team_size), avail = device_shmem_bytes();
         if (params_.verbose && ippl::Comm->rank() == 0)
             std::cout << "  [shmem] " << method << " tile=(" << tile[0] << "," << tile[1] << ","
                       << tile[2] << ") W=" << W << " req=" << req << " avail=" << avail
@@ -614,7 +614,7 @@ public:
                           << " > max=" << max_team_size() << "\n";
             return false;
         }
-        return fits_in_shmem(method, tile, W);
+        return fits_in_shmem(method, tile, W, team_size);
     }
 
     explicit TileSweepBenchmark(const BenchParams& params)
