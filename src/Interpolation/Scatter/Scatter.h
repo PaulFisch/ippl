@@ -244,8 +244,8 @@ namespace ippl {
 
                 std::vector<int> candidates = {1, 2, 3, 4, 8, 16, 32};
 
-                auto scratch_calc = [](const Vector<int, Dim>& tile) {
-                    return Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(tile);
+                auto scratch_calc = [&](const Vector<int, Dim>& tile) {
+                    return Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(tile, config_m.team_size);
                 };
 
                 tuner.initialize("Scatter_" + std::string(typeid(Impl<W, Types, Policy>).name()),

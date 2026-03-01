@@ -6,6 +6,57 @@
 #include "Interpolation/CoordinateTransform.h"
 #include "Interpolation/Scatter/ScatterArgumentsBase.h"
 
+// ============================================================================
+//  GridParallelScatter  –  vectorized, conflict-free shared-memory histogramming
+// ============================================================================
+//
+// Algorithm overview
+// ------------------
+// The team is composed of `team_size` Kokkos "threads", each of which maps to
+// one GPU warp of `vector_length` (= 32) CUDA threads.  We call these warps
+// "vectors" throughout.
+//
+//   • Every vector owns a private slice of the shared-memory histogram:
+//       hist_r[ vec_id * hist_stride + local_entry ]
+//     Because only one vector ever writes to its own slice during the particle
+//     loop, NO atomics are needed at this stage.
+//
+//   • Particles in the bin are distributed across vectors in a round-robin
+//     fashion (stride = num_vectors).  For each particle, the vector's 32
+//     lanes cooperate via ThreadVectorRange to:
+//       1. Compute Dim*W kernel weights in parallel.
+//       2. Scatter W^Dim stencil contributions into the private histogram.
+//
+//   • After a team barrier, the reduction phase merges all per-vector copies:
+//     using a nested (TeamThreadRange × ThreadVectorRange) loop, every CUDA
+//     thread in the team sums exactly one histogram entry across all vectors,
+//     then issues a single atomic add to global memory.
+//
+// Bank-conflict avoidance
+// -----------------------
+// GPU shared memory has 32 banks (one per 4-byte word, cycling with stride 1).
+// Two accesses conflict when they target the same bank in the same clock.
+//
+//  Scatter phase: consecutive ThreadVectorRange lanes scatter to
+//    hist[ vec_id*stride + (bh + lane) ].  Consecutive lanes → consecutive
+//    banks → zero bank conflicts.
+//
+//  Reduction phase (inner loop over v):
+//    Lane l reads  hist[ v*stride + base + l ]  for v = 0..nv-1.
+//    Within one warp access (same v), the 32 lanes read 32 consecutive
+//    addresses → consecutive banks → zero conflicts.
+//    Across successive v, the stride between copies is `hist_stride`.
+//    If hist_stride were a multiple of 32, all v values would map the same
+//    logical entry l to the SAME bank → 32-way serial access.
+//    Solution: pad hist_stride to the next odd multiple of 32 (or simply add
+//    1 whenever htot ≡ 0 (mod 32)).  This scatters successive copies across
+//    different banks, keeping accesses conflict-free.
+//
+//  kw / base_s scratch: each vector owns a private slice (index by vec_id),
+//    sized Dim*W and Dim respectively.  Within a single ThreadVectorRange
+//    over Dim*W, lane l writes kw[l] — consecutive → consecutive banks.
+// ============================================================================
+
 namespace ippl::Interpolation::detail {
 
     template <int W, class Types, class Policy>
@@ -13,15 +64,22 @@ namespace ippl::Interpolation::detail {
         static_assert(Policy::use_sorting,
                       "GridParallelScatter assumes sorted/bin-partitioned particles");
 
-        static constexpr bool requires_binning = true;
-        static constexpr unsigned Dim          = Types::Dim;
-        static constexpr int half_left         = (W - 1) / 2;
+        static constexpr bool     requires_binning = true;
+        static constexpr unsigned Dim              = Types::Dim;
+        static constexpr int      half_left        = (W - 1) / 2;
+
+        // GPU warp size.  Every Kokkos "thread" in the team consists of this
+        // many CUDA threads, which collaborate through ThreadVectorRange.
+        static constexpr int vector_length = 32;
 
         using RealType        = typename Types::RealType;
         using ValueType       = typename Types::ValueType;
         using memory_space    = typename Types::memory_space;
         using execution_space = typename Types::execution_space;
 
+        // 3-level policy: league_size × team_size × vector_length
+        //   team_size   = number of warps  (Kokkos "threads") per team
+        //   vector_length = CUDA threads   (lanes) per warp
         using team_policy   = Kokkos::TeamPolicy<execution_space>;
         using team_member   = typename team_policy::member_type;
         using scratch_space = typename execution_space::scratch_memory_space;
@@ -31,30 +89,44 @@ namespace ippl::Interpolation::detail {
         using scratch_int_view =
             Kokkos::View<int*, scratch_space, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
-        // ─────────────────────────────────────────────────────────────────────────
-        // Scratch size:
-        //   hist_r[htot] + hist_i[htot] (complex only)
-        //   k_vals[Dim * W]
-        //   base_s[Dim]
+        // ── Bank-conflict padding ────────────────────────────────────────────
+        // Pad the per-vector histogram stride so it is never a multiple of 32
+        // words.  This prevents all nv vectors from landing in the same bank
+        // for the same logical entry during the reduction loop.
+        static constexpr size_t kBankCount = 32;
+
+        KOKKOS_INLINE_FUNCTION
+        static size_t padded_stride(size_t htot) noexcept {
+            return (htot % kBankCount == 0) ? htot + 1 : htot;
+        }
+
+        // ── Scratch layout (per team) ────────────────────────────────────────
         //
-        // ─────────────────────────────────────────────────────────────────────────
+        //  Offset  Length                     Purpose
+        //  ──────  ─────────────────────────  ──────────────────────────────
+        //  [A]     nv * hist_stride           hist_r  (real part)
+        //  [B]     nv * hist_stride           hist_i  (imag, complex only)
+        //  [C]     nv * Dim * W               kw      (kernel weights per vec)
+        //  [D]     nv * Dim                   base_s  (stencil bases  per vec)
+        //
+        //  nv = team_size  (number of warps per tile-team)
+        // ────────────────────────────────────────────────────────────────────
         template <bool IsComplex>
-        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size) {
+        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int team_size) {
             size_t htot = 1;
             for (unsigned d = 0; d < Dim; ++d)
                 htot *= static_cast<size_t>(tile_size[d] + W);
 
-            size_t sz = (IsComplex ? 2 : 1) * scratch_real_view::shmem_size(htot)
-                        + scratch_real_view::shmem_size(static_cast<int>(Dim) * W)
-                        + scratch_int_view::shmem_size(static_cast<int>(Dim));
-            return sz;
+            const int    nv     = std::max(1, team_size);
+            const size_t stride = padded_stride(htot);
+
+            return (IsComplex ? 2 : 1) * scratch_real_view::shmem_size(nv * stride)
+                   + scratch_real_view::shmem_size(nv * static_cast<int>(Dim) * W)
+                   + scratch_int_view::shmem_size(nv * static_cast<int>(Dim));
         }
 
-        // ─────────────────────────────────────────────────────────────────────────
-        // Arguments
-        // ─────────────────────────────────────────────────────────────────────────
+        // ── Arguments ───────────────────────────────────────────────────────
         struct Arguments : ScatterArgumentsBase<Arguments, Types> {
-            // Fixed: these are particle-index arrays (size_t), not uint64_t
             Kokkos::View<size_t*, memory_space> permute;
             Kokkos::View<size_t*, memory_space> bin_offsets;
             Vector<int, Dim> num_tiles;
@@ -80,13 +152,11 @@ namespace ippl::Interpolation::detail {
 
         Arguments args;
 
-        // Sub-team decomposition: set in run(), read in operator()
-        size_t sub_teams_per_tile_ = 1;
-        size_t particles_per_team_ = 1;
+        // Set in run(), read in operator()
+        size_t sub_teams_per_tile_ = 1;   // oversubscription along the tile axis
+        size_t hist_stride_        = 1;   // padded stride between per-vector copies
 
-        // ─────────────────────────────────────────────────────────────────────────
-        // Geometry helpers
-        // ─────────────────────────────────────────────────────────────────────────
+        // ── Geometry helpers ─────────────────────────────────────────────────
         KOKKOS_INLINE_FUNCTION Vector<int, Dim> hist_size() const {
             Vector<int, Dim> hs;
             for (unsigned d = 0; d < Dim; ++d)
@@ -111,197 +181,286 @@ namespace ippl::Interpolation::detail {
             return tile_base;
         }
 
-        // ─────────────────────────────────────────────────────────────────────────
-        // Kernel operator
-        // ─────────────────────────────────────────────────────────────────────────
+        // ── Kernel operator ──────────────────────────────────────────────────
         KOKKOS_INLINE_FUNCTION void operator()(const team_member& team) const {
             using grid_value_t   = typename decltype(args.grid)::non_const_value_type;
             constexpr bool gcplx = std::is_same_v<grid_value_t, Kokkos::complex<RealType>>;
             constexpr bool vcplx = std::is_same_v<ValueType, Kokkos::complex<RealType>>;
 
-            // ── Sub-team decomposition ──────────────────────────────────────────
+            // ── Warp identity ────────────────────────────────────────────────
+            // team_rank ∈ [0, team_size): the rank of this warp within the team.
+            // The 32 CUDA threads of this warp all share the same team_rank and
+            // cooperate through ThreadVectorRange.
+            const int vec_id = team.team_rank();   // warp index within the team
+            const int nv     = team.team_size();   // total warps per team
+
+            // ── Tile / sub-team bookkeeping ──────────────────────────────────
             const size_t league_r  = static_cast<size_t>(team.league_rank());
             const size_t tile_id   = league_r / sub_teams_per_tile_;
             const size_t sub_id    = league_r % sub_teams_per_tile_;
             const size_t bin_start = args.bin_offsets(tile_id);
             const size_t bin_end   = args.bin_offsets(tile_id + 1);
             const size_t bin_size  = bin_end - bin_start;
+
             const size_t particles_per_sub =
                 (bin_size + sub_teams_per_tile_ - 1) / sub_teams_per_tile_;
-
             const size_t pstart = bin_start + sub_id * particles_per_sub;
             if (pstart >= bin_end)
                 return;
-
             const size_t pend = Kokkos::min(bin_end, pstart + particles_per_sub);
 
-            if (pstart >= bin_end)
-                return;  // this sub-team has no work
+            const auto   tile_base = decode_tile_base(tile_id);
+            const auto   hs        = hist_size();
+            const size_t htot      = hist_total();
+            const size_t stride    = hist_stride_;   // padded stride
 
-            const auto tile_base = decode_tile_base(tile_id);
-            const auto hs        = hist_size();
-            const size_t htot    = hist_total();
-
-            // ── Histogram scratch ───────────────────────────────────────────────
-            scratch_real_view hist_r(team.team_scratch(0), htot);
+            // ── Scratch allocation ───────────────────────────────────────────
+            // Histograms: nv private copies, each padded to `stride` elements.
+            // Layout:  hist_r[ vec_id * stride + local_idx ]
+            // The padding ensures that, for fixed local_idx, consecutive vec_id
+            // values map to different shared-memory banks (see file header).
+            scratch_real_view hist_r(team.team_scratch(0), nv * stride);
             scratch_real_view hist_i;
             if constexpr (gcplx)
-                hist_i = scratch_real_view(team.team_scratch(0), htot);
+                hist_i = scratch_real_view(team.team_scratch(0), nv * stride);
 
-            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, htot), [&](size_t i) {
-                hist_r(i) = RealType(0);
+            // Kernel weights: nv private slices, each Dim*W elements.
+            // Layout:  kw[ vec_id * Dim * W + d * W + i ]
+            // Written by ThreadVectorRange during the particle loop; consecutive
+            // lanes write consecutive entries → consecutive banks, no conflicts.
+            scratch_real_view kw(team.team_scratch(0), nv * static_cast<int>(Dim) * W);
+
+            // Stencil bases: nv private slices, each Dim elements (int).
+            // Layout:  base_s[ vec_id * Dim + d ]
+            scratch_int_view base_s(team.team_scratch(0), nv * static_cast<int>(Dim));
+
+            // Convenience raw pointers into this warp's private slices
+            RealType* my_kw   = kw.data()    + vec_id * (static_cast<int>(Dim) * W);
+            int*      my_base = base_s.data() + vec_id * static_cast<int>(Dim);
+
+            // ── Zero this warp's histogram slice ─────────────────────────────
+            // All 32 lanes cooperate: lane l zeroes entries l, l+32, l+64, …
+            // Different warps zero different slices simultaneously — no conflicts.
+            Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, htot), [&](size_t i) {
+                hist_r(vec_id * stride + i) = RealType(0);
                 if constexpr (gcplx)
-                    hist_i(i) = RealType(0);
+                    hist_i(vec_id * stride + i) = RealType(0);
             });
-            team.team_barrier();
+            team.team_barrier();  // all slices zeroed before any warp starts scattering
 
-            // ── Per-particle scratch ─────────────────────────────────────────────
-            // k_vals: Dim*W kernel weights, filled in parallel once per particle
-            // base_s: Dim stencil base indices, set as a side effect of k_vals loop
-            // (i == 0 thread for each dimension writes base_s[d]; no race since d is unique)
-            scratch_real_view k_vals(team.team_scratch(0), static_cast<int>(Dim) * W);
-            scratch_int_view base_s(team.team_scratch(0), static_cast<int>(Dim));
-
+            // ── Particle loop ────────────────────────────────────────────────
+            // Round-robin across warps: warp vec_id handles particles
+            //   pstart + vec_id,  pstart + vec_id + nv,  pstart + vec_id + 2*nv, …
+            //
+            // For each particle the 32 lanes cooperate via ThreadVectorRange:
+            //   Step 1 – compute Dim*W kernel weights and Dim stencil bases.
+            //   Step 2 – scatter W^Dim stencil contributions to the private hist.
+            //
+            // Only this warp ever writes to hist_r[vec_id * stride + *], so the
+            // += operations in Step 2 are RACE-FREE without any atomics.
             const CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx,
                                                                args.n_grid};
 
-            for (size_t ip = pstart; ip < pend; ++ip) {
+            for (size_t ip = pstart + static_cast<size_t>(vec_id); ip < pend;
+                 ip += static_cast<size_t>(nv)) {
+
                 const size_t p = args.permute(ip);
 
-                // ── Broadcast particle value (no scratch needed) ────────────────
-                // Each call to Kokkos::single(PerTeam) broadcasts the result to all
-                // threads in the team via the second argument.
+                // Particle value — identical for all 32 lanes, read redundantly
+                // (broadcast from L2/L1 cache; no divergence).
                 RealType val_r = RealType(0);
-                Kokkos::single(
-                    Kokkos::PerTeam(team),
-                    [&](RealType& v) {
-                        if constexpr (vcplx)
-                            v = args.values(p).real();
-                        else
-                            v = static_cast<RealType>(args.values(p));
-                    },
-                    val_r);
-
                 RealType val_i = RealType(0);
-                if constexpr (gcplx) {
-                    Kokkos::single(
-                        Kokkos::PerTeam(team),
-                        [&](RealType& v) {
-                            if constexpr (vcplx)
-                                v = args.values(p).imag();
-                            // else stays 0 for real->complex promotion
-                        },
-                        val_i);
+                if constexpr (vcplx) {
+                    val_r = args.values(p).real();
+                    if constexpr (gcplx)
+                        val_i = args.values(p).imag();
+                } else {
+                    val_r = static_cast<RealType>(args.values(p));
                 }
 
-                // ── Kernel weights + stencil base in parallel ───────────────────
+                // ── Step 1: kernel weights ────────────────────────────────────
+                // Lane `flat` computes weight for dimension d = flat/W, offset i = flat%W.
+                // After the range completes (synchronous within the warp), my_kw[0..DimW-1]
+                // and my_base[0..Dim-1] are fully initialised in shared memory.
+                //
+                // Bank mapping: lane l writes kw[vec_id*DimW + l] → bank (vec_id*DimW + l) % 32.
+                // Consecutive lanes → consecutive banks → zero conflicts.
                 Kokkos::parallel_for(
-                    Kokkos::TeamThreadRange(team, static_cast<int>(Dim) * W), [&](int flat) {
-                        const int d       = flat / W;
-                        const int i       = flat % W;
-                        const RealType gp = transform.toGridCoordinate(args.x(p)[d], d);
-                        const int idx0    = transform.getStencilBase(gp, W);
-                        k_vals(flat)      = args.kernel((gp - RealType(idx0 + i)) * args.inv_hw);
-                        // Thread with i==0 is the only writer for base_s[d]
+                    Kokkos::ThreadVectorRange(team, static_cast<int>(Dim) * W),
+                    [&](int flat) {
+                        const int      d    = flat / W;
+                        const int      i    = flat % W;
+                        const RealType gp   = transform.toGridCoordinate(args.x(p)[d], d);
+                        const int      idx0 = transform.getStencilBase(gp, W);
+                        // Normalised offset from the stencil base (in [0, 1) for i=0)
+                        my_kw[d * W + i] = args.kernel((gp - RealType(idx0 + i)) * args.inv_hw);
+                        // Only the lane with i==0 writes the base for dimension d.
+                        // If Dim*W > 32 there may be multiple rounds; lane `flat%32` is
+                        // unique per entry within each round, so no write races.
                         if (i == 0)
-                            base_s(d) = idx0 - args.local_offset[d];
+                            my_base[d] = idx0 - args.local_offset[d];
                     });
-                team.team_barrier();
+                // ThreadVectorRange is synchronous inside the warp — no extra barrier.
 
-                // ── Specialized scatter to local histogram ──────────────────────
-                // All index arithmetic is explicit; no runtime index decomposition.
+                // ── Step 2: scatter to private histogram ──────────────────────
+                // Pointer into this warp's slice (vec_id already baked in).
+                RealType* h_r = hist_r.data() + vec_id * stride;
+                RealType* h_i = gcplx ? hist_i.data() + vec_id * stride : nullptr;
+
                 if constexpr (Dim == 1) {
-                    const int bh0 = base_s(0) + half_left - tile_base[0];
+                    const int bh0 = my_base[0] + half_left - tile_base[0];
 
-                    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, W), [&](int i0) {
-                        const RealType w  = k_vals(i0);
+                    Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W), [&](int i0) {
+                        // Lane i0 handles stencil offset i0; hidx is unique per lane
+                        // → consecutive banks for consecutive i0 → no conflicts.
                         const size_t hidx = static_cast<size_t>(bh0 + i0);
-                        hist_r(hidx) += val_r * w;
+                        const RealType w  = my_kw[i0];
+                        h_r[hidx] += val_r * w;
                         if constexpr (gcplx)
-                            hist_i(hidx) += val_i * w;
+                            h_i[hidx] += val_i * w;
                     });
 
                 } else if constexpr (Dim == 2) {
-                    const int bh0 = base_s(0) + half_left - tile_base[0];
-                    const int bh1 = base_s(1) + half_left - tile_base[1];
+                    const int bh0 = my_base[0] + half_left - tile_base[0];
+                    const int bh1 = my_base[1] + half_left - tile_base[1];
 
-                    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, W * W), [&](int flat) {
-                        const int i0     = flat % W;
-                        const int i1     = flat / W;
-                        const RealType w = k_vals(i0) * k_vals(W + i1);
-                        const size_t hidx =
-                            static_cast<size_t>(bh0 + i0)
-                            + static_cast<size_t>(hs[0]) * static_cast<size_t>(bh1 + i1);
-                        hist_r(hidx) += val_r * w;
+                    Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W * W),
+                                         [&](int flat) {
+                        // LayoutLeft-friendly order: i0 is fastest (innermost dim).
+                        const int      i0   = flat % W;
+                        const int      i1   = flat / W;
+                        const RealType w    = my_kw[i0] * my_kw[W + i1];
+                        const size_t   hidx = static_cast<size_t>(bh0 + i0)
+                                            + static_cast<size_t>(hs[0])
+                                                  * static_cast<size_t>(bh1 + i1);
+                        h_r[hidx] += val_r * w;
                         if constexpr (gcplx)
-                            hist_i(hidx) += val_i * w;
+                            h_i[hidx] += val_i * w;
                     });
 
                 } else if constexpr (Dim == 3) {
-                    const int bh0 = base_s(0) + half_left - tile_base[0];
-                    const int bh1 = base_s(1) + half_left - tile_base[1];
-                    const int bh2 = base_s(2) + half_left - tile_base[2];
+                    const int bh0 = my_base[0] + half_left - tile_base[0];
+                    const int bh1 = my_base[1] + half_left - tile_base[1];
+                    const int bh2 = my_base[2] + half_left - tile_base[2];
 
-                    Kokkos::parallel_for(Kokkos::TeamThreadRange(team, W * W * W), [&](int flat) {
-                        const int i0     = flat % W;
-                        const int i1     = (flat / W) % W;
-                        const int i2     = flat / (W * W);
-                        const RealType w = k_vals(i0) * k_vals(W + i1) * k_vals(2 * W + i2);
-                        const size_t hidx =
-                            static_cast<size_t>(bh0 + i0)
-                            + static_cast<size_t>(hs[0])
-                                  * (static_cast<size_t>(bh1 + i1)
-                                     + static_cast<size_t>(hs[1]) * static_cast<size_t>(bh2 + i2));
-                        hist_r(hidx) += val_r * w;
+                    Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W * W * W),
+                                         [&](int flat) {
+                        const int      i0   = flat % W;
+                        const int      i1   = (flat / W) % W;
+                        const int      i2   = flat / (W * W);
+                        const RealType w    = my_kw[i0] * my_kw[W + i1] * my_kw[2 * W + i2];
+                        const size_t   hidx = static_cast<size_t>(bh0 + i0)
+                                            + static_cast<size_t>(hs[0])
+                                                  * (static_cast<size_t>(bh1 + i1)
+                                                     + static_cast<size_t>(hs[1])
+                                                           * static_cast<size_t>(bh2 + i2));
+                        h_r[hidx] += val_r * w;
                         if constexpr (gcplx)
-                            hist_i(hidx) += val_i * w;
+                            h_i[hidx] += val_i * w;
                     });
                 }
-                team.team_barrier();
+                // ThreadVectorRange is synchronous → the next particle iteration
+                // is safe without an extra barrier.
             }
 
-            // ── Flush local histogram → global grid (atomic) ────────────────────
-            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, htot), [&](size_t idx) {
-                // Decode flat histogram index to per-dim histogram coordinates
-                size_t tmp = idx;
-                Kokkos::Array<int, Dim> hc{};
-                for (unsigned d = 0; d < Dim; ++d) {
-                    hc[d] = static_cast<int>(tmp % static_cast<size_t>(hs[d]));
-                    tmp /= static_cast<size_t>(hs[d]);
-                }
+            // Wait for ALL warps to complete their particle loops before reduction.
+            team.team_barrier();
 
-                // Map histogram coords to local grid coords; skip out-of-bounds cells
-                Kokkos::Array<int, Dim> gc{};
-                for (unsigned d = 0; d < Dim; ++d) {
-                    const int local = tile_base[d] + hc[d] - half_left;
-                    if (local < -args.nghost || local >= args.n_grid_local[d] + args.nghost)
-                        return;
-                    gc[d] = local + args.nghost;
-                }
+            // ── Reduction: merge nv histogram copies → global grid ────────────
+            //
+            // We need every histogram entry to be summed across all nv copies and
+            // then atomically added to the global grid EXACTLY ONCE (no redundancy).
+            //
+            // Strategy: distribute htot entries among all team_size * vector_length
+            // CUDA threads using a two-level loop:
+            //
+            //   TeamThreadRange over chunks (each chunk = one warp's work):
+            //     → distributes `ceil(htot / VL)` chunks among the `nv` warps
+            //
+            //   ThreadVectorRange(team, VL) inside each chunk:
+            //     → 32 lanes each reduce one histogram entry
+            //
+            // Each CUDA thread thus handles exactly one entry (for full tiles) and
+            // issues exactly one atomic add.  No entry is touched by two threads.
+            //
+            // Bank analysis for the inner loop over v:
+            //   Lane l reads  hist_r[ v * stride + base + l ]  for v = 0..nv-1.
+            //   Within one v, 32 consecutive addresses → 32 consecutive banks → OK.
+            //   Across v, the stride shifts the bank by  stride % 32 positions.
+            //   Because stride is padded to be non-divisible by 32, this shift is
+            //   never 0, so consecutive v never re-use the same bank → OK.
+            const size_t chunks =
+                (htot + static_cast<size_t>(vector_length) - 1)
+                / static_cast<size_t>(vector_length);
 
-                [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-                    if constexpr (gcplx) {
-                        RealType* ptr = reinterpret_cast<RealType*>(&args.grid(gc[Is]...));
-                        Kokkos::atomic_add(&ptr[0], hist_r(idx));
-                        Kokkos::atomic_add(&ptr[1], hist_i(idx));
-                    } else {
-                        Kokkos::atomic_add(&args.grid(gc[Is]...),
-                                           static_cast<grid_value_t>(hist_r(idx)));
-                    }
-                }(std::make_index_sequence<Dim>{});
+            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, chunks), [&](size_t chunk) {
+                Kokkos::parallel_for(
+                    Kokkos::ThreadVectorRange(team, vector_length), [&](int lane) {
+                        const size_t idx = chunk * static_cast<size_t>(vector_length)
+                                         + static_cast<size_t>(lane);
+                        if (idx >= htot)
+                            return;
+
+                        // Sum this entry across all nv per-vector copies.
+                        // Sequential over v, but nv is small (e.g. 4) and the
+                        // accesses pattern is stride-friendly (see bank analysis above).
+                        RealType sum_r = RealType(0);
+                        RealType sum_i = RealType(0);
+                        for (int v = 0; v < nv; ++v) {
+                            sum_r += hist_r(v * stride + idx);
+                            if constexpr (gcplx)
+                                sum_i += hist_i(v * stride + idx);
+                        }
+
+                        // Decode flat histogram index → per-dim histogram coordinates
+                        size_t tmp = idx;
+                        Kokkos::Array<int, Dim> hc{};
+                        for (unsigned d = 0; d < Dim; ++d) {
+                            hc[d] = static_cast<int>(tmp % static_cast<size_t>(hs[d]));
+                            tmp /= static_cast<size_t>(hs[d]);
+                        }
+
+                        // Map histogram coords → local grid coords; skip ghost overflow
+                        Kokkos::Array<int, Dim> gc{};
+                        for (unsigned d = 0; d < Dim; ++d) {
+                            const int local = tile_base[d] + hc[d] - half_left;
+                            if (local < -args.nghost
+                                || local >= args.n_grid_local[d] + args.nghost)
+                                return;
+                            gc[d] = local + args.nghost;
+                        }
+
+                        // One atomic per entry — much fewer than the original design
+                        // where every particle-stencil-point pair was atomic.
+                        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+                            if constexpr (gcplx) {
+                                RealType* ptr =
+                                    reinterpret_cast<RealType*>(&args.grid(gc[Is]...));
+                                Kokkos::atomic_add(&ptr[0], sum_r);
+                                Kokkos::atomic_add(&ptr[1], sum_i);
+                            } else {
+                                Kokkos::atomic_add(&args.grid(gc[Is]...),
+                                                   static_cast<grid_value_t>(sum_r));
+                            }
+                        }(std::make_index_sequence<Dim>{});
+                    });
             });
         }
 
-        // ─────────────────────────────────────────────────────────────────────────
-        // Run
+        // ── run() ────────────────────────────────────────────────────────────
         //
-        // Sub-team strategy
+        // Launch parameters
         // -----------------
-        // avg = n_particles / n_tiles  (average bin size)
-        // particles_per_team_ = avg
-        // sub_teams_per_tile_ = oversubscription_factor  (default 4)
+        //   league_size = n_tiles × oversubscription_factor
+        //   team_size   = args.team_size  (= number of warps per tile-team)
+        //   vector_length = 32            (CUDA lanes per warp)
         //
-        // ─────────────────────────────────────────────────────────────────────────
+        // Sub-team oversubscription splits a tile's bin into
+        // `oversubscription_factor` sub-ranges handled by different teams.
+        // This hides latency when bins are large.
+        //
+        // Scratch memory is allocated at level 0 (shared memory on GPU).
+        // ─────────────────────────────────────────────────────────────────────
         void run(size_t n_particles) {
             using grid_value_t  = typename decltype(args.grid)::non_const_value_type;
             constexpr bool cplx = std::is_same_v<grid_value_t, Kokkos::complex<RealType>>;
@@ -313,15 +472,22 @@ namespace ippl::Interpolation::detail {
             if (n_tiles == 0 || n_particles == 0)
                 return;
 
-            particles_per_team_ = std::max(size_t(1), n_particles / n_tiles);
             sub_teams_per_tile_ = std::max(size_t(1), size_t(args.oversubscription_factor));
 
-            const size_t scratch = compute_scratch_size<cplx>(args.tile_size);
+            // Compute padded histogram stride (bank-conflict avoidance, see header)
+            size_t htot = 1;
+            for (unsigned d = 0; d < Dim; ++d)
+                htot *= static_cast<size_t>(args.tile_size[d] + W);
+            hist_stride_ = padded_stride(htot);
 
-            Kokkos::parallel_for("GridParallelScatter",
-                                 team_policy(n_tiles * sub_teams_per_tile_, args.team_size)
-                                     .set_scratch_size(0, Kokkos::PerTeam(scratch)),
-                                 *this);
+            const size_t scratch =
+                compute_scratch_size<cplx>(args.tile_size, args.team_size);
+
+            Kokkos::parallel_for(
+                "GridParallelScatterVectorized",
+                team_policy(n_tiles * sub_teams_per_tile_, args.team_size, vector_length)
+                    .set_scratch_size(0, Kokkos::PerTeam(scratch)),
+                *this);
         }
     };
 
