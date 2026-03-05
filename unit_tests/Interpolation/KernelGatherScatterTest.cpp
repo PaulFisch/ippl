@@ -1229,7 +1229,6 @@ TYPED_TEST(ScatterGatherTest, Roundtrip_Tiled) {
 
 int main(int argc, char* argv[]) {
     int success = 1;
-    sleep(10);
     ippl::initialize(argc, argv);
     {
         ::testing::InitGoogleTest(&argc, argv);
