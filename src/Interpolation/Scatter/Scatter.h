@@ -104,62 +104,84 @@ namespace ippl {
 
     private:
         // ------------------------------------------------------------------
-        // resolve_tile_size
+        // resolve_config
         //
-        // Priority order (highest to lowest):
+        // Returns a copy of config_m with all benchmarked-optimal parameters
+        // applied.  Priority order (highest to lowest):
         //
         //   1. ScatterConfig::enable_tuning == true
-        //      → runtime autotuner (existing TileSizeTuner path); cache is
-        //        bypassed because the autotuner will converge to an even
-        //        better value for this specific workload.
+        //      → runtime autotuner path; returns config_m unchanged here,
+        //        dispatch will call get_tuned_tile_size() to override later.
         //
-        //   2. ScatterConfig tile_size was explicitly set by the caller
-        //      (i.e. config_m.tile_size_is_explicit() == true)
-        //      → honour the caller's explicit choice, skip cache.
+        //   2. TileSizeCache has an entry for (method, width, is_complex)
+        //      → apply tile sizes, team_size, and oversubscription_factor
+        //        from the benchmarked CSV.  A value of -1 in the cache entry
+        //        means "not recorded"; that field is left at its config_m value.
         //
-        //   3. TileSizeCache has an entry for (method, width, is_complex)
-        //      → use the benchmarked optimal tile size.
+        //   3. Fallback: config_m unchanged (ScatterConfig defaults).
         //
-        //   4. Fallback: whatever tile size is already in config_m
-        //      (the ScatterConfig default).
-        //
-        // The result is returned as a Vector<int, Dim> ready for use.
+        // The resolved config is used for the entire scatter call; the runtime
+        // tuner may further override tile_size via get_tuned_tile_size.
         // ------------------------------------------------------------------
         template <template <int, class, class> class Impl, int W, class Types, class Policy,
                   bool IsComplex>
-        Vector<int, Dim> resolve_tile_size() const {
-            // Priority 1: runtime tuner overrides everything — caller gets
-            //             tile size from get_tuned_tile_size later in dispatch.
-            //             Return the config default here as a placeholder;
-            //             dispatch will replace it when tuning is active.
+        Interpolation::ScatterConfig<Dim> resolve_config() const {
+            // Priority 1: runtime tuner takes over — dispatch handles it.
             if (config_m.enable_tuning)
-                return config_m.get_tile_size();
+                return config_m;
 
             // Priority 2: benchmark cache lookup
-            auto& cache = Interpolation::TileSizeCache::instance();
-            auto cached = cache.template get<Dim>(config_m.method, W, IsComplex);
+            auto& cache  = Interpolation::TileSizeCache::instance();
+            auto  cached = cache.get(config_m.method, W, IsComplex);
+
             if (cached.has_value()) {
+                const auto& e = cached.value();
+
+                // One-time info message per (method, width, is_complex) triple.
                 if (cache.loaded()) {
-                    // One-time info message per (method, width) pair — use a
-                    // static set so we don't spam the log on every scatter call.
                     static std::unordered_set<std::size_t> reported;
-                    std::size_t key = static_cast<std::size_t>(config_m.method) * 100 + W;
+                    std::size_t key =
+                        (static_cast<std::size_t>(config_m.method) * 100 + W) * 2
+                        + static_cast<std::size_t>(IsComplex);
                     if (reported.find(key) == reported.end()) {
                         reported.insert(key);
-                        const auto& v = *cached;
-                        std::cout << "[Scatter] Using cached tile size from " << cache.source()
+                        std::cout << "[Scatter] Using cached config from " << cache.source()
                                   << ": method=" << static_cast<int>(config_m.method)
-                                  << " width=" << W << " tile=(" << v[0];
+                                  << " width=" << W
+                                  << " is_complex=" << IsComplex
+                                  << " tile=(" << e.tile[0];
                         for (unsigned d = 1; d < Dim; ++d)
-                            std::cout << "," << v[d];
-                        std::cout << ")\n";
+                            std::cout << "," << e.tile[d < 3 ? d : 2];
+                        std::cout << ")";
+                        if (e.team_size > 0)
+                            std::cout << " team_size=" << e.team_size;
+                        if (e.oversubscription_factor > 0)
+                            std::cout << " oversubscription=" << e.oversubscription_factor;
+                        std::cout << "\n";
                     }
                 }
-                return *cached;
+
+                auto resolved = config_m;
+
+                // Apply tile sizes for all Dim dimensions.
+                Vector<int, Dim> tile;
+                for (unsigned d = 0; d < Dim; ++d)
+                    tile[d] = e.tile[d < 3 ? d : 2];
+                resolved.set_tile_size(tile);
+
+                // Apply team_size if the cache recorded a valid value.
+                if (e.team_size > 0)
+                    resolved.team_size = e.team_size;
+
+                // Apply oversubscription_factor if the cache recorded a valid value.
+                if (e.oversubscription_factor > 0)
+                    resolved.oversubscription_factor = e.oversubscription_factor;
+
+                return resolved;
             }
 
-            // Priority 3: ScatterConfig default
-            return config_m.get_tile_size();
+            // Priority 3: ScatterConfig defaults
+            return config_m;
         }
 
         template <template <int, class, class> class Impl, class Types, class Policy, class Field,
@@ -175,29 +197,27 @@ namespace ippl {
             const size_t n_particles = positions.getParticleCount();
 
             Interpolation::WidthDispatcher<1, 14>::dispatch(width, [&]<int W>() {
-                // ── Step 1: Determine tile size ───────────────────────────────
+                // ── Step 1: Resolve full config from cache ────────────────────
                 //
-                // resolve_tile_size() implements the priority chain:
-                //   tuning > explicit > cache > default
+                // resolve_config() applies the priority chain:
+                //   tuning > cache (tile + team_size + oversubscription) > default
                 //
-                // If tuning is active we still call it first to get the
-                // starting value, then get_tuned_tile_size() may override it.
-                Vector<int, Dim> tile_size =
-                    resolve_tile_size<Impl, W, Types, Policy, is_complex>();
+                auto tuned_config =
+                    resolve_config<Impl, W, Types, Policy, is_complex>();
 
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     if (config_m.enable_tuning) {
-                        // Runtime tuner takes precedence; overwrites tile_size.
-                        tile_size = get_tuned_tile_size<Impl, W, Types, Policy, is_complex>(
-                            field, tile_size);
+                        // Runtime tuner may override the tile size portion.
+                        Vector<int, Dim> tuned_tile =
+                            get_tuned_tile_size<Impl, W, Types, Policy, is_complex>(
+                                field, tuned_config.get_tile_size());
+                        tuned_config.set_tile_size(tuned_tile);
                     }
                 }
 
-                // ── Step 2: Build a config copy with the resolved tile size ───
-                auto tuned_config = config_m;
-                tuned_config.set_tile_size(tile_size);
+                const Vector<int, Dim> tile_size = tuned_config.get_tile_size();
 
-                // ── Step 3: Binning ───────────────────────────────────────────
+                // ── Step 2: Binning ───────────────────────────────────────────
                 Interpolation::detail::BinningResult<Dim, memory_space> binning;
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     binning = performBinning<Types>(positions, field, tile_size);
@@ -205,7 +225,7 @@ namespace ippl {
                     binning = performBinning<Types>(positions, field, tile_size);
                 }
 
-                // ── Step 4: Run functor ───────────────────────────────────────
+                // ── Step 3: Run functor ───────────────────────────────────────
                 auto args = Impl<W, Types, Policy>::Arguments::create(
                     field, positions, values, kernel_m, tuned_config, binning);
 
@@ -215,7 +235,7 @@ namespace ippl {
                 functor.run(n_particles);
                 Kokkos::fence();
 
-                // ── Step 5: End tuning context ────────────────────────────────
+                // ── Step 4: End tuning context ────────────────────────────────
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     if (config_m.enable_tuning) {
                         auto& tuner = Interpolation::detail::get_scatter_tuner<Impl, Dim, RealType,
@@ -245,7 +265,8 @@ namespace ippl {
                 std::vector<int> candidates = {1, 2, 3, 4, 8, 16, 32};
 
                 auto scratch_calc = [&](const Vector<int, Dim>& tile) {
-                    return Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(tile, config_m.team_size);
+                    return Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(
+                        tile, config_m.team_size);
                 };
 
                 tuner.initialize("Scatter_" + std::string(typeid(Impl<W, Types, Policy>).name()),

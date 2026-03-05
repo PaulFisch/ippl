@@ -16,7 +16,8 @@
 //
 // For the rectangular-tile extension the same file is augmented by the BO
 // optimiser (write_sa_csv), whose format is:
-//   method,value_type,kernel_width,best_tile_x,best_tile_y,best_tile_z,...
+//   method,value_type,kernel_width,best_tile_x,best_tile_y,best_tile_z,
+//   best_team_size,best_oversubscription_factor,throughput_Mpts_s,time_ms,evaluations
 //
 // TileSizeCache tries the rectangular file first, falls back to the uniform
 // file, and finally falls back to the default tile size baked into ScatterConfig.
@@ -69,10 +70,13 @@ struct TileCacheKeyHash {
     }
 };
 
-// Value: per-dimension tile sizes (3-D; lower dimensions use the first entry)
+// Value: per-dimension tile sizes plus team/oversubscription parameters.
+// Lower dimensions use the first N entries of `tile`.
 struct TileCacheEntry {
-    std::array<int, 3> tile = {1, 1, 1};
-    bool is_rectangular     = false;  // true if tile_x != tile_y or tile_y != tile_z
+    std::array<int, 3> tile    = {1, 1, 1};
+    int team_size              = -1;   // -1 → not present in CSV, keep ScatterConfig default
+    int oversubscription_factor = -1;  // -1 → not present in CSV, keep ScatterConfig default
+    bool is_rectangular        = false;  // true if tile_x != tile_y or tile_y != tile_z
 };
 
 class TileSizeCache {
@@ -87,18 +91,28 @@ public:
     }
 
     // ------------------------------------------------------------------
-    // Lookup: returns the cached tile sizes, or std::nullopt if not found.
+    // Lookup: returns the full cache entry, or std::nullopt if not found.
     // Callers should fall back to ScatterConfig defaults on nullopt.
     // ------------------------------------------------------------------
-    template <unsigned Dim>
-    std::optional<Vector<int, Dim>> get(ScatterMethod method, int kernel_width,
-                                        bool is_complex) const {
+    std::optional<TileCacheEntry> get(ScatterMethod method, int kernel_width,
+                                      bool is_complex) const {
         TileCacheKey key{method, kernel_width, is_complex};
         auto it = entries_.find(key);
         if (it == entries_.end())
             return std::nullopt;
+        return it->second;
+    }
 
-        const auto& e = it->second;
+    // Convenience overload: returns only the tile sizes as a Vector<int, Dim>.
+    // Kept for backward compatibility with any existing callers.
+    template <unsigned Dim>
+    std::optional<Vector<int, Dim>> get_tile(ScatterMethod method, int kernel_width,
+                                             bool is_complex) const {
+        auto entry = get(method, kernel_width, is_complex);
+        if (!entry.has_value())
+            return std::nullopt;
+
+        const auto& e = entry.value();
         Vector<int, Dim> tile;
         for (unsigned d = 0; d < Dim; ++d)
             tile[d] = e.tile[d < 3 ? d : 2];  // clamp to available dimensions
@@ -161,7 +175,7 @@ private:
     //
     //   Rectangular format (write_sa_csv):
     //     method,value_type,kernel_width,best_tile_x,best_tile_y,best_tile_z,
-    //     throughput_Mpts_s,time_ms,evaluations
+    //     best_team_size,best_oversubscription_factor,throughput_Mpts_s,time_ms,evaluations
     //
     // Returns true if the file was found and at least one row was parsed.
     // ------------------------------------------------------------------
@@ -176,12 +190,11 @@ private:
             return false;
 
         // Detect by presence of "best_tile_x" (rectangular) or "optimal_tile_size" (uniform)
-        const bool is_rect = (line.find("best_tile_x") != std::string::npos);
+        const bool is_rect    = (line.find("best_tile_x") != std::string::npos);
         const bool is_uniform = (line.find("optimal_tile_size") != std::string::npos);
 
         if (!is_rect && !is_uniform) {
-            // Unknown format — try heuristic (count commas in header)
-            // Silently skip rather than crash.
+            // Unknown format — silently skip rather than crash.
             return false;
         }
 
@@ -218,7 +231,7 @@ private:
         int tile                      = parse_int(fields[2]);
 
         if (width <= 0 || tile <= 0)
-            return false;  // nan / invalid
+            return false;
 
         ScatterMethod method;
         if (!parse_method(method_str, method))
@@ -229,19 +242,30 @@ private:
             TileCacheKey key{method, width, is_complex};
             TileCacheEntry entry;
             entry.tile.fill(tile);
-            entry.is_rectangular = false;
-            entries_[key]        = entry;
+            entry.is_rectangular        = false;
+            entry.team_size             = -1;  // not available in uniform format
+            entry.oversubscription_factor = -1;
+            entries_[key]               = entry;
         }
         return true;
     }
 
     // ------------------------------------------------------------------
     // Parse one row of the rectangular BO format:
-    //   method,value_type,kernel_width,best_tile_x,best_tile_y,best_tile_z,...
+    //   method,value_type,kernel_width,
+    //   best_tile_x,best_tile_y,best_tile_z,
+    //   best_team_size,best_oversubscription_factor,
+    //   throughput_Mpts_s,time_ms,evaluations
+    //
+    // Indices:  0        1           2
+    //           3        4           5
+    //           6        7
+    //           8        9           10
     // ------------------------------------------------------------------
     bool parse_rect_row(const std::string& line) {
         std::vector<std::string> fields = split_csv(line);
-        if (fields.size() < 6)
+        // Need at least columns 0-7 (8 fields); columns 8-10 are optional
+        if (fields.size() < 8)
             return false;
 
         const std::string& method_str     = fields[0];
@@ -250,9 +274,12 @@ private:
         int tx                            = parse_int(fields[3]);
         int ty                            = parse_int(fields[4]);
         int tz                            = parse_int(fields[5]);
+        int team_size                     = parse_int(fields[6]);
+        int oversubscription              = parse_int(fields[7]);
 
         if (width <= 0 || tx <= 0 || ty <= 0 || tz <= 0)
             return false;
+        // team_size and oversubscription are allowed to be -1 (invalid → keep default)
 
         ScatterMethod method;
         if (!parse_method(method_str, method))
@@ -260,13 +287,16 @@ private:
 
         // value_type: "complex" → is_complex=true, "real" → false, "" → both
         bool is_complex = (value_type_str == "complex");
-        // If explicitly "real", only insert for real; otherwise insert for both
-        // (uniform CSV had no value_type, so we insert both there; rect CSV is precise)
+
         auto insert_entry = [&](bool complex) {
             TileCacheKey key{method, width, complex};
             TileCacheEntry entry;
-            entry.tile           = {tx, ty, tz};
-            entry.is_rectangular = (tx != ty || ty != tz);
+            entry.tile                  = {tx, ty, tz};
+            entry.is_rectangular        = (tx != ty || ty != tz);
+            entry.team_size             = (team_size > 0) ? team_size : -1;
+            entry.oversubscription_factor =
+                (oversubscription > 0) ? oversubscription : -1;
+
             // Prefer rectangular over uniform: only overwrite if new entry is
             // more specific (rectangular beats uniform, same-type beats wildcard)
             auto it = entries_.find(key);
@@ -297,7 +327,6 @@ private:
             out = ScatterMethod::OutputFocused;
             return true;
         }
-        // Unknown method — skip row silently
         return false;
     }
 
@@ -314,7 +343,6 @@ private:
         std::istringstream ss(line);
         std::string tok;
         while (std::getline(ss, tok, ',')) {
-            // Trim whitespace
             auto l = tok.find_first_not_of(" \t\r\n");
             auto r = tok.find_last_not_of(" \t\r\n");
             out.push_back((l == std::string::npos) ? "" : tok.substr(l, r - l + 1));
