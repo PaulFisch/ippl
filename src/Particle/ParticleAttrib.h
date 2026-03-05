@@ -121,9 +121,12 @@ namespace ippl {
 
         KOKKOS_INLINE_FUNCTION T& operator()(const size_t i) const { return dview_m(i); }
 
-        view_type& getView() { return dview_m; }
-
-        const view_type& getView() const { return dview_m; }
+        view_type getView() {
+            return Kokkos::subview(dview_m, Kokkos::make_pair(size_type(0), size_m));
+        }
+        view_type getView() const {
+            return Kokkos::subview(dview_m, Kokkos::make_pair(size_type(0), size_m));
+        }
 
         HostMirror getHostMirror() const { return Kokkos::create_mirror(dview_m); }
 

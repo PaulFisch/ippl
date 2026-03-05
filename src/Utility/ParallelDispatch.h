@@ -199,10 +199,11 @@ namespace ippl {
 
             if constexpr (useGPU) {
                 if (threadSafe) {
-#pragma omp parallel for schedule(dynamic)
-                    for (size_t i = 0; i < n; ++i) {
-                        f(i);
-                    }
+                    Kokkos::parallel_for(
+                        "Parallel dispatch",
+                        Kokkos::RangePolicy<Kokkos::DefaultHostExecutionSpace>(0, n), [&](int i) {
+                            f(i);
+                        });
                     return;
                 }
             }
