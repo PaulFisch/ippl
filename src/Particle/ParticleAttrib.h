@@ -121,14 +121,26 @@ namespace ippl {
 
         KOKKOS_INLINE_FUNCTION T& operator()(const size_t i) const { return dview_m(i); }
 
+        /*!
+         * Returns a subview of the underlying storage covering only the live
+         * particle range [0, size()).
+         */
         view_type getView() {
-            return Kokkos::subview(dview_m, Kokkos::make_pair(size_type(0), size_m));
+            return Kokkos::subview(dview_m,
+                                   Kokkos::make_pair(size_type(0),
+                                                     static_cast<size_type>(*(this->localNum_mp))));
         }
-        view_type getView() const {
-            return Kokkos::subview(dview_m, Kokkos::make_pair(size_type(0), size_m));
+        const view_type getView() const {
+            return Kokkos::subview(dview_m,
+                                   Kokkos::make_pair(size_type(0),
+                                                     static_cast<size_type>(*(this->localNum_mp))));
         }
 
-        HostMirror getHostMirror() const { return Kokkos::create_mirror(dview_m); }
+        // view_type& getRawView() { return dview_m; }
+        //
+        // const view_type& getRawView() const { return dview_m; }
+
+        HostMirror getHostMirror() const { return Kokkos::create_mirror(getView()); }
 
         void set_name(const std::string& name_) override {
             size_t len = name_.size();

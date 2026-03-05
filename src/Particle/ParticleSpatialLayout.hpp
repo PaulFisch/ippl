@@ -77,7 +77,6 @@ namespace ippl {
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
     void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::updateLayout(FieldLayout<Dim>& fl,
                                                                           Mesh& mesh) {
-        // flayout_m = fl;
         rlayout_m->changeDomain(fl, mesh);
         neighbors_dirty_ = true;
     }
@@ -151,6 +150,11 @@ namespace ippl {
         IpplTimings::startTimer(ParticleUpdateTimer);
 
         if (nRanks_ < 2) {
+            IpplTimings::stopTimer(ParticleUpdateTimer);
+
+#ifndef NDEBUG
+            debugCheckAllParticlesLocal(pc);
+#endif
             return;
         }
 
@@ -330,6 +334,57 @@ namespace ippl {
             finalize(pc.getLocalNum());
 
         IpplTimings::stopTimer(ParticleUpdateTimer);
+
+        // ------------------------------------------------------------------
+        // Debug-build validity check: assert all locally-held particles are
+        // inside this rank's region.
+        // ------------------------------------------------------------------
+#ifndef NDEBUG
+        debugCheckAllParticlesLocal(pc);
+#endif
+    }
+
+    // ------------------------------------------------------------------ //
+    // debugCheckAllParticlesLocal                                          //
+    // ------------------------------------------------------------------ //
+    template <typename T, unsigned Dim, class Mesh, typename... Properties>
+    template <class ParticleContainer>
+    void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::debugCheckAllParticlesLocal(
+        const ParticleContainer& pc) const {
+        const int myRank = Comm->rank();
+
+        // Bring positions and regions to host for a straightforward loop.
+        auto R_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), pc.R.getView());
+        auto regions_host =
+            Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), rlayout_m->getdLocalRegions());
+
+        const auto is_   = std::make_index_sequence<Dim>{};
+        size_t misplaced = 0;
+
+        for (size_t i = 0; i < pc.getLocalNum(); ++i) {
+            if (!positionInRegion(is_, R_host(i), regions_host(myRank))) {
+                ++misplaced;
+                // Print first few mis-placed particles to aid diagnosis.
+                if (misplaced <= 10) {
+                    std::cerr << "[PSL debug] rank " << myRank << "  particle " << i << "  pos=(";
+                    for (unsigned d = 0; d < Dim; ++d)
+                        std::cerr << R_host(i)[d] << (d + 1 < Dim ? ", " : "");
+                    std::cerr << ")  local_region=[";
+                    for (unsigned d = 0; d < Dim; ++d)
+                        std::cerr << "(" << regions_host(myRank)[d].min() << ","
+                                  << regions_host(myRank)[d].max() << ")"
+                                  << (d + 1 < Dim ? "x" : "");
+                    std::cerr << "]\n";
+                }
+            }
+        }
+
+        if (misplaced > 0) {
+            std::cerr << "[PSL debug] rank " << myRank << ": " << misplaced << " of "
+                      << pc.getLocalNum() << " particles outside local region after update()\n";
+        }
+
+        assert(misplaced == 0 && "ParticleSpatialLayout::update(): particles outside local region");
     }
 
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
@@ -497,18 +552,10 @@ namespace ippl {
         const auto is = std::make_index_sequence<Dim>{};
 
         const neighbor_list& neighbors = flayout_m.getNeighbors();
+        const size_type neighborSize   = getNeighborSize(neighbors);
 
-        /// neighborSize: Size of a neighborhood in D dimentions.
-        const size_type neighborSize = getNeighborSize(neighbors);
-
-        /// neighbors_view: Kokkos view with the IDs of the neighboring MPI ranks.
         locate_type neighbors_view("Nearest neighbors IDs", neighborSize);
 
-        /* red_val: Used to reduce both the number of invalid particles and the number of particles
-         * outside of the neighborhood (Kokkos::parallel_scan doesn't allow multiple reduction
-         * values, so we use the helper class increment_type). First element updates InvalidCount,
-         * second one updates outsideCount.
-         */
         increment_type red_val;
         red_val.init();
 
@@ -516,11 +563,9 @@ namespace ippl {
             Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), neighbors_view);
 
         size_t k = 0;
-
         for (const auto& componentNeighbors : neighbors) {
             for (size_t j = 0; j < componentNeighbors.size(); ++j) {
                 neighbors_mirror(k) = componentNeighbors[j];
-                // std::cout << "Neighbor: " << neighbors_mirror(k) << std::endl;
                 k++;
             }
         }
@@ -626,6 +671,7 @@ namespace ippl {
                 });
             Kokkos::fence();
         }
+
         IpplTimings::stopTimer(nonNeighboringParticles);
 
         Kokkos::parallel_for(

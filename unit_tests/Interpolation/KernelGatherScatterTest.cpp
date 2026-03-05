@@ -295,6 +295,7 @@ public:
                 for (unsigned d = 0; d < Dim; ++d) {
                     pos[d] = origin_local[d] + gen.drand() * extent_local[d];
                 }
+                R_view(i)      = pos;
                 weight_view(i) = gen.drand();
                 randPool.free_state(gen);
             });
@@ -359,7 +360,7 @@ public:
 
     // Check for NaN/Inf in field
     int countInvalidFieldValues(const field_type& field) {
-        auto field_view  = field.getView();
+        auto field_view        = field.getView();
         using index_array_type = ippl::RangePolicy<Dim>::index_array_type;
         int invalidCount       = 0;
         ippl::parallel_reduce(
@@ -601,7 +602,8 @@ public:
         expectedMaxError   = std::max(expectedMaxError, T(0.1));
 
         if (myRank == 0) {
-            std::cout << "Max error " << globalMaxError << ", allowed max" << expectedMaxError << std::endl;
+            std::cout << "Max error " << globalMaxError << ", allowed max" << expectedMaxError
+                      << std::endl;
             EXPECT_LT(avgError, expectedMaxError)
                 << "Gather average error too large for " << kernel_traits::name << ": " << avgError;
         }
@@ -654,7 +656,6 @@ public:
         // Right IP: <q, G*g>
         complex_type rightIP = ippl::test::computeParticleInnerProductComplex(
             *bunch, bunch->Q_scatter, bunch->Q_gather);
-
 
         if (myRank == 0) {
             T diff     = Kokkos::abs(leftIP - rightIP);
@@ -909,7 +910,7 @@ public:
             config.method = ippl::Interpolation::ScatterMethod::Atomic;
             config.sort   = false;
 
-            fieldNoSort = T(0.0);
+            fieldNoSort  = T(0.0);
             auto scatter = ippl::Scatter(kernel, config);
             scatter(fieldNoSort, bunch->R, bunch->weight);
         }
@@ -921,12 +922,12 @@ public:
             config.sort   = true;
 
             fieldWithSort = T(0.0);
-            auto scatter = ippl::Scatter(kernel, config);
+            auto scatter  = ippl::Scatter(kernel, config);
             scatter(fieldWithSort, bunch->R, bunch->weight);
         }
 
         // Compare the two fields
-        T maxDiff = 0.0;
+        T maxDiff         = 0.0;
         auto viewNoSort   = fieldNoSort.getView();
         auto viewWithSort = fieldWithSort.getView();
 
@@ -967,7 +968,6 @@ public:
         // Only create particle on rank 0
         bunch->create(myRank == 0);
         if (myRank == 0) {
-
             auto R_view      = bunch->R.getView();
             auto weight_view = bunch->weight.getView();
 
@@ -1065,7 +1065,6 @@ TYPED_TEST(ScatterGatherTest, PeriodicBoundary_Tiled) {
     config.sort   = true;
     this->runPeriodicBoundaryTest(config);
 }
-
 
 //=============================================================================
 // Gather Tests
@@ -1168,7 +1167,6 @@ TYPED_TEST(ScatterGatherTest, SingleParticleAtGridPoint) {
     this->runSingleParticleAtGridPointTest(config);
 }
 
-
 //=============================================================================
 // Symmetry Tests
 //=============================================================================
@@ -1231,6 +1229,7 @@ TYPED_TEST(ScatterGatherTest, Roundtrip_Tiled) {
 
 int main(int argc, char* argv[]) {
     int success = 1;
+    sleep(10);
     ippl::initialize(argc, argv);
     {
         ::testing::InitGoogleTest(&argc, argv);

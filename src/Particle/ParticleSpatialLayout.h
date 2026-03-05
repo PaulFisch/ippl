@@ -162,6 +162,9 @@ namespace ippl {
          */
         size_t numberOfSends(int rank, const locate_type& ranks);
 
+        template <class ParticleContainer>
+        void debugCheckAllParticlesLocal(const ParticleContainer& pc) const;
+
     private:
         // Fixed-size scratch
         locate_type rankSendCount_d_;  // [nRanks]

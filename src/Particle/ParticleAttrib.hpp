@@ -36,7 +36,7 @@ namespace ippl {
     template <typename T, class... Properties>
     void ParticleAttrib<T, Properties...>::create(size_type n) {
         size_type required = *(this->localNum_mp) + n;
-        this->realloc(required);
+        this->resize(required);
     }
 
     template <typename T, class... Properties>
@@ -52,6 +52,7 @@ namespace ippl {
             KOKKOS_LAMBDA(const size_t i) {
                 dview(deleteIndex(i)) = dview(keepIndex(i));
             });
+        size_m = *(this->localNum_mp) - invalidCount;
     }
 
     template <typename T, class... Properties>
@@ -72,7 +73,6 @@ namespace ippl {
 
     template <typename T, class... Properties>
     void ParticleAttrib<T, Properties...>::unpack(size_type nrecvs) {
-        auto size          = dview_m.extent(0);
         size_type required = *(this->localNum_mp) + nrecvs;
         this->resize(required);
 
@@ -87,7 +87,6 @@ namespace ippl {
     }
 
     template <typename T, class... Properties>
-    // KOKKOS_INLINE_FUNCTION
     ParticleAttrib<T, Properties...>& ParticleAttrib<T, Properties...>::operator=(T x) {
         auto dview = dview_m;
         using policy_type = Kokkos::RangePolicy<execution_space>;
@@ -99,7 +98,6 @@ namespace ippl {
 
     template <typename T, class... Properties>
     template <typename E, size_t N>
-    // KOKKOS_INLINE_FUNCTION
     ParticleAttrib<T, Properties...>& ParticleAttrib<T, Properties...>::operator=(
         detail::Expression<E, N> const& expr) {
         using capture_type = detail::CapturedExpression<E, N>;
@@ -140,7 +138,6 @@ namespace ippl {
         const NDIndex<Dim>& lDom       = layout.getLocalNDIndex();
         const int nghost               = f.getNghost();
 
-        // using policy_type = Kokkos::RangePolicy<execution_space>;
         const bool useHashView = hash_array.extent(0) > 0;
         if (useHashView && (iteration_policy.end() > hash_array.extent(0))) {
             Inform m("scatter");
@@ -153,10 +150,8 @@ namespace ippl {
         Kokkos::parallel_for(
             "ParticleAttrib::scatter", iteration_policy,
             KOKKOS_LAMBDA(const size_t idx) {
-                // map index to possible hash_map
                 size_t mapped_idx = useHashView ? hash_array(idx) : idx;
 
-                // find nearest grid point
                 vector_type l                        = (ppview(mapped_idx) - origin) * invdx + 0.5;
                 Vector<int, Field::dim> index        = l;
                 Vector<PositionType, Field::dim> whi = l - index;
@@ -164,7 +159,6 @@ namespace ippl {
 
                 Vector<size_t, Field::dim> args = index - lDom.first() + nghost;
 
-                // scatter
                 const value_type& val = dview(mapped_idx);
                 detail::scatterToField(std::make_index_sequence<1 << Field::dim>{}, view, wlo, whi,
                                        args, val);
@@ -213,7 +207,6 @@ namespace ippl {
         Kokkos::parallel_for(
             "ParticleAttrib::gather", policy_type(0, *(this->localNum_mp)),
             KOKKOS_LAMBDA(const size_t idx) {
-                // find nearest grid point
                 vector_type l                        = (ppview(idx) - origin) * invdx + 0.5;
                 Vector<int, Field::dim> index        = l;
                 Vector<PositionType, Field::dim> whi = l - index;
@@ -221,7 +214,6 @@ namespace ippl {
 
                 Vector<size_t, Field::dim> args = index - lDom.first() + nghost;
 
-                // gather
                 value_type gathered = detail::gatherFromField(
                     std::make_index_sequence<1 << Field::dim>{}, view, wlo, whi, args);
                 if (addToAttribute) {
@@ -233,7 +225,6 @@ namespace ippl {
         IpplTimings::stopTimer(gatherTimer);
     }
 
-    // Kernel-based scatter
     template <typename T, class... Properties>
     template <typename Field, typename P2, typename Kernel>
     void ParticleAttrib<T, Properties...>::scatter_kernel(
@@ -243,23 +234,22 @@ namespace ippl {
         scatter_impl(f, pp, *this);
     }
 
-    // Kernel-based gather (new generalized interface)
     template <typename T, class... Properties>
     template <typename Field, typename P2, typename Kernel>
     void ParticleAttrib<T, Properties...>::gather(
         Field& f, const ParticleAttrib<Vector<P2, Field::dim>, Properties...>& pp,
-        const Kernel& kernel, bool addToAttribute, const Interpolation::GatherConfig<Field::dim>& config) {
-        constexpr unsigned Dim = Field::dim;
-        auto modified_config             = config;
+        const Kernel& kernel, bool addToAttribute,
+        const Interpolation::GatherConfig<Field::dim>& config) {
+        constexpr unsigned Dim       = Field::dim;
+        auto modified_config         = config;
         modified_config.add_to_attribute = addToAttribute;
-        auto gather_impl                 = ippl::Gather<Kernel, Dim>(kernel, modified_config);
-
+        auto gather_impl             = ippl::Gather<Kernel, Dim>(kernel, modified_config);
         gather_impl(f, pp, *this);
     }
 
     template <typename T, class... Properties>
     void ParticleAttrib<T, Properties...>::applyPermutation(const hash_type& permutation) {
-        const auto view = this->getView();
+        const auto view = this->getView();  // trimmed to localNum_mp
         const auto size = this->getParticleCount();
 
         view_type temp("copy", size);
@@ -271,22 +261,22 @@ namespace ippl {
 
         Kokkos::fence();
 
-        Kokkos::deep_copy(Kokkos::subview(view, Kokkos::make_pair<size_type, size_type>(0, size)),
-                          temp);
+        Kokkos::deep_copy(view, temp);
     }
 
     template <typename T, class... Properties>
     void ParticleAttrib<T, Properties...>::internalCopy(const hash_type& indices) {
         auto copySize = indices.size();
-        create(copySize);
 
-        auto view       = this->getView();
-        const auto size = this->getParticleCount();
+        // Snapshot the current count BEFORE create() increments localNum_mp.
+        const size_type oldSize = *(this->localNum_mp);
 
-        using policy_type = Kokkos::RangePolicy<execution_space>;
+        create(copySize);  // localNum_mp becomes oldSize + copySize
+
+        auto view = this->getView();
         Kokkos::parallel_for(
-            "Copy to temp", policy_type(0, copySize),
-            KOKKOS_LAMBDA(const size_type& i) { view(size + i) = view(i); });
+            "internalCopy", Kokkos::RangePolicy<execution_space>(0, copySize),
+            KOKKOS_LAMBDA(const size_type& i) { view(oldSize + i) = view(indices(i)); });
 
         Kokkos::fence();
     }
@@ -309,16 +299,15 @@ namespace ippl {
         M& mesh                  = f.get_mesh();
 
         tempField.initialize(mesh, layout);
-
         tempField = 0.0;
 
         nufft->transform(pp, q, tempField);
 
-        using view_type                                 = typename Field<FT, Dim, M, C>::view_type;
-        view_type fview                                 = f.getView();
-        view_type viewLocal                             = tempField.getView();
+        using view_type                                  = typename Field<FT, Dim, M, C>::view_type;
+        view_type fview                                  = f.getView();
+        view_type viewLocal                              = tempField.getView();
         typename Field<ST, Dim, M, C>::view_type Skview = Sk.getView();
-        const int nghost                                = f.getNghost();
+        const int nghost                                 = f.getNghost();
 
         IpplTimings::stopTimer(scatterPIFNUFFTTimer);
 
@@ -356,15 +345,15 @@ namespace ippl {
 
         tempField.initialize(mesh, layout);
 
-        using view_type                                 = typename Field<FT, Dim, M, C>::view_type;
-        using vector_type                               = typename M::vector_type;
-        view_type fview                                 = f.getView();
-        view_type tempview                              = tempField.getView();
-        auto qview                                      = q.getView();
-        typename Field<ST, Dim, M, C>::view_type Skview = Sk.getView();
-        const int nghost                                = f.getNghost();
-        const vector_type& dx                           = mesh.getMeshSpacing();
-        const auto& domain                              = layout.getDomain();
+        using view_type                                  = typename Field<FT, Dim, M, C>::view_type;
+        using vector_type                                = typename M::vector_type;
+        view_type fview                                  = f.getView();
+        view_type tempview                               = tempField.getView();
+        auto qview                                       = q.getView();
+        typename Field<ST, Dim, M, C>::view_type Skview  = Sk.getView();
+        const int nghost                                 = f.getNghost();
+        const vector_type& dx                            = mesh.getMeshSpacing();
+        const auto& domain                               = layout.getDomain();
         vector_type Len;
         Vector<int, Dim> N;
 
@@ -379,12 +368,15 @@ namespace ippl {
 
         using mdrange_type = Kokkos::MDRangePolicy<Kokkos::Rank<3>>;
 
+        auto dview = dview_m;
+
         for (size_t gd = 0; gd < Dim; ++gd) {
             Kokkos::parallel_for(
                 "Gather NUFFT",
                 mdrange_type(
                     {nghost, nghost, nghost},
-                    {fview.extent(0) - nghost, fview.extent(1) - nghost, fview.extent(2) - nghost}),
+                    {fview.extent(0) - nghost, fview.extent(1) - nghost,
+                     fview.extent(2) - nghost}),
                 KOKKOS_LAMBDA(const int i, const int j, const int k) {
                     Vector<int, 3> iVec = {i, j, k};
                     for (unsigned d = 0; d < Dim; ++d) {
@@ -396,7 +388,6 @@ namespace ippl {
                     for (size_t d = 0; d < Dim; ++d) {
                         bool shift = (iVec[d] > (N[d] / 2));
                         kVec[d]    = 2 * pi / Len[d] * (iVec[d] - shift * N[d]);
-                        // kVec[d] = 2 * pi / Len[d] * (iVec[d] - (N[d] / 2));
                         Dr += kVec[d] * kVec[d];
                     }
 
@@ -412,15 +403,14 @@ namespace ippl {
 
             Kokkos::parallel_for(
                 "Assign E gather NUFFT", Np,
-                KOKKOS_CLASS_LAMBDA(const size_t i) { dview_m(i)[gd] = qview(i); });
+                KOKKOS_LAMBDA(const size_t i) { dview(i)[gd] = qview(i); });
         }
 
         IpplTimings::stopTimer(gatherPIFNUFFTTimer);
     }
 
     /*
-     * Non-class function
-     *
+     * Non-class functions
      */
 
     /**
@@ -468,7 +458,8 @@ namespace ippl {
     template <typename Attrib1, typename Field, typename Attrib2,
               typename policy_type = Kokkos::RangePolicy<typename Field::execution_space>>
     inline void scatter(const Attrib1& attrib, Field& f, const Attrib2& pp,
-                        policy_type iteration_policy, typename Attrib1::hash_type hash_array = {}) {
+                        policy_type iteration_policy,
+                        typename Attrib1::hash_type hash_array = {}) {
         attrib.scatter(f, pp, iteration_policy, hash_array);
     }
 
@@ -537,4 +528,5 @@ namespace ippl {
     DefineParticleReduction(Max, max, if (myVal > valL) valL = myVal, std::greater)
     DefineParticleReduction(Min, min, if (myVal < valL) valL = myVal, std::less)
     DefineParticleReduction(Prod, prod, valL *= myVal, std::multiplies)
+
 }  // namespace ippl
