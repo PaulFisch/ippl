@@ -25,7 +25,8 @@
  *   --bo-xi X             BO: EI exploration parameter xi (default: 0.01)
  *   --bo-ucb-prob P       BO: probability of using UCB vs EI (default: 0.3)
  *   --team-sizes LIST     Comma-separated list of Tiled thread counts to try (default: 8,16,32,64)
- *   --gp-team-sizes LIST  Comma-separated list of OutputFocused warp counts to try (default: 1,2,3,4,8)
+ *   --gp-team-sizes LIST  Comma-separated list of OutputFocused warp counts to try (default:
+ * 1,2,3,4,8)
  *   --min-osub N          Minimum oversubscription factor (default: 1)
  *   --max-osub N          Maximum oversubscription factor (default: 8)
  *   -v, --verbose         Verbose output
@@ -541,6 +542,8 @@ public:
     static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
     static constexpr KOKKOS_INLINE_FUNCTION value_type one() { return value_type(1); }
 
+
+
     static size_t device_shmem_bytes() {
 #if defined(KOKKOS_ENABLE_CUDA)
         int dev = 0;
@@ -574,7 +577,8 @@ public:
     template <int W>
     static size_t required_shmem_tiled(const ippl::Vector<int, Dim>& tv, int team_size) {
         return ippl::Interpolation::detail::TiledScatter<
-            W, TiledTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv, team_size);
+            W, TiledTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv,
+                                                                                       team_size);
     }
 
     // For GridParallelScatter, team_size is a warp count; the scratch-size
@@ -582,12 +586,12 @@ public:
     // multiplies by warp_size where needed).
     template <int W>
     static size_t required_shmem_gp(const ippl::Vector<int, Dim>& tv, int team_size_warps) {
-        return ippl::Interpolation::detail::GridParallelScatter<
-            W, GPTypes<W>, SortedPolicy>::template compute_scratch_size<is_complex>(tv, team_size_warps);
+        return ippl::Interpolation::detail::GridParallelScatter<W, GPTypes<W>, SortedPolicy>::
+            template compute_scratch_size<is_complex>(tv, team_size_warps);
     }
 
     static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile, int W,
-                                  int team_size) {
+                                 int team_size) {
         ippl::Vector<int, Dim> tv;
         for (unsigned d = 0; d < Dim; ++d)
             tv[d] = tile[d];
@@ -860,8 +864,7 @@ public:
         // For Tiled:         values are GPU thread counts (e.g. 8, 16, 32, 64).
         // For OutputFocused: values are warp counts        (e.g. 1, 2, 3, 4, 8).
         const std::vector<int>& ts_candidates =
-            (method == "Tiled") ? params_.team_size_candidates
-                                : params_.gp_team_size_candidates;
+            (method == "Tiled") ? params_.team_size_candidates : params_.gp_team_size_candidates;
         const int n_ts  = (int)ts_candidates.size();
         const int lo_ts = 0, hi_ts = n_ts - 1;
 
@@ -925,16 +928,29 @@ public:
             auto ta  = pt.tile();
             auto r   = benchmark_scatter(method, cfg, kernel, n_particles, ta, true);
             ++bo.evaluations;
-            double tp    = std::isnan(r.stats.mean_ms) ? 0.0 : r.throughput_Mpts_per_sec();
-            tp_cache[pt] = tp;
+
+            const bool oom = (r.stats.count == 0) || std::isnan(r.stats.mean_ms);
+            double tp      = oom ? 0.0 : r.throughput_Mpts_per_sec();
+            tp_cache[pt]   = tp;
+
+            // ── NEW: if the kernel actually OOM-ed, retroactively mark infeasible
+            // so the GP never sees another 0.0 from this config and future probes
+            // in the neighbourhood skip it without paying an evaluation.
+            if (oom) {
+                feasible_cache[pt] = false;
+                if (params_.verbose && ippl::Comm->rank() == 0)
+                    std::cout << "    BO [runtime-OOM] tile=(" << pt.tile_x() << "," << pt.tile_y()
+                              << "," << pt.tile_z() << ") team=" << ts_of(pt.ts_idx())
+                              << " — adding to infeasible cache\n";
+            }
 
             if (params_.verbose && ippl::Comm->rank() == 0)
                 std::cout << "    BO eval " << std::setw(4) << bo.evaluations << "  tile=("
                           << pt.tile_x() << "," << pt.tile_y() << "," << pt.tile_z() << ")"
                           << " team=" << ts_of(pt.ts_idx())
                           << " (threads=" << actual_threads(method, ts_of(pt.ts_idx())) << ")"
-                          << " osub=" << pt.osub()
-                          << "  tp=" << std::fixed << std::setprecision(1) << tp << " Mpts/s\n";
+                          << " osub=" << pt.osub() << "  tp=" << std::fixed << std::setprecision(1)
+                          << tp << " Mpts/s\n";
             return tp;
         };
 
@@ -951,8 +967,8 @@ public:
         const int n_bo_steps   = total_budget - n_init;
 
         SearchPoint best_pt;
-        best_pt.v      = {(lo_tile + hi_tile) / 2, (lo_tile + hi_tile) / 2,
-                          (lo_tile + hi_tile) / 2, n_ts / 2, (lo_osub + hi_osub) / 2};
+        best_pt.v      = {(lo_tile + hi_tile) / 2, (lo_tile + hi_tile) / 2, (lo_tile + hi_tile) / 2,
+                          n_ts / 2, (lo_osub + hi_osub) / 2};
         double best_tp = 0.0;
 
         // -----------------------------------------------------------------------
