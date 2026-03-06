@@ -30,6 +30,8 @@
  * 1,2,3,4,8)
  *   --min-osub N          Minimum oversubscription factor (default: 1)
  *   --max-osub N          Maximum oversubscription factor (default: 8)
+ *   --min-z-batches N     Minimum z-stencil batches for OutputFocused (default: 1)
+ *   --max-z-batches N     Maximum z-stencil batches for OutputFocused (default: 4)
  *   -v, --verbose         Verbose output
  *
  * Note: --sa-steps is accepted as an alias for --bo-budget (backward compat).
@@ -125,8 +127,9 @@ struct BenchParams {
 
     // z_batches range (for GridParallelScatter z-stencil batching)
     // 1 = no batching (default), larger values reduce shared memory pressure
+    // For optimization mode, we default to max=4 to help find feasible configs for large widths
     int min_z_batches = 1;
-    int max_z_batches = 1;  // default: no z-batching exploration
+    int max_z_batches = 4;  // default: allow up to 4 z-batches in optimization
 
     // Internal: set true for the complementary-type BO pass so that the inner
     // benchmark does not itself recurse into another complementary run.
@@ -1040,17 +1043,18 @@ public:
 
         SearchPoint best_pt;
         best_pt.v      = {(lo_tile + hi_tile) / 2, (lo_tile + hi_tile) / 2,
-                          (lo_tile + hi_tile) / 2, n_ts / 2, (lo_osub + hi_osub) / 2};
+                          (lo_tile + hi_tile) / 2, n_ts / 2, (lo_osub + hi_osub) / 2,
+                          (lo_zb + hi_zb) / 2};
         double best_tp = 0.0;
 
         // -----------------------------------------------------------------------
         // Phase 1: Latin Hypercube Sampling
         // -----------------------------------------------------------------------
         if (ippl::Comm->rank() == 0)
-            std::cout << "    BO [init] 5D LHS (" << n_init << " evals)\n";
+            std::cout << "    BO [init] 6D LHS (" << n_init << " evals)\n";
         {
-            std::array<std::vector<int>, 5> strata;
-            for (int d = 0; d < 5; ++d) {
+            std::array<std::vector<int>, 6> strata;
+            for (int d = 0; d < 6; ++d) {
                 strata[d].resize(n_init);
                 std::iota(strata[d].begin(), strata[d].end(), 0);
                 std::shuffle(strata[d].begin(), strata[d].end(), rng);
@@ -1066,6 +1070,7 @@ public:
                 pt.v[2]   = cell(strata[2][i], n_init, lo_tile, hi_tile);
                 pt.v[3]   = cell(strata[3][i], n_init, lo_ts, hi_ts);
                 pt.v[4]   = cell(strata[4][i], n_init, lo_osub, hi_osub);
+                pt.v[5]   = cell(strata[5][i], n_init, lo_zb, hi_zb);
                 double tp = evaluate(pt);
                 // Add ALL observations to the GP (including penalties) so the
                 // surrogate learns both feasible and infeasible regions.
@@ -1121,10 +1126,11 @@ public:
                     c.v[2] = rand_int(lo_tile, hi_tile);
                     c.v[3] = rand_int(lo_ts, hi_ts);
                     c.v[4] = rand_int(lo_osub, hi_osub);
+                    c.v[5] = rand_int(lo_zb, hi_zb);
                     score(c);
                 }
                 // Local neighbourhood: ±1, ±2 in each dim
-                for (int d = 0; d < 5; ++d) {
+                for (int d = 0; d < 6; ++d) {
                     for (int delta : {-2, -1, +1, +2}) {
                         SearchPoint c = best_pt;
                         c.v[d] = std::clamp(best_pt.v[d] + delta, lo_bounds[d], hi_bounds[d]);
@@ -1166,7 +1172,7 @@ public:
             int budget    = 30;
             while (improved && budget > 0) {
                 improved = false;
-                for (int d = 0; d < 5 && !improved; ++d) {
+                for (int d = 0; d < 6 && !improved; ++d) {
                     for (int delta : {-1, +1}) {
                         SearchPoint c = best_pt;
                         c.v[d] = std::clamp(best_pt.v[d] + delta, lo_bounds[d], hi_bounds[d]);
