@@ -34,6 +34,13 @@ namespace ippl {
             // Factor for Gridparallel
             int oversubscription_factor = 4;
 
+            // Number of z-stencil batches for GridParallelScatter.
+            // When > 1, the kernel is launched multiple times, each time
+            // processing only ceil(W/z_batches) z-stencil points. This reduces
+            // shared memory pressure at the cost of multiple kernel launches.
+            // Default 1 means no batching (process all z-stencil points at once).
+            int z_batches = 1;
+
             /**
              * @brief Default constructor - initializes tile sizes based on Dim.
              *

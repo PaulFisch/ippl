@@ -1230,6 +1230,14 @@ TYPED_TEST(ScatterGatherTest, Conservation_OutputFocused) {
     this->runConservationTest(config);
 }
 
+TYPED_TEST(ScatterGatherTest, Conservation_OutputFocused_ZBatches) {
+    typename TestFixture::scatter_config_type config;
+    config.method    = ippl::Interpolation::ScatterMethod::OutputFocused;
+    config.sort      = true;
+    config.z_batches = 2;  // Test z-stencil batching to reduce shared memory pressure
+    this->runConservationTest(config);
+}
+
 TYPED_TEST(ScatterGatherTest, Conservation_VaryingWeights) {
     typename TestFixture::scatter_config_type config;
     config.method = ippl::Interpolation::ScatterMethod::Atomic;

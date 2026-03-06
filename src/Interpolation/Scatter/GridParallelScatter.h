@@ -110,12 +110,24 @@ namespace ippl::Interpolation::detail {
         //  [D]     nv * Dim                   base_s  (stencil bases  per vec)
         //
         //  nv = team_size  (number of warps per tile-team)
+        //
+        //  When z_batches > 1, the z-dimension of the histogram is reduced from
+        //  (tile_z + W + 1) to (tile_z + z_batch_size + 1), where
+        //  z_batch_size = ceil(W / z_batches).
         // ────────────────────────────────────────────────────────────────────
         template <bool IsComplex>
-        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int team_size) {
+        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int team_size,
+                                           int z_batches = 1) {
+            const int z_batch_size = (W + z_batches - 1) / z_batches;
+
             size_t htot = 1;
-            for (unsigned d = 0; d < Dim; ++d)
-                htot *= static_cast<size_t>(tile_size[d] + W + 1);
+            for (unsigned d = 0; d < Dim; ++d) {
+                // For Dim==3 and d==2 (z-dimension), use reduced size when z_batches > 1
+                const int hist_dim = (Dim == 3 && d == 2 && z_batches > 1)
+                                         ? tile_size[d] + z_batch_size + 1
+                                         : tile_size[d] + W + 1;
+                htot *= static_cast<size_t>(hist_dim);
+            }
 
             const int    nv     = std::max(1, team_size);
             const size_t stride = padded_stride(htot);
@@ -133,6 +145,7 @@ namespace ippl::Interpolation::detail {
             Vector<int, Dim> tile_size;
             int team_size;
             int oversubscription_factor;
+            int z_batches;
 
             template <class Field, class Positions, class Values, class Kernel>
             static Arguments create(Field& field, const Positions& pos, const Values& vals,
@@ -146,6 +159,7 @@ namespace ippl::Interpolation::detail {
                 a.tile_size               = config.get_tile_size();
                 a.team_size               = config.team_size;
                 a.oversubscription_factor = config.oversubscription_factor;
+                a.z_batches               = config.z_batches;
                 return a;
             }
         };
@@ -156,18 +170,30 @@ namespace ippl::Interpolation::detail {
         size_t sub_teams_per_tile_ = 1;   // oversubscription along the tile axis
         size_t hist_stride_        = 1;   // padded stride between per-vector copies
 
+        // Z-batching state: set in run() before each batch, read in operator()
+        int z_batch_size_ = W;   // number of z-stencil points per batch
+        int z_start_      = 0;   // first z-stencil index for this batch
+        int z_end_        = W;   // one past last z-stencil index for this batch
+
         // ── Geometry helpers ─────────────────────────────────────────────────
+        // When z_batches > 1, the z-dimension of the histogram is reduced.
         KOKKOS_INLINE_FUNCTION Vector<int, Dim> hist_size() const {
             Vector<int, Dim> hs;
-            for (unsigned d = 0; d < Dim; ++d)
-                hs[d] = args.tile_size[d] + W + 1;
+            for (unsigned d = 0; d < Dim; ++d) {
+                // For d==2 (z-dimension) in 3D, use z_batch_size_ instead of W
+                hs[d] = args.tile_size[d]
+                        + ((Dim == 3 && d == 2) ? z_batch_size_ : W) + 1;
+            }
             return hs;
         }
 
         KOKKOS_INLINE_FUNCTION size_t hist_total() const {
             size_t n = 1;
-            for (unsigned d = 0; d < Dim; ++d)
-                n *= static_cast<size_t>(args.tile_size[d] + W + 1);
+            for (unsigned d = 0; d < Dim; ++d) {
+                const int hist_dim = args.tile_size[d]
+                                     + ((Dim == 3 && d == 2) ? z_batch_size_ : W) + 1;
+                n *= static_cast<size_t>(hist_dim);
+            }
             return n;
         }
 
@@ -343,17 +369,21 @@ namespace ippl::Interpolation::detail {
                     const int bh1 = my_base[1] + half_left - tile_base[1];
                     const int bh2 = my_base[2] + half_left - tile_base[2];
 
-                    Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W * W * W),
+                    // When z_batches > 1, only process z-stencil indices in [z_start_, z_end_).
+                    // The histogram z-index is adjusted by subtracting z_start_.
+                    const int z_range = z_end_ - z_start_;
+                    Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, W * W * z_range),
                                          [&](int flat) {
                         const int      i0   = flat % W;
                         const int      i1   = (flat / W) % W;
-                        const int      i2   = flat / (W * W);
+                        const int      i2   = z_start_ + flat / (W * W);
                         const RealType w    = my_kw[i0] * my_kw[W + i1] * my_kw[2 * W + i2];
+                        // Adjust histogram z-index by subtracting z_start_
                         const size_t   hidx = static_cast<size_t>(bh0 + i0)
                                             + static_cast<size_t>(hs[0])
                                                   * (static_cast<size_t>(bh1 + i1)
                                                      + static_cast<size_t>(hs[1])
-                                                           * static_cast<size_t>(bh2 + i2));
+                                                           * static_cast<size_t>(bh2 + i2 - z_start_));
                         h_r[hidx] += val_r * w;
                         if constexpr (gcplx)
                             h_i[hidx] += val_i * w;
@@ -421,9 +451,15 @@ namespace ippl::Interpolation::detail {
                         }
 
                         // Map histogram coords → local grid coords; skip ghost overflow
+                        // For z-dimension (d==2) in 3D with z-batching, add z_start_ back
                         Kokkos::Array<int, Dim> gc{};
                         for (unsigned d = 0; d < Dim; ++d) {
-                            const int local = tile_base[d] + hc[d] - half_left;
+                            int hc_adjusted = hc[d];
+                            if constexpr (Dim == 3) {
+                                if (d == 2)
+                                    hc_adjusted += z_start_;
+                            }
+                            const int local = tile_base[d] + hc_adjusted - half_left;
                             if (local < -args.nghost
                                 || local >= args.n_grid_local[d] + args.nghost)
                                 return;
@@ -459,6 +495,12 @@ namespace ippl::Interpolation::detail {
         // `oversubscription_factor` sub-ranges handled by different teams.
         // This hides latency when bins are large.
         //
+        // Z-batching (z_batches > 1): splits the W z-stencil points into
+        // z_batches batches to reduce shared memory pressure.  Each batch
+        // processes ceil(W/z_batches) z-stencil points.  The kernel is
+        // launched once per batch; all batches accumulate to the same grid
+        // via atomic adds.
+        //
         // Scratch memory is allocated at level 0 (shared memory on GPU).
         // ─────────────────────────────────────────────────────────────────────
         void run(size_t n_particles) {
@@ -474,20 +516,34 @@ namespace ippl::Interpolation::detail {
 
             sub_teams_per_tile_ = std::max(size_t(1), size_t(args.oversubscription_factor));
 
+            // Z-batching setup
+            const int z_batches = (Dim == 3) ? std::max(1, args.z_batches) : 1;
+            z_batch_size_       = (W + z_batches - 1) / z_batches;
+
             // Compute padded histogram stride (bank-conflict avoidance, see header)
+            // With z-batching, z-dimension uses z_batch_size_ instead of W
             size_t htot = 1;
-            for (unsigned d = 0; d < Dim; ++d)
-                htot *= static_cast<size_t>(args.tile_size[d] + W + 1);
+            for (unsigned d = 0; d < Dim; ++d) {
+                const int hist_dim = args.tile_size[d]
+                                     + ((Dim == 3 && d == 2) ? z_batch_size_ : W) + 1;
+                htot *= static_cast<size_t>(hist_dim);
+            }
             hist_stride_ = padded_stride(htot);
 
             const size_t scratch =
-                compute_scratch_size<cplx>(args.tile_size, args.team_size);
+                compute_scratch_size<cplx>(args.tile_size, args.team_size, z_batches);
 
-            Kokkos::parallel_for(
-                "GridParallelScatterVectorized",
-                team_policy(n_tiles * sub_teams_per_tile_, args.team_size, vector_length)
-                    .set_scratch_size(0, Kokkos::PerTeam(scratch)),
-                *this);
+            // Launch kernel once per z-batch.  When z_batches=1, this is a single launch.
+            for (int batch = 0; batch < z_batches; ++batch) {
+                z_start_ = batch * z_batch_size_;
+                z_end_   = std::min((batch + 1) * z_batch_size_, W);
+
+                Kokkos::parallel_for(
+                    "GridParallelScatterVectorized",
+                    team_policy(n_tiles * sub_teams_per_tile_, args.team_size, vector_length)
+                        .set_scratch_size(0, Kokkos::PerTeam(scratch)),
+                    *this);
+            }
         }
     };
 

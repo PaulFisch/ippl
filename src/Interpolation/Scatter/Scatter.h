@@ -248,7 +248,7 @@ namespace ippl {
             for (int itr = 0; itr < 64; ++itr) {
                 const size_t req =
                     Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(
-                        tile, cfg.team_size);
+                        tile, cfg.team_size, cfg.z_batches);
                 if (req <= avail)
                     break;
 
@@ -362,7 +362,7 @@ namespace ippl {
 
                 auto scratch_calc = [&](const Vector<int, Dim>& tile) {
                     return Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(
-                        tile, config_m.team_size);
+                        tile, config_m.team_size, config_m.z_batches);
                 };
 
                 tuner.initialize("Scatter_" + std::string(typeid(Impl<W, Types, Policy>).name()),

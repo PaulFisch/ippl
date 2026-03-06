@@ -123,6 +123,11 @@ struct BenchParams {
     int min_osub = 1;
     int max_osub = 8;
 
+    // z_batches range (for GridParallelScatter z-stencil batching)
+    // 1 = no batching (default), larger values reduce shared memory pressure
+    int min_z_batches = 1;
+    int max_z_batches = 1;  // default: no z-batching exploration
+
     // Internal: set true for the complementary-type BO pass so that the inner
     // benchmark does not itself recurse into another complementary run.
     bool complementary_bo_pass = false;
@@ -193,6 +198,10 @@ BenchParams parse_bench_args(int argc, char* argv[]) {
             p.min_osub = std::atoi(argv[++i]);
         else if (a == "--max-osub" && i + 1 < argc)
             p.max_osub = std::atoi(argv[++i]);
+        else if (a == "--min-z-batches" && i + 1 < argc)
+            p.min_z_batches = std::atoi(argv[++i]);
+        else if (a == "--max-z-batches" && i + 1 < argc)
+            p.max_z_batches = std::atoi(argv[++i]);
         else if (a == "-v" || a == "--verbose")
             p.verbose = true;
         else if ((a == "--sa-t0" || a == "--sa-alpha") && i + 1 < argc)
@@ -240,7 +249,7 @@ TimingStats compute_stats(const std::vector<double>& times_sec) {
 struct BenchmarkResult {
     std::string method, distribution, value_type;
     std::array<int, 3> tile_sizes = {1, 1, 1};
-    int tile_size = 1, team_size = 16, oversubscription_factor = 4, kernel_width = 0;
+    int tile_size = 1, team_size = 16, oversubscription_factor = 4, z_batches = 1, kernel_width = 0;
     size_t n_particles = 0, n_grid = 0;
     double rho          = 0;
     bool from_optimizer = false;
@@ -254,11 +263,11 @@ struct BOResult {
     std::string method, value_type;
     int kernel_width             = 0;
     std::array<int, 3> best_tile = {1, 1, 1};
-    int best_team_size = 16, best_oversubscription_factor = 4;
+    int best_team_size = 16, best_oversubscription_factor = 4, best_z_batches = 1;
     double best_throughput_Mpts = 0, best_time_ms = 0;
     int evaluations = 0;
-    // (eval_count, tx, ty, tz, team_size, osub, throughput)
-    std::vector<std::tuple<int, int, int, int, int, int, double>> history;
+    // (eval_count, tx, ty, tz, team_size, osub, z_batches, throughput)
+    std::vector<std::tuple<int, int, int, int, int, int, int, double>> history;
 };
 
 // ============================================================================
@@ -498,12 +507,13 @@ struct GPModel {
 // whether candidates are {8,16,32} or {1,4,16,64}.
 //
 struct SearchPoint {
-    std::array<int, 5> v = {1, 1, 1, 0, 1};
+    std::array<int, 6> v = {1, 1, 1, 0, 1, 1};
     int tile_x() const { return v[0]; }
     int tile_y() const { return v[1]; }
     int tile_z() const { return v[2]; }
     int ts_idx() const { return v[3]; }
     int osub() const { return v[4]; }
+    int z_batches() const { return v[5]; }
     std::array<int, 3> tile() const { return {v[0], v[1], v[2]}; }
     bool operator==(const SearchPoint& o) const { return v == o.v; }
 };
@@ -585,26 +595,29 @@ public:
     }
 
     template <int W, bool ForceComplex = is_complex>
-    static size_t required_shmem_gp(const ippl::Vector<int, Dim>& tv, int team_size_warps) {
+    static size_t required_shmem_gp(const ippl::Vector<int, Dim>& tv, int team_size_warps,
+                                    int z_batches = 1) {
         return ippl::Interpolation::detail::GridParallelScatter<W, GPTypes<W>, SortedPolicy>::
-            template compute_scratch_size<ForceComplex>(tv, team_size_warps);
+            template compute_scratch_size<ForceComplex>(tv, team_size_warps, z_batches);
     }
 
     // required_shmem: dispatches over W and delegates to the correct kernel struct.
     // force_complex overrides the is_complex flag (used for dual-type validation).
     static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile, int W,
-                                 int team_size, bool force_complex = false) {
+                                 int team_size, int z_batches = 1, bool force_complex = false) {
         ippl::Vector<int, Dim> tv;
         for (unsigned d = 0; d < Dim; ++d)
             tv[d] = tile[d];
         size_t result = std::numeric_limits<size_t>::max();
         ippl::Interpolation::WidthDispatcher<1, 14>::dispatch(W, [&]<int Wc>() {
             if (force_complex) {
-                result = (method == "Tiled") ? required_shmem_tiled<Wc, true>(tv, team_size)
-                                             : required_shmem_gp<Wc, true>(tv, team_size);
+                result = (method == "Tiled")
+                             ? required_shmem_tiled<Wc, true>(tv, team_size)
+                             : required_shmem_gp<Wc, true>(tv, team_size, z_batches);
             } else {
-                result = (method == "Tiled") ? required_shmem_tiled<Wc>(tv, team_size)
-                                             : required_shmem_gp<Wc>(tv, team_size);
+                result = (method == "Tiled")
+                             ? required_shmem_tiled<Wc>(tv, team_size)
+                             : required_shmem_gp<Wc>(tv, team_size, z_batches);
             }
         });
         return result;
@@ -641,13 +654,14 @@ public:
     }
 
     bool fits_in_shmem(const std::string& method, const std::array<int, 3>& tile, int W,
-                       int team_size, bool force_complex = false) const {
-        size_t req   = required_shmem(method, tile, W, team_size, force_complex);
+                       int team_size, int z_batches = 1, bool force_complex = false) const {
+        size_t req   = required_shmem(method, tile, W, team_size, z_batches, force_complex);
         size_t avail = scratch_size_max_for_team(method, team_size);
         if (params_.verbose && ippl::Comm->rank() == 0)
             std::cout << "  [shmem] " << method << " tile=(" << tile[0] << "," << tile[1] << ","
-                      << tile[2] << ") W=" << W << " team=" << team_size << " req=" << req
-                      << " avail=" << avail << (req <= avail ? " OK" : " SKIP") << "\n";
+                      << tile[2] << ") W=" << W << " team=" << team_size
+                      << " z_batches=" << z_batches << " req=" << req << " avail=" << avail
+                      << (req <= avail ? " OK" : " SKIP") << "\n";
         return req <= avail;
     }
 
@@ -659,7 +673,7 @@ public:
     //   that work for both real and complex without running two full BO searches.
     // -----------------------------------------------------------------------
     bool is_config_valid(const std::string& method, const std::array<int, 3>& tile, int W,
-                         int team_size, bool force_complex = false) const {
+                         int team_size, int z_batches = 1, bool force_complex = false) const {
         int threads = actual_threads(method, team_size);
         if (threads > max_team_size()) {
             if (params_.verbose && ippl::Comm->rank() == 0)
@@ -668,11 +682,11 @@ public:
             return false;
         }
         // Check for current type
-        if (!fits_in_shmem(method, tile, W, team_size, false))
+        if (!fits_in_shmem(method, tile, W, team_size, z_batches, false))
             return false;
         // If force_complex, also check for complex (stricter budget)
         if (force_complex && !is_complex)
-            if (!fits_in_shmem(method, tile, W, team_size, true))
+            if (!fits_in_shmem(method, tile, W, team_size, z_batches, true))
                 return false;
         return true;
     }
@@ -755,7 +769,8 @@ public:
                     auto bo = run_bo(method, kernel, n_particles);
                     bo_results.push_back(bo);
                     const auto& bt = bo.best_tile;
-                    if (is_config_valid(method, bt, actual_width, bo.best_team_size)) {
+                    if (is_config_valid(method, bt, actual_width, bo.best_team_size,
+                                        bo.best_z_batches)) {
                         auto cfg =
                             ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                         cfg.method = (method == "Tiled")
@@ -764,9 +779,11 @@ public:
                         cfg.tile_size               = {bt[0], bt[1], bt[2]};
                         cfg.team_size               = bo.best_team_size;
                         cfg.oversubscription_factor = bo.best_oversubscription_factor;
+                        cfg.z_batches               = bo.best_z_batches;
                         auto r      = benchmark_scatter(method, cfg, kernel, n_particles, bt, true);
                         r.team_size = bo.best_team_size;
                         r.oversubscription_factor = bo.best_oversubscription_factor;
+                        r.z_batches               = bo.best_z_batches;
                         results.push_back(r);
                     }
                 }
@@ -793,7 +810,8 @@ public:
                         auto bo = other.run_bo(method, kernel, other_np);
                         bo_results.push_back(bo);
                         const auto& bt = bo.best_tile;
-                        if (other.is_config_valid(method, bt, actual_width, bo.best_team_size)) {
+                        if (other.is_config_valid(method, bt, actual_width, bo.best_team_size,
+                                                  bo.best_z_batches)) {
                             auto cfg = ippl::Interpolation::ScatterConfig<Dim>::
                                 get_default<ExecSpace>();
                             cfg.method = (method == "Tiled")
@@ -802,10 +820,12 @@ public:
                             cfg.tile_size               = {bt[0], bt[1], bt[2]};
                             cfg.team_size               = bo.best_team_size;
                             cfg.oversubscription_factor = bo.best_oversubscription_factor;
+                            cfg.z_batches               = bo.best_z_batches;
                             auto r = other.benchmark_scatter(method, cfg, kernel, other_np, bt,
                                                              true);
                             r.team_size               = bo.best_team_size;
                             r.oversubscription_factor = bo.best_oversubscription_factor;
+                            r.z_batches               = bo.best_z_batches;
                             results.push_back(r);
                         }
                     }
@@ -844,6 +864,7 @@ public:
         r.tile_size               = tile_arr[0];
         r.team_size               = cfg.team_size;
         r.oversubscription_factor = cfg.oversubscription_factor;
+        r.z_batches               = cfg.z_batches;
         r.kernel_width            = kernel.width();
         r.n_particles             = n_particles;
         r.n_grid                  = params_.n_grid;
@@ -913,10 +934,14 @@ public:
 
         const int lo_osub = params_.min_osub, hi_osub = params_.max_osub;
 
-        std::array<int, 5> lo_bounds = {lo_tile, lo_tile, lo_tile, lo_ts, lo_osub};
-        std::array<int, 5> hi_bounds = {hi_tile, hi_tile, hi_tile, hi_ts, hi_osub};
+        // z_batches only applies to OutputFocused (GridParallelScatter)
+        const int lo_zb = (method == "OutputFocused") ? params_.min_z_batches : 1;
+        const int hi_zb = (method == "OutputFocused") ? params_.max_z_batches : 1;
 
-        GPModel<5> gp;
+        std::array<int, 6> lo_bounds = {lo_tile, lo_tile, lo_tile, lo_ts, lo_osub, lo_zb};
+        std::array<int, 6> hi_bounds = {hi_tile, hi_tile, hi_tile, hi_ts, hi_osub, hi_zb};
+
+        GPModel<6> gp;
         gp.set_bounds(lo_bounds, hi_bounds);
 
         std::unordered_map<SearchPoint, bool, SearchPointHash> feasible_cache;
@@ -930,7 +955,8 @@ public:
             auto it = feasible_cache.find(pt);
             if (it != feasible_cache.end())
                 return it->second;
-            bool ok            = is_config_valid(method, pt.tile(), kernel_W, ts_of(pt.ts_idx()));
+            bool ok = is_config_valid(method, pt.tile(), kernel_W, ts_of(pt.ts_idx()),
+                                      pt.z_batches());
             feasible_cache[pt] = ok;
             return ok;
         };
@@ -942,6 +968,7 @@ public:
             cfg.tile_size = {pt.tile_x(), pt.tile_y(), pt.tile_z()};
             cfg.team_size = ts_of(pt.ts_idx());
             cfg.oversubscription_factor = pt.osub();
+            cfg.z_batches               = pt.z_batches();
             return cfg;
         };
 
@@ -994,8 +1021,8 @@ public:
                           << pt.tile_x() << "," << pt.tile_y() << "," << pt.tile_z() << ")"
                           << " team=" << ts_of(pt.ts_idx())
                           << " (threads=" << actual_threads(method, ts_of(pt.ts_idx())) << ")"
-                          << " osub=" << pt.osub() << "  tp=" << std::fixed << std::setprecision(1)
-                          << tp << " Mpts/s\n";
+                          << " osub=" << pt.osub() << " zb=" << pt.z_batches()
+                          << "  tp=" << std::fixed << std::setprecision(1) << tp << " Mpts/s\n";
             return tp;
         };
 
@@ -1044,7 +1071,7 @@ public:
                 // surrogate learns both feasible and infeasible regions.
                 gp.add_observation(pt.v, tp);
                 bo.history.emplace_back(bo.evaluations, pt.tile_x(), pt.tile_y(), pt.tile_z(),
-                                        ts_of(pt.ts_idx()), pt.osub(), tp);
+                                        ts_of(pt.ts_idx()), pt.osub(), pt.z_batches(), tp);
                 if (tp > best_tp) {
                     best_tp = tp;
                     best_pt = pt;
@@ -1114,8 +1141,9 @@ public:
 
                 double tp = evaluate(next);
                 gp.add_observation(next.v, tp);
-                bo.history.emplace_back(bo.evaluations, next.tile_x(), next.tile_y(), next.tile_z(),
-                                        ts_of(next.ts_idx()), next.osub(), tp);
+                bo.history.emplace_back(bo.evaluations, next.tile_x(), next.tile_y(),
+                                        next.tile_z(), ts_of(next.ts_idx()), next.osub(),
+                                        next.z_batches(), tp);
                 if (tp > best_tp) {
                     best_tp = tp;
                     best_pt = next;
@@ -1132,7 +1160,7 @@ public:
                       << best_pt.tile_y() << "," << best_pt.tile_z()
                       << ") team=" << ts_of(best_pt.ts_idx())
                       << " (threads=" << actual_threads(method, ts_of(best_pt.ts_idx())) << ")"
-                      << " osub=" << best_pt.osub() << "\n";
+                      << " osub=" << best_pt.osub() << " zb=" << best_pt.z_batches() << "\n";
         {
             bool improved = true;
             int budget    = 30;
@@ -1151,7 +1179,8 @@ public:
                             tp = evaluate(c);
                             --budget;
                             bo.history.emplace_back(bo.evaluations, c.tile_x(), c.tile_y(),
-                                                    c.tile_z(), ts_of(c.ts_idx()), c.osub(), tp);
+                                                    c.tile_z(), ts_of(c.ts_idx()), c.osub(),
+                                                    c.z_batches(), tp);
                         }
                         if (tp > best_tp) {
                             best_tp  = tp;
@@ -1168,6 +1197,7 @@ public:
         bo.best_tile                    = {best_pt.tile_x(), best_pt.tile_y(), best_pt.tile_z()};
         bo.best_team_size               = ts_of(best_pt.ts_idx());
         bo.best_oversubscription_factor = best_pt.osub();
+        bo.best_z_batches               = best_pt.z_batches();
 
         // Warn if the best found configuration has zero or negative throughput.
         if (best_tp <= 0.0 && ippl::Comm->rank() == 0) {
@@ -1196,6 +1226,7 @@ public:
                       << " team=" << bo.best_team_size
                       << " (threads=" << actual_threads(method, bo.best_team_size) << ")"
                       << " osub=" << bo.best_oversubscription_factor
+                      << " zb=" << bo.best_z_batches
                       << "  throughput=" << std::fixed << std::setprecision(1)
                       << bo.best_throughput_Mpts << " Mpts/s"
                       << "  (" << bo.evaluations << " evals)\n";
@@ -1309,7 +1340,9 @@ public:
                 std::cout << ts << " ";
             std::cout << "(× " << BenchParams::warp_size << " = GPU threads)\n"
                       << "Osub range:       [" << params_.min_osub << ", " << params_.max_osub
-                      << "]\n";
+                      << "]\n"
+                      << "Z-batches range:  [" << params_.min_z_batches << ", "
+                      << params_.max_z_batches << "]\n";
         }
         std::cout << "================================================================\n\n";
     }
@@ -1320,14 +1353,15 @@ public:
         std::string fn = params_.output_prefix + "_full.csv";
         std::ofstream out(fn);
         out << "method,distribution,value_type,"
-            << "tile_x,tile_y,tile_z,team_size,oversubscription_factor,"
+            << "tile_x,tile_y,tile_z,team_size,oversubscription_factor,z_batches,"
             << "kernel_width,n_particles,n_grid,rho,"
             << "mean_ms,stddev_ms,min_ms,max_ms,median_ms,"
             << "throughput_Mpts_s,time_per_pt_ns,from_optimizer,status\n";
         for (const auto& r : results) {
             out << r.method << "," << r.distribution << "," << r.value_type << ","
                 << r.tile_sizes[0] << "," << r.tile_sizes[1] << "," << r.tile_sizes[2] << ","
-                << r.team_size << "," << r.oversubscription_factor << "," << r.kernel_width << ","
+                << r.team_size << "," << r.oversubscription_factor << "," << r.z_batches << ","
+                << r.kernel_width << ","
                 << r.n_particles << "," << r.n_grid << "," << std::fixed << std::setprecision(1)
                 << r.rho << ",";
             if (std::isnan(r.stats.mean_ms))
@@ -1427,14 +1461,14 @@ public:
         std::ofstream out(fn);
         out << "method,value_type,kernel_width,"
             << "best_tile_x,best_tile_y,best_tile_z,"
-            << "best_team_size,best_oversubscription_factor,"
+            << "best_team_size,best_oversubscription_factor,best_z_batches,"
             << "throughput_Mpts_s,time_ms,evaluations\n";
         for (const auto& r : rs)
             out << r.method << "," << r.value_type << "," << r.kernel_width << "," << r.best_tile[0]
                 << "," << r.best_tile[1] << "," << r.best_tile[2] << "," << r.best_team_size << ","
-                << r.best_oversubscription_factor << "," << std::fixed << std::setprecision(2)
-                << r.best_throughput_Mpts << "," << std::setprecision(4) << r.best_time_ms << ","
-                << r.evaluations << "\n";
+                << r.best_oversubscription_factor << "," << r.best_z_batches << "," << std::fixed
+                << std::setprecision(2) << r.best_throughput_Mpts << "," << std::setprecision(4)
+                << r.best_time_ms << "," << r.evaluations << "\n";
         out.close();
         std::cout << "Wrote BO optimal results to: " << fn << "\n";
     }
@@ -1445,12 +1479,12 @@ public:
         std::string fn = params_.output_prefix + "_sa_history.csv";
         std::ofstream out(fn);
         out << "method,value_type,kernel_width,step,tile_x,tile_y,tile_z,team_size,"
-               "oversubscription_factor,throughput_Mpts_s\n";
+               "oversubscription_factor,z_batches,throughput_Mpts_s\n";
         for (const auto& r : rs)
-            for (const auto& [step, tx, ty, tz, ts, osub, tp] : r.history)
+            for (const auto& [step, tx, ty, tz, ts, osub, zb, tp] : r.history)
                 out << r.method << "," << r.value_type << "," << r.kernel_width << "," << step
-                    << "," << tx << "," << ty << "," << tz << "," << ts << "," << osub << ","
-                    << std::fixed << std::setprecision(2) << tp << "\n";
+                    << "," << tx << "," << ty << "," << tz << "," << ts << "," << osub << "," << zb
+                    << "," << std::fixed << std::setprecision(2) << tp << "\n";
         out.close();
         std::cout << "Wrote BO convergence history to: " << fn << "\n";
     }

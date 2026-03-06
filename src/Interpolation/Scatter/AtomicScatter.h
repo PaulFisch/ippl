@@ -73,7 +73,8 @@ namespace ippl::Interpolation::detail {
         }
 
         template <bool>
-        static size_t compute_scratch_size(Vector<int, 3> /* tile_size */, int /* tile_size */) {
+        static size_t compute_scratch_size(Vector<int, 3> /* tile_size */, int /* team_size */,
+                                           int /* z_batches */ = 1) {
             return 0;
         }
 

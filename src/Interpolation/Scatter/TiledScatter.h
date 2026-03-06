@@ -250,7 +250,8 @@ namespace ippl::Interpolation::detail {
         }
 
         template <bool IsComplex>
-        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int /* team_size */) {
+        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int /* team_size */,
+                                           int /* z_batches */ = 1) {
             size_t n = 1;
             for (unsigned d = 0; d < Dim; ++d)
                 n *= static_cast<size_t>(tile_size[d] + W + 1);
