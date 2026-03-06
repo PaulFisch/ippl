@@ -544,22 +544,17 @@ public:
     using other_value_type =
         std::conditional_t<is_complex, real_type, Kokkos::complex<real_type>>;
 
-    static size_t device_shmem_bytes() {
-#if defined(KOKKOS_ENABLE_CUDA)
-        int dev = 0;
-        cudaGetDevice(&dev);
-        int b = 0;
-        cudaDeviceGetAttribute(&b, cudaDevAttrMaxSharedMemoryPerBlock, dev);
-        return static_cast<size_t>(std::max(b, 0));
-#elif defined(KOKKOS_ENABLE_HIP)
-        int dev = 0;
-        hipGetDevice(&dev);
-        hipDeviceProp_t prop;
-        hipGetDeviceProperties(&prop, dev);
-        return prop.sharedMemPerBlock;
-#else
-        return static_cast<size_t>(1) << 30;
-#endif
+    // Returns the maximum scratch memory available for a given team configuration.
+    // Uses Kokkos's scratch_size_max to get the actual limit (not raw hardware limit).
+    static size_t scratch_size_max_for_team(const std::string& method, int team_size) {
+        using team_policy = Kokkos::TeamPolicy<ExecSpace>;
+        if (method == "OutputFocused") {
+            // GridParallelScatter uses 3-level parallelism with vector_length = 32
+            return team_policy(1, team_size, 32).scratch_size_max(0);
+        } else {
+            // TiledScatter uses 2-level parallelism
+            return team_policy(1, team_size).scratch_size_max(0);
+        }
     }
 
     using DummyFieldView = typename Field_t::view_type;
@@ -648,7 +643,7 @@ public:
     bool fits_in_shmem(const std::string& method, const std::array<int, 3>& tile, int W,
                        int team_size, bool force_complex = false) const {
         size_t req   = required_shmem(method, tile, W, team_size, force_complex);
-        size_t avail = device_shmem_bytes();
+        size_t avail = scratch_size_max_for_team(method, team_size);
         if (params_.verbose && ippl::Comm->rank() == 0)
             std::cout << "  [shmem] " << method << " tile=(" << tile[0] << "," << tile[1] << ","
                       << tile[2] << ") W=" << W << " team=" << team_size << " req=" << req

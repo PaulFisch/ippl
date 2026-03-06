@@ -235,7 +235,12 @@ namespace ippl {
             if constexpr (!Impl<W, Types, Policy>::requires_binning)
                 return;
 
-            const size_t avail = get_device_shmem();
+            using execution_space = typename Types::execution_space;
+            using team_policy     = Kokkos::TeamPolicy<execution_space>;
+
+            // Use Kokkos's scratch_size_max to get the actual available scratch,
+            // which accounts for Kokkos internal overhead (not just raw hardware limit).
+            const size_t avail = team_policy(1, cfg.team_size).scratch_size_max(0);
 
             Vector<int, Dim> tile = cfg.get_tile_size();
 
