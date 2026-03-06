@@ -531,84 +531,6 @@ public:
         }
     }
 
-    // Test 6: Gather accuracy with smooth function
-    void runGatherAccuracyTest(const gather_config_type& config) {
-        field_type field(*mesh, *layout, nghost);
-
-        auto hx_local     = hx;
-        auto origin_local = origin;
-        auto view         = field.getView();
-        const auto& lDom  = layout->getLocalNDIndex();
-        int ng            = nghost;
-
-        // Initialize field with sin function
-        using index_array_type = ippl::RangePolicy<Dim>::index_array_type;
-        ippl::parallel_for(
-            "init_sin_field", field.getFieldRangePolicy(),
-            KOKKOS_LAMBDA(const index_array_type& args) {
-                auto global_idx = lDom.first() + args - ng;
-                T val           = 1.0;
-                for (unsigned d = 0; d < Dim; ++d) {
-                    val *= Kokkos::sin(origin_local[d] + (global_idx[d] + 0.5) * hx_local[d]);
-                }
-            });
-        Kokkos::fence();
-
-        size_t nParticles = 200;
-        createUniformParticles(nParticles);
-        bunch->update();
-
-        auto gathered_view = bunch->gathered_scalar.getView();
-        Kokkos::parallel_for(
-            "zero_gathered", Kokkos::RangePolicy<ExecSpace>(0, bunch->getLocalNum()),
-            KOKKOS_LAMBDA(size_t i) { gathered_view(i) = 0.0; });
-        Kokkos::fence();
-
-        auto gather = ippl::Gather<decltype(kernel), Dim>(kernel, config);
-        gather(field, bunch->R, bunch->gathered_scalar);
-
-        auto R_view = bunch->R.getView();
-
-        T localMaxError = 0.0;
-        T localSumError = 0.0;
-
-        Kokkos::parallel_reduce(
-            "check_accuracy", Kokkos::RangePolicy<ExecSpace>(0, bunch->getLocalNum()),
-            KOKKOS_LAMBDA(size_t i, T& maxErr, T& sumErr) {
-                ippl::Vector<T, Dim> pos = R_view(i);
-
-                T expected = 1.0;
-                for (unsigned d = 0; d < Dim; ++d) {
-                    expected *= Kokkos::sin(pos[d]);
-                }
-
-                T error = Kokkos::abs(gathered_view(i) - expected);
-                if (error > maxErr)
-                    maxErr = error;
-                sumErr += error;
-            },
-            Kokkos::Max<T>(localMaxError), Kokkos::Sum<T>(localSumError));
-        Kokkos::fence();
-
-        T globalMaxError = 0.0;
-        T globalSumError = 0.0;
-        ippl::Comm->allreduce(localMaxError, globalMaxError, 1, std::plus<T>{});
-        ippl::Comm->allreduce(localSumError, globalSumError, 1, std::plus<T>{});
-
-        size_t totalParticles = countTotalParticles();
-        T avgError            = globalSumError / totalParticles;
-
-        T expectedMaxError = std::pow(hx[0], kernel_traits::order + 1) * 10.0;
-        expectedMaxError   = std::max(expectedMaxError, T(0.1));
-
-        if (myRank == 0) {
-            std::cout << "Max error " << globalMaxError << ", allowed max" << expectedMaxError
-                      << std::endl;
-            EXPECT_LT(avgError, expectedMaxError)
-                << "Gather average error too large for " << kernel_traits::name << ": " << avgError;
-        }
-    }
-
     // Test 7: Adjointness with complex values
     void runAdjointnessTest(const scatter_config_type& scatterCfg,
                             const gather_config_type& gatherCfg, T testTolerance = 1e-10) {
@@ -738,18 +660,18 @@ public:
     // Test 10: Symmetry test
     void runSymmetryTest(const scatter_config_type& config) {
         field_type field(*mesh, *layout, nghost);
-        field = T(0.0);
+        field             = T(0.0);
+        size_t nParticles = myRank == 0 ? (Dim == 3) ? 8 : 4 : 0;
 
+        bunch->create(nParticles);
         if (myRank == 0) {
-            size_t nParticles = (Dim == 3) ? 8 : 4;
-            bunch->create(nParticles);
-
             auto R_view      = bunch->R.getView();
             auto weight_view = bunch->weight.getView();
 
-            T cx     = origin[0] + 0.5 * extent[0];
-            T cy     = origin[1] + 0.5 * extent[1];
-            T cz     = (Dim == 3) ? origin[2] + 0.5 * extent[2] : T(0);
+            T cx = origin[0] + (static_cast<T>(gridSize[0] / 2) + T(0.5)) * hx[0];
+            T cy = origin[1] + (static_cast<T>(gridSize[1] / 2) + T(0.5)) * hx[1];
+            T cz =
+                (Dim == 3) ? origin[2] + (static_cast<T>(gridSize[2] / 2) + T(0.5)) * hx[2] : T(0);
             T offset = 0.1 * extent[0];
 
             auto R_host      = Kokkos::create_mirror_view(R_view);
@@ -786,6 +708,8 @@ public:
         int ng           = nghost;
 
         T maxAsymmetry = 0.0;
+
+
 
         int centerI = gridSize[0] / 2;
         int centerJ = gridSize[1] / 2;
@@ -895,6 +819,266 @@ public:
         }
     }
 
+    void runGatherConvergenceTest(const gather_config_type& config) {
+        const int order = kernel_traits::order;
+
+        constexpr int N_COARSE = 16;
+        constexpr int N_FINE   = 32;
+
+        auto measureGatherError = [&](int nGrid) -> T {
+            // Mirror SetUp() exactly, but with nGrid cells per dim
+            std::array<ippl::Index, Dim> domains;
+            std::array<bool, Dim> isParallel;
+            isParallel.fill(true);
+
+            ippl::Vector<T, Dim> hx_local;
+            for (unsigned d = 0; d < Dim; ++d) {
+                domains[d]  = ippl::Index(nGrid);
+                hx_local[d] = extent[d] / nGrid;
+            }
+
+            auto owned = std::make_from_tuple<ippl::NDIndex<Dim>>(domains);
+            auto layout_local =
+                std::make_shared<layout_type>(MPI_COMM_WORLD, owned, isParallel, true, nghost);
+            auto mesh_local    = std::make_shared<mesh_type>(owned, hx_local, origin);
+            auto playout_local = std::make_shared<playout_type>(*layout_local, *mesh_local);
+            auto bunch_local   = std::make_shared<bunch_type>(*playout_local);
+
+            field_type field(*mesh_local, *layout_local, nghost);
+
+            // Fill field with sin at cell centres
+            {
+                auto view        = field.getView();
+                const auto& lDom = layout_local->getLocalNDIndex();
+                const int ng     = nghost;
+                auto origin_     = origin;
+                auto hx_         = hx_local;
+                auto extent_     = extent;
+
+                using index_array_type = ippl::RangePolicy<Dim>::index_array_type;
+                ippl::parallel_for(
+                    "fill_sin_gather", field.getFieldRangePolicy(),
+                    KOKKOS_LAMBDA(const index_array_type& args) {
+                        auto gidx = lDom.first() + args - ng;
+                        T val     = T(1);
+                        for (unsigned d = 0; d < Dim; ++d) {
+                            const T xc = origin_[d] + (static_cast<T>(gidx[d]) + T(0.5)) * hx_[d];
+                            val *= Kokkos::sin(T(2) * Kokkos::numbers::pi_v<T> * xc / extent_[d]);
+                        }
+                        apply(view, args) = val;
+                    });
+                Kokkos::fence();
+            }
+
+            // Create 500 uniform random particles
+            constexpr size_t nParticles = 500;
+            bunch_local->create(nParticles);
+            {
+                auto R_view      = bunch_local->R.getView();
+                auto weight_view = bunch_local->weight.getView();
+
+                using RandPool = Kokkos::Random_XorShift64_Pool<ExecSpace>;
+                RandPool randPool(42 + myRank * 1000);
+                auto origin_ = origin;
+                auto extent_ = extent;
+
+                Kokkos::parallel_for(
+                    "create_particles_gather", Kokkos::RangePolicy<ExecSpace>(0, nParticles),
+                    KOKKOS_LAMBDA(size_t i) {
+                        typename RandPool::generator_type gen = randPool.get_state();
+                        ippl::Vector<T, Dim> pos;
+                        for (unsigned d = 0; d < Dim; ++d)
+                            pos[d] = origin_[d] + gen.drand() * extent_[d];
+                        R_view(i)      = pos;
+                        weight_view(i) = T(1);
+                        randPool.free_state(gen);
+                    });
+                Kokkos::fence();
+            }
+            bunch_local->update();
+
+            auto gathered_view = bunch_local->gathered_scalar.getView();
+            Kokkos::parallel_for(
+                "zero_gathered_conv", Kokkos::RangePolicy<ExecSpace>(0, bunch_local->getLocalNum()),
+                KOKKOS_LAMBDA(size_t i) { gathered_view(i) = T(0); });
+            Kokkos::fence();
+
+            auto gather_op = ippl::Gather<decltype(kernel), Dim>(kernel, config);
+            gather_op(field, bunch_local->R, bunch_local->gathered_scalar);
+
+            auto R_view   = bunch_local->R.getView();
+            auto extent_  = extent;
+            size_t localN = bunch_local->getLocalNum();
+            T localSum    = T(0);
+
+            Kokkos::parallel_reduce(
+                "gather_conv_error", Kokkos::RangePolicy<ExecSpace>(0, localN),
+                KOKKOS_LAMBDA(size_t i, T& sum) {
+                    T expected = T(1);
+                    for (unsigned d = 0; d < Dim; ++d)
+                        expected *= Kokkos::sin(T(2) * Kokkos::numbers::pi_v<T>
+                                                * R_view(i)[d] / extent_[d]);
+                    sum += Kokkos::abs(gathered_view(i) - expected);
+                },
+                Kokkos::Sum<T>(localSum));
+            Kokkos::fence();
+
+            T globalSum    = T(0);
+            size_t globalN = 0;
+            ippl::Comm->allreduce(localSum, globalSum, 1, std::plus<T>{});
+            ippl::Comm->allreduce(localN, globalN, 1, std::plus<size_t>{});
+            return globalSum / static_cast<T>(globalN);
+        };
+
+        const T err_coarse = measureGatherError(N_COARSE);
+        const T err_fine   = measureGatherError(N_FINE);
+        const T ratio      = err_coarse / err_fine;
+        const T expected   = (order == 0) ? T(2) : T(4);
+
+        if (myRank == 0) {
+            std::cout << "  [" << kernel_traits::name << " " << Dim << "D] gather convergence:"
+                      << "  err(N=" << N_COARSE << ")=" << err_coarse << "  err(N=" << N_FINE
+                      << ")=" << err_fine << "  ratio=" << ratio << "  expected~" << expected
+                      << "\n";
+
+            EXPECT_GT(ratio, expected * T(0.5))
+                << kernel_traits::name << " " << Dim << "D gather: "
+                << "convergence too slow (ratio=" << ratio << ", expected~" << expected << ")";
+            EXPECT_LT(ratio, expected * T(4.0))
+                << kernel_traits::name << " " << Dim << "D gather: "
+                << "convergence ratio suspiciously high (ratio=" << ratio << ", expected~"
+                << expected << ")";
+        }
+    }
+
+    void runScatterConvergenceTest(const scatter_config_type& config) {
+        const int order = kernel_traits::order;
+
+        constexpr int N_COARSE = 16;
+        constexpr int N_FINE   = 32;
+
+        auto measureScatterError = [&](int nGrid) -> T {
+            // Mirror SetUp() exactly, but with nGrid cells per dim
+            std::array<ippl::Index, Dim> domains;
+            std::array<bool, Dim> isParallel;
+            isParallel.fill(true);
+
+            ippl::Vector<T, Dim> hx_local;
+            for (unsigned d = 0; d < Dim; ++d) {
+                domains[d]  = ippl::Index(nGrid);
+                hx_local[d] = extent[d] / nGrid;
+            }
+
+            auto owned = std::make_from_tuple<ippl::NDIndex<Dim>>(domains);
+            auto layout_local =
+                std::make_shared<layout_type>(MPI_COMM_WORLD, owned, isParallel, true, nghost);
+            auto mesh_local    = std::make_shared<mesh_type>(owned, hx_local, origin);
+            auto playout_local = std::make_shared<playout_type>(*layout_local, *mesh_local);
+            auto bunch_local   = std::make_shared<bunch_type>(*playout_local);
+
+            field_type field(*mesh_local, *layout_local, nghost);
+            field = T(0);
+
+            // One particle per cell at (cell + 0.75)*hx — offset avoids trivial K(0)
+            const size_t nParticles = [&]() {
+                size_t n = 1;
+                for (unsigned d = 0; d < Dim; ++d)
+                    n *= static_cast<size_t>(nGrid);
+                return n;
+            }();
+
+            bunch_local->create(nParticles);
+            {
+                auto R_view      = bunch_local->R.getView();
+                auto weight_view = bunch_local->weight.getView();
+                auto origin_     = origin;
+                auto hx_         = hx_local;
+                auto extent_     = extent;
+
+                Kokkos::parallel_for(
+                    "create_regular_scatter", Kokkos::RangePolicy<ExecSpace>(0, nParticles),
+                    KOKKOS_LAMBDA(size_t idx) {
+                        size_t tmp = idx;
+                        ippl::Vector<T, Dim> pos;
+                        for (unsigned d = 0; d < Dim; ++d) {
+                            const int cell = static_cast<int>(tmp % static_cast<size_t>(nGrid));
+                            tmp /= static_cast<size_t>(nGrid);
+                            pos[d] = origin_[d] + (static_cast<T>(cell) + T(0.75)) * hx_[d];
+                        }
+                        R_view(idx) = pos;
+
+                        T val = T(1);
+                        for (unsigned d = 0; d < Dim; ++d)
+                            val *=
+                                Kokkos::sin(T(2) * Kokkos::numbers::pi_v<T> * pos[d] / extent_[d]);
+                        weight_view(idx) = val;
+                    });
+                Kokkos::fence();
+            }
+            bunch_local->update();
+
+            auto scatter_op = ippl::Scatter<decltype(kernel), Dim>(kernel, config);
+            scatter_op(field, bunch_local->R, bunch_local->weight);
+
+            // Avg |field_j - f(x_j)| over interior cells
+            auto view        = field.getView();
+            const auto& lDom = layout_local->getLocalNDIndex();
+            const int ng     = nghost;
+            auto origin_     = origin;
+            auto hx_         = hx_local;
+            auto extent_     = extent;
+
+            T localSum = T(0);
+            T localN   = T(0);
+
+            using index_array_type = ippl::RangePolicy<Dim>::index_array_type;
+            ippl::parallel_reduce(
+                "scatter_conv_error", field.getFieldRangePolicy(),
+                KOKKOS_LAMBDA(const index_array_type& args, T& sum, T& cnt) {
+                    // Skip ghost cells
+                    for (unsigned d = 0; d < Dim; ++d) {
+                        if (static_cast<int>(args[d]) < ng
+                            || static_cast<int>(args[d]) >= ng + nGrid)
+                            return;
+                    }
+                    auto gidx  = lDom.first() + args - ng;
+                    T expected = T(1);
+                    for (unsigned d = 0; d < Dim; ++d) {
+                        const T xc = origin_[d] + (static_cast<T>(gidx[d]) + T(0.5)) * hx_[d];
+                        expected *= Kokkos::sin(T(2) * Kokkos::numbers::pi_v<T> * xc / extent_[d]);
+                    }
+                    sum += Kokkos::abs(apply(view, args) - expected);
+                    cnt += T(1);
+                },
+                Kokkos::Sum<T>(localSum), Kokkos::Sum<T>(localN));
+            Kokkos::fence();
+
+            T globalSum = T(0), globalN = T(0);
+            ippl::Comm->allreduce(localSum, globalSum, 1, std::plus<T>{});
+            ippl::Comm->allreduce(localN, globalN, 1, std::plus<T>{});
+            return globalSum / globalN;
+        };
+
+        const T err_coarse = measureScatterError(N_COARSE);
+        const T err_fine   = measureScatterError(N_FINE);
+        const T ratio      = err_coarse / err_fine;
+        const T expected   = (order == 0) ? T(2) : T(4);
+
+        if (myRank == 0) {
+            std::cout << "  [" << kernel_traits::name << " " << Dim << "D] scatter convergence:"
+                      << "  err(N=" << N_COARSE << ")=" << err_coarse << "  err(N=" << N_FINE
+                      << ")=" << err_fine << "  ratio=" << ratio << "  expected~" << expected
+                      << "\n";
+
+            EXPECT_GT(ratio, expected * T(0.5))
+                << kernel_traits::name << " " << Dim << "D scatter: "
+                << "convergence too slow (ratio=" << ratio << ", expected~" << expected << ")";
+            EXPECT_LT(ratio, expected * T(4.0))
+                << kernel_traits::name << " " << Dim << "D scatter: "
+                << "convergence ratio suspiciously high (ratio=" << ratio << ", expected~"
+                << expected << ")";
+        }
+    }
     // Test 12: Scatter with and without sorting should give identical results
     void runScatterSortComparisonTest() {
         field_type fieldNoSort(*mesh, *layout, nghost);
@@ -1088,10 +1272,16 @@ TYPED_TEST(ScatterGatherTest, Gather_ConstantField_Tiled) {
     this->runGatherConstantFieldTest(config);
 }
 
-TYPED_TEST(ScatterGatherTest, Gather_Accuracy_Atomic) {
+TYPED_TEST(ScatterGatherTest, Gather_Convergence_Atomic) {
     typename TestFixture::gather_config_type config;
     config.method = ippl::Interpolation::GatherMethod::Atomic;
-    this->runGatherAccuracyTest(config);
+    this->runGatherConvergenceTest(config);
+}
+
+TYPED_TEST(ScatterGatherTest, Scatter_Convergence_Atomic) {
+    typename TestFixture::scatter_config_type config;
+    config.method = ippl::Interpolation::ScatterMethod::Atomic;
+    this->runScatterConvergenceTest(config);
 }
 
 //=============================================================================

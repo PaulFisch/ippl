@@ -67,7 +67,7 @@ namespace ippl::Interpolation {
         KOKKOS_FORCEINLINE_FUNCTION T toGridCoordinate(T physical_pos) const {
             T gp      = (physical_pos - origin_[D]) * invdx_[D];
             const T n = static_cast<T>(ngrid_global_[D]);
-            gp -= static_cast<int>(gp / n) * n;
+            gp -= Kokkos::floor(gp / n) * n;
             return gp;
         }
 
@@ -86,10 +86,8 @@ namespace ippl::Interpolation {
          */
         KOKKOS_INLINE_FUNCTION int getStencilCenter(T grid_pos, int width) const {
             const bool odd = (width & 1);
-            int center_idx =
-                odd ? static_cast<int>(Kokkos::round(grid_pos)) : static_cast<int>(grid_pos);
-
-            return center_idx;
+            return odd ? static_cast<int>(Kokkos::round(grid_pos))
+                       : static_cast<int>(Kokkos::floor(grid_pos));
         }
 
         template <int Width>
@@ -97,7 +95,7 @@ namespace ippl::Interpolation {
             if constexpr (Width & 1)
                 return static_cast<int>(Kokkos::round(grid_pos));
             else
-                return static_cast<int>(grid_pos);
+                return static_cast<int>(Kokkos::floor(grid_pos));
         }
 
         /**

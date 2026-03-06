@@ -121,6 +121,10 @@ namespace ippl {
         KOKKOS_INLINE_FUNCTION constexpr static bool positionInRegion(
             const std::index_sequence<Idx...>&, const vector_type& pos, const region_type& region);
 
+        template <size_t... Idx>
+        KOKKOS_INLINE_FUNCTION constexpr static bool positionInRegionInclusive(
+            const std::index_sequence<Idx...>&, const vector_type& pos, const region_type& region);
+
         /*!
          * Evaluates the total number of MPI ranks sharing the spatial nearest neighbors.
          * @param neighbors structure containing, for every spatial direction, a list of

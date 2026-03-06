@@ -17,7 +17,7 @@ namespace ippl::Interpolation::detail {
 
         static constexpr bool requires_binning = true;  // algorithmically required
         static constexpr unsigned Dim          = Types::Dim;
-        static constexpr int half_left         = (W - 1) / 2;
+        static constexpr int half_left         = (W + 1) / 2;
 
         using RealType        = Types::RealType;
         using ValueType       = Types::ValueType;
@@ -139,14 +139,14 @@ namespace ippl::Interpolation::detail {
         KOKKOS_INLINE_FUNCTION Vector<int, Dim> hist_size() const {
             Vector<int, Dim> hs;
             for (unsigned d = 0; d < Dim; ++d)
-                hs[d] = args.tile_size[d] + W;
+                hs[d] = args.tile_size[d] + W + 1;
             return hs;
         }
 
         KOKKOS_INLINE_FUNCTION size_t hist_total() const {
             size_t n = 1;
             for (unsigned d = 0; d < Dim; ++d)
-                n *= static_cast<size_t>(args.tile_size[d] + W);
+                n *= static_cast<size_t>(args.tile_size[d] + W + 1);
             return n;
         }
 
@@ -195,12 +195,12 @@ namespace ippl::Interpolation::detail {
 
                 for_constexpr(std::make_integer_sequence<int, Dim>{}, [&]<int d> {
                     const RealType g = transform.toGridCoordinate(args.x(p)[d], d);
-                    const int idx0   = transform.getStencilBase(g, W);
+                    const int idx0   = transform.getStencilBase(g - RealType(0.5), W);
 
                     stencil.base[d] = idx0 - args.local_offset[d];
 
                     for (int i = 0; i < W; ++i) {
-                        stencil.kw[d][i] = args.kernel((g - RealType(idx0 + i)) * args.inv_hw);
+                        stencil.kw[d][i] = args.kernel((g - (RealType(idx0 + i) + RealType(0.5))) * args.inv_hw);
                     }
                 });
 
@@ -253,7 +253,7 @@ namespace ippl::Interpolation::detail {
         static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int /* team_size */) {
             size_t n = 1;
             for (unsigned d = 0; d < Dim; ++d)
-                n *= static_cast<size_t>(tile_size[d] + W);
+                n *= static_cast<size_t>(tile_size[d] + W + 1);
             const size_t scratch = (IsComplex ? 2 : 1) * n * sizeof(RealType);
 
             return scratch;

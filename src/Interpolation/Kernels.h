@@ -21,7 +21,7 @@ namespace ippl {
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // Transform: y = x * (w/2) = x * 0.5
                 // Condition |y| < 0.5 becomes |x| < 1
-                return Kokkos::abs(x) < T(1) ? T(1) : T(0);
+                return Kokkos::abs(x) <= T(1) ? T(1) : T(0);
             }
 
             KOKKOS_INLINE_FUNCTION static constexpr int width() { return 1; }

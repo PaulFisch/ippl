@@ -51,14 +51,16 @@ namespace ippl::Interpolation::detail {
             CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx, args.n_grid};
             Stencil stencil{};
             for_constexpr(std::make_integer_sequence<int, Dim>{}, [&]<int d> {
-                const RealType g_pos = transform.toGridCoordinate(args.x(p)[d], d);
-                const int idx0       = transform.getStencilBase(g_pos, W);
+                const RealType g_pos    = transform.toGridCoordinate(args.x(p)[d], d);
+                const RealType g_pos_cc = g_pos - RealType(0.5);
+                const int idx0          = transform.getStencilBase(g_pos_cc, W);
 
                 stencil.base[d] = idx0 - args.local_offset[d] + args.nghost;
 
                 auto& kernel_vals = stencil.kw[d];
                 for (int i = 0; i < W; ++i) {
-                    kernel_vals[i] = args.kernel((g_pos - RealType(idx0 + i)) * args.inv_hw);
+                    kernel_vals[i] =
+                        args.kernel((g_pos - (RealType(idx0 + i) + RealType(0.5))) * args.inv_hw);
                 }
             });
 

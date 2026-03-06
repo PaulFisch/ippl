@@ -174,6 +174,21 @@ namespace ippl {
 
         const size_type nInvalid = locateParticlesPacked(pc);
 
+//         // Fast-path: skip all MPI if every particle is already on the correct rank.
+//         // A single allreduce suffices
+//         {
+//             size_type globalInvalid = 0;
+//             Comm->allreduce(nInvalid, globalInvalid, 1, std::plus<size_type>());
+//             if (globalInvalid == 0) {
+//                 IpplTimings::stopTimer(locateTimer);
+//                 IpplTimings::stopTimer(ParticleUpdateTimer);
+// #ifndef NDEBUG
+//                 debugCheckAllParticlesLocal(pc);
+// #endif
+//                 return;
+//             }
+//         }
+
         // Copy metadata to host
         size_type nDest = 0;
         Kokkos::deep_copy(position_execution_space{}, nDest, nDest_d_);
@@ -313,8 +328,13 @@ namespace ippl {
                     return r;
             }
 
-            // Policy if outside all regions
-            return myRank;
+            // Inclusive fallback: catches particles sitting exactly on a region
+            // lower boundary that the strict > check above missed.
+            for (int r = 0; r < static_cast<int>(Regions.extent(0)); ++r) {
+                if (positionInRegionInclusive(is, positions(i), Regions(r)))
+                    return r;
+            }
+            return myRank;  // truly outside all regions — applyBC should have prevented this
         };
 
         pc.template internalDestroy<position_memory_space, position_execution_space>(
@@ -390,6 +410,14 @@ namespace ippl {
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
     template <size_t... Idx>
     KOKKOS_INLINE_FUNCTION constexpr bool
+    ParticleSpatialLayout<T, Dim, Mesh, Properties...>::positionInRegionInclusive(
+        const std::index_sequence<Idx...>&, const vector_type& pos, const region_type& region) {
+        return ((pos[Idx] >= region[Idx].min()) && ...) && ((pos[Idx] <= region[Idx].max()) && ...);
+    };
+
+    template <typename T, unsigned Dim, class Mesh, typename... Properties>
+    template <size_t... Idx>
+    KOKKOS_INLINE_FUNCTION constexpr bool
     ParticleSpatialLayout<T, Dim, Mesh, Properties...>::positionInRegion(
         const std::index_sequence<Idx...>&, const vector_type& pos, const region_type& region) {
         return ((pos[Idx] > region[Idx].min()) && ...) && ((pos[Idx] <= region[Idx].max()) && ...);
@@ -439,20 +467,25 @@ namespace ippl {
             if (positionInRegion(is, positions(i), Regions(myRank)))
                 return myRank;
 
-            for (size_t j = 0; j < (size_t)neighbors_used; ++j) {
-                const size_type r = neighbours_d(j);
+            for (int j = 0; j < static_cast<int>(neighbors_used); ++j) {
+                const int r = neighbours_d(j);
                 if (positionInRegion(is, positions(i), Regions(r)))
                     return r;
             }
 
-            // Rare slow-path: global scan (kept for correctness)
-            for (size_type r = 0; r < Regions.extent(0); ++r) {
+            // slow-path: global scan
+            for (int r = 0; r < static_cast<int>(Regions.extent(0)); ++r) {
                 if (positionInRegion(is, positions(i), Regions(r)))
                     return r;
             }
 
-            // Policy if outside all regions
-            return myRank;
+            // Inclusive fallback: catches particles sitting exactly on a region
+            // lower boundary that the strict > check above missed (e.g. (0,0,0))
+            for (int r = 0; r < static_cast<int>(Regions.extent(0)); ++r) {
+                if (positionInRegionInclusive(is, positions(i), Regions(r)))
+                    return r;
+            }
+            return myRank;  // truly outside all regions — applyBC should have prevented this
         };
 
         // Pass 1: compute send counts + nInvalid

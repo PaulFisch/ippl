@@ -66,7 +66,7 @@ namespace ippl::Interpolation::detail {
 
         static constexpr bool     requires_binning = true;
         static constexpr unsigned Dim              = Types::Dim;
-        static constexpr int      half_left        = (W - 1) / 2;
+        static constexpr int      half_left        = (W + 1) / 2;
 
         // GPU warp size.  Every Kokkos "thread" in the team consists of this
         // many CUDA threads, which collaborate through ThreadVectorRange.
@@ -115,7 +115,7 @@ namespace ippl::Interpolation::detail {
         static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int team_size) {
             size_t htot = 1;
             for (unsigned d = 0; d < Dim; ++d)
-                htot *= static_cast<size_t>(tile_size[d] + W);
+                htot *= static_cast<size_t>(tile_size[d] + W + 1);
 
             const int    nv     = std::max(1, team_size);
             const size_t stride = padded_stride(htot);
@@ -160,14 +160,14 @@ namespace ippl::Interpolation::detail {
         KOKKOS_INLINE_FUNCTION Vector<int, Dim> hist_size() const {
             Vector<int, Dim> hs;
             for (unsigned d = 0; d < Dim; ++d)
-                hs[d] = args.tile_size[d] + W;
+                hs[d] = args.tile_size[d] + W + 1;
             return hs;
         }
 
         KOKKOS_INLINE_FUNCTION size_t hist_total() const {
             size_t n = 1;
             for (unsigned d = 0; d < Dim; ++d)
-                n *= static_cast<size_t>(args.tile_size[d] + W);
+                n *= static_cast<size_t>(args.tile_size[d] + W + 1);
             return n;
         }
 
@@ -291,9 +291,9 @@ namespace ippl::Interpolation::detail {
                         const int      d    = flat / W;
                         const int      i    = flat % W;
                         const RealType gp   = transform.toGridCoordinate(args.x(p)[d], d);
-                        const int      idx0 = transform.getStencilBase(gp, W);
+                        const int      idx0 = transform.getStencilBase(gp - RealType(0.5), W);
                         // Normalised offset from the stencil base (in [0, 1) for i=0)
-                        my_kw[d * W + i] = args.kernel((gp - RealType(idx0 + i)) * args.inv_hw);
+                        my_kw[d * W + i] = args.kernel((gp - (RealType(idx0 + i) + RealType(0.5))) * args.inv_hw);
                         // Only the lane with i==0 writes the base for dimension d.
                         // If Dim*W > 32 there may be multiple rounds; lane `flat%32` is
                         // unique per entry within each round, so no write races.
@@ -477,7 +477,7 @@ namespace ippl::Interpolation::detail {
             // Compute padded histogram stride (bank-conflict avoidance, see header)
             size_t htot = 1;
             for (unsigned d = 0; d < Dim; ++d)
-                htot *= static_cast<size_t>(args.tile_size[d] + W);
+                htot *= static_cast<size_t>(args.tile_size[d] + W + 1);
             hist_stride_ = padded_stride(htot);
 
             const size_t scratch =
