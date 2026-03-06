@@ -504,7 +504,7 @@ public:
 
 private:
     BenchParams p_;
-    ippl::NUFFT::ESKernel<real_type> kernel_;
+    ippl::nufft::ESKernel<real_type> kernel_;
 
     ippl::Vector<real_type, Dim> origin_{};
     ippl::Vector<real_type, Dim> hx_{};
