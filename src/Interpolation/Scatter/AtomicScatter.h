@@ -72,6 +72,11 @@ namespace ippl::Interpolation::detail {
                    + G0View::shmem_size(particles_per_team, Dim);
         }
 
+        template <bool>
+        static size_t compute_scratch_size(Vector<int, 3> /* tile_size */, int /* tile_size */) {
+            return 0;
+        }
+
         Arguments args;
         int particles_per_team_;
 
@@ -166,14 +171,16 @@ namespace ippl::Interpolation::detail {
                 const RealType gp0 = transform.template toGridCoordinate<0>(x0);
                 const int idx0     = transform.template getStencilBase<W>(gp0 - RealType(0.5));
                 const int b0       = idx0 - args.local_offset[0] + args.nghost;
-                fill_dim(std::integral_constant<int, 0>{}, (gp0 - (RealType(idx0) + RealType(0.5))) * inv_hw);
+                fill_dim(std::integral_constant<int, 0>{},
+                         (gp0 - (RealType(idx0) + RealType(0.5))) * inv_hw);
 
                 // dim1
                 const RealType x1  = args.x(p_global)[1];
                 const RealType gp1 = transform.template toGridCoordinate<1>(x1);
                 const int idx1     = transform.template getStencilBase<W>(gp1 - RealType(0.5));
                 const int b1       = idx1 - args.local_offset[1] + args.nghost;
-                fill_dim(std::integral_constant<int, 1>{}, (gp1 - (RealType(idx1) + RealType(0.5))) * inv_hw);
+                fill_dim(std::integral_constant<int, 1>{},
+                         (gp1 - (RealType(idx1) + RealType(0.5))) * inv_hw);
 
                 // stencil: LayoutLeft => i0 fastest, then i1
                 const ValueType my_val     = args.values(p_global);
@@ -197,21 +204,24 @@ namespace ippl::Interpolation::detail {
                 const RealType gp0 = transform.template toGridCoordinate<0>(x0);
                 const int idx0     = transform.template getStencilBase<W>(gp0 - RealType(0.5));
                 const int b0       = idx0 - args.local_offset[0] + args.nghost;
-                fill_dim(std::integral_constant<int, 0>{}, (gp0 - (RealType(idx0) + RealType(0.5))) * inv_hw);
+                fill_dim(std::integral_constant<int, 0>{},
+                         (gp0 - (RealType(idx0) + RealType(0.5))) * inv_hw);
 
                 // dim1
                 const RealType x1  = args.x(p_global)[1];
                 const RealType gp1 = transform.template toGridCoordinate<1>(x1);
                 const int idx1     = transform.template getStencilBase<W>(gp1 - RealType(0.5));
                 const int b1       = idx1 - args.local_offset[1] + args.nghost;
-                fill_dim(std::integral_constant<int, 1>{}, (gp1 - (RealType(idx1) + RealType(0.5))) * inv_hw);
+                fill_dim(std::integral_constant<int, 1>{},
+                         (gp1 - (RealType(idx1) + RealType(0.5))) * inv_hw);
 
                 // dim2
                 const RealType x2  = args.x(p_global)[2];
                 const RealType gp2 = transform.template toGridCoordinate<2>(x2);
                 const int idx2     = transform.template getStencilBase<W>(gp2 - RealType(0.5));
                 const int b2       = idx2 - args.local_offset[2] + args.nghost;
-                fill_dim(std::integral_constant<int, 2>{}, (gp2 - (RealType(idx2) + RealType(0.5))) * inv_hw);
+                fill_dim(std::integral_constant<int, 2>{},
+                         (gp2 - (RealType(idx2) + RealType(0.5))) * inv_hw);
 
                 // stencil: LayoutLeft => i0 fastest, then i1, then i2
                 const ValueType my_val     = args.values(p_global);
