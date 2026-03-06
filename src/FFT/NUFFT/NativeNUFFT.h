@@ -27,7 +27,7 @@
 #include "Particle/ParticleAttrib.h"
 
 namespace ippl {
-    namespace NUFFT {
+    namespace nufft {
 
         /**
          * @brief NUFFT implementation.

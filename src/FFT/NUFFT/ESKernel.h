@@ -10,7 +10,7 @@
 #include <cmath>
 
 namespace ippl {
-    namespace NUFFT {
+    namespace nufft {
 
         // ============================================================
         // ES Kernel polynomial evaluation for each width

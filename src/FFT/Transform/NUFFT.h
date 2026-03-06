@@ -171,7 +171,7 @@ namespace ippl {
             typename Field<Complex_t, Dim, typename RealField::Mesh_t,
                            typename RealField::Centering_t, ExecSpace>::uniform_type;
 
-        using NativeNUFFT_t = NUFFT::NativeNUFFT<Dim, T, ExecSpace>;
+        using NativeNUFFT_t = nufft::NativeNUFFT<Dim, T, ExecSpace>;
 
 #ifdef ENABLE_FINUFFT
         using Traits_t          = detail::FinufftTraits<T>;

@@ -10,76 +10,96 @@
 
 #include "FFT/NUFFT/ESKernel.h"
 #include "FFT/NUFFT/Quadrature.h"
+#include "FFT/NUFFT/NUFFTUtilities.h"
 
 namespace ippl {
-    namespace NUFFT {
+    namespace nufft {
+
+        // ====================================================================
+        // Cell-centered phase convention
+        // ====================================================================
+        //
+        // Scatter/gather use cell-centered DOFs at x_j = (j + 1/2) * h.
+        // The DFT of the scattered field is:
+        //
+        //   G_hat_k = phi_hat_k * exp(+i pi k / N) * conj(f_k)
+        //
+        // where the exp(+i pi k / N) arises because the kernel is evaluated
+        // at (x_p / h - j - 1/2) instead of (x_p / h - j).
+        //
+        // Type 1: f_k = conj(G_hat_k * factor)
+        //   requires  factor = deconv * exp(-i pi k / N)   [negative phase]
+        //
+        // Type 2: G_hat_k = N * f_k * conj(factor)
+        //   requires  conj(factor) = deconv * exp(+i pi k / N)  [positive phase]
+        //
+        // The factors array always stores the Type-1 factor (negative phase).
+        // Type-2 functions apply conj(factor) explicitly.
+        // ====================================================================
 
         /**
          * @brief Computes deconvolution factors for NUFFT.
-         *
-         * For each frequency k, computes: factor[k] = 1 / phi_hat(k)
-         * where phi_hat is the Fourier transform of the ES kernel.
-         *
-         * @tparam ExecSpace Kokkos execution space
-         * @tparam T Floating point type
-         * @param factors Output view for deconvolution factors [n_modes]
-         * @param n_modes Number of output Fourier modes
-         * @param n_grid Upsampled grid size
-         * @param kernel ES kernel
          */
-        template <typename ExecSpace, typename T = double>
-        void computeDeconvolutionFactors(
-            Kokkos::View<Kokkos::complex<T>*, typename ExecSpace::memory_space> factors,
-            int64_t n_modes, int64_t n_grid, const ESKernel<T>& kernel) {
-            using complex_type = Kokkos::complex<T>;
-            using memory_space = typename ExecSpace::memory_space;
+        template <class ExecSpace, typename RealType = double>
+        void compute_deconvolution_factors(
+            Kokkos::View<Kokkos::complex<RealType>*, typename ExecSpace::memory_space> factors,
+            int64_t n_modes, int64_t n_grid, const ESKernel<RealType>& kernel) {
+            using complex_type = Kokkos::complex<RealType>;
 
+            // Set up quadrature
             constexpr int q = 100;
-            Kokkos::View<T*, memory_space> nodes("quad_nodes", q);
-            Kokkos::View<T*, memory_space> weights("quad_weights", q);
+            auto nodes      = Kokkos::View<RealType*, typename ExecSpace::memory_space>("nodes", q);
+            auto weights = Kokkos::View<RealType*, typename ExecSpace::memory_space>("weights", q);
 
-            gaussLegendre<memory_space, T>(q, nodes, weights);
+            gauss_legendre<ExecSpace>(q, nodes, weights);
 
-            const T alpha = Kokkos::numbers::pi_v<T> * kernel.width() / n_grid;
-            const T beta  = kernel.beta();
-            const int w   = kernel.width();
+            const RealType alpha = Kokkos::numbers::pi_v<RealType> * kernel.width() / n_grid;
+            const RealType beta  = kernel.beta();
+
+            const int64_t l_n_modes = n_modes;
+            constexpr int l_q       = q;
 
             Kokkos::parallel_for(
                 "compute_deconv_factors", Kokkos::RangePolicy<ExecSpace>(0, n_modes),
                 KOKKOS_LAMBDA(const int64_t k) {
-                    int freq = (k < n_modes / 2) ? k : k - n_modes;
-                    T ft     = 0.0;
+                    int freq    = (k < l_n_modes / 2) ? k : k - l_n_modes;
+                    RealType ft = 0.0;
 
-                    for (int i = 0; i < q; ++i) {
-                        const T x   = nodes(i);
-                        const T wt  = weights(i);
-                        const T ker = Kokkos::exp(beta * (Kokkos::sqrt(T(1) - x * x) - T(1)));
-                        ft += wt * ker * Kokkos::cos(freq * alpha * x);
+                    for (int i = 0; i < l_q; ++i) {
+                        const RealType x   = nodes(i);
+                        const RealType w   = weights(i);
+                        const RealType ker = Kokkos::exp(beta * (Kokkos::sqrt(1.0 - x * x) - 1.0));
+                        ft += w * ker * Kokkos::cos(freq * alpha * x);
                     }
 
-                    factors(k) = complex_type(T(2) / (w * ft), T(0));
-                });
+                    const RealType deconv = 2.0 / (kernel.width() * ft);
 
-            Kokkos::fence();
+                    // Phase correction for cell-centered DOFs: exp(-i pi freq / N_grid)
+                    // Type-1 uses this factor directly; Type-2 applies conj(factor).
+                    const RealType phase = Kokkos::numbers::pi_v<RealType>
+                                           * static_cast<RealType>(freq)
+                                           / static_cast<RealType>(n_grid);
+                    factors(k) =
+                        complex_type(deconv * Kokkos::cos(phase), deconv * Kokkos::sin(phase));
+                });
         }
 
         /**
-         * @brief Apply deconvolution correction for Type 1 NUFFT (post-FFT) on IPPL Fields.
+         * @brief Apply deconvolution correction for Type 1 NUFFT (post-FFT).
          *
-         * Works locally on distributed fields. Input and output have the same size.
-         * Applies correction factors based on global frequency indices, copies input to output
-         * with the correction applied.
+         * Type 1: nonuniform points -> uniform Fourier modes.
+         * After spreading (cell-centered) and FFT, the result satisfies:
          *
-         * Type 1: grid -> modes (post-FFT correction with conjugation)
+         *   G_hat_k = phi_hat_k * exp(+i pi k / N) * conj(f_k)
          *
-         * @tparam Field IPPL Field type
-         * @tparam ExecSpace Kokkos execution space
-         * @tparam T Floating point type
-         * @param input Input field (FFT output on upsampled grid)
-         * @param factors Deconvolution factors for each dimension
-         * @param output Output field (corrected modes)
-         * @param n_modes Global number of modes in each dimension
-         * @param n_grid Global upsampled grid size in each dimension
+         * This function recovers f_k via:
+         *
+         *   output_k = conj(input_k * factor_k)
+         *
+         * where factor_k = deconv_k * exp(-i pi k / N)  (stored in `factors`).
+         *
+         * Operates locally; input lives on the upsampled grid, output on the
+         * mode grid. Entries outside the mode band are set to zero.
          */
         template <typename FieldIn, typename FieldOut, typename ExecSpace, typename T>
         void applyDeconvolutionType1(
@@ -91,25 +111,21 @@ namespace ippl {
 
             constexpr unsigned Dim = 3;
 
-            // Get field views
             auto input_view  = input.getView();
             auto output_view = output.getView();
 
-            // Get layout information
             const auto& layout = input.getLayout();
             const auto& lDom   = layout.getLocalNDIndex();
 
             const int nghost_in  = input.getNghost();
             const int nghost_out = output.getNghost();
 
-            // Local domain bounds (global indices)
             Vector<int, Dim> local_first, local_last;
             for (unsigned d = 0; d < Dim; ++d) {
                 local_first[d] = lDom[d].first();
                 local_last[d]  = lDom[d].last();
             }
 
-            // Capture factors by value
             auto f0 = factors[0];
             auto f1 = factors[1];
             auto f2 = factors[2];
@@ -118,44 +134,39 @@ namespace ippl {
             const int ny = static_cast<int>(n_modes[1]);
             const int nz = static_cast<int>(n_modes[2]);
 
-            // Iterate over local domain
             Kokkos::parallel_for(
                 "deconv_type1_3d_local",
                 Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>(
                     {local_first[0], local_first[1], local_first[2]},
                     {local_last[0] + 1, local_last[1] + 1, local_last[2] + 1}),
                 KOKKOS_LAMBDA(int gi, int gj, int gk) {
+                    // Corner-DC layout: modes in [0, N/2) ∪ [N+N/2, 2N)
                     auto in_bounds = [&](int g, int n) {
                         return (g >= 0 && g < n / 2) || (g >= n + n / 2 && g < 2 * n);
                     };
 
-                    int li_in = gi - local_first[0] + nghost_in;
-                    int lj_in = gj - local_first[1] + nghost_in;
-                    int lk_in = gk - local_first[2] + nghost_in;
-
-                    int li_out = gi - local_first[0] + nghost_out;
-                    int lj_out = gj - local_first[1] + nghost_out;
-                    int lk_out = gk - local_first[2] + nghost_out;
+                    const int li_in  = gi - local_first[0] + nghost_in;
+                    const int lj_in  = gj - local_first[1] + nghost_in;
+                    const int lk_in  = gk - local_first[2] + nghost_in;
+                    const int li_out = gi - local_first[0] + nghost_out;
+                    const int lj_out = gj - local_first[1] + nghost_out;
+                    const int lk_out = gk - local_first[2] + nghost_out;
 
                     if (in_bounds(gi, nx) && in_bounds(gj, ny) && in_bounds(gk, nz)) {
-                        // Apply FFT-shift to get the shifted index for factor lookup
-
-                        auto rescale = [&](int in, int n_modes) {
-                            if (in < n_modes) {
-                                return in;
-                            } else {
-                                return in - n_modes;
-                            }
+                        // Map upsampled-grid corner-DC index back to factor index [0, n_modes)
+                        auto rescale = [](int g, int n) {
+                            return (g < n) ? g : g - n;
                         };
 
-                        // Compute factor using shifted indices
-                        complex_type factor = f0(rescale(gi, n_modes[0]))
-                                              * f1(rescale(gj, n_modes[1]))
-                                              * f2(rescale(gk, n_modes[2]));
+                        // factor = deconv * exp(-i pi freq / N_grid)
+                        const complex_type factor =
+                            f0(rescale(gi, nx)) * f1(rescale(gj, ny)) * f2(rescale(gk, nz));
+
+                        // f_k = conj(G_hat_k * factor)
                         output_view(li_out, lj_out, lk_out) =
                             Kokkos::conj(input_view(li_in, lj_in, lk_in) * factor);
                     } else {
-                        output_view(li_out, lj_out, lk_out) = 0.0;
+                        output_view(li_out, lj_out, lk_out) = complex_type(0, 0);
                     }
                 });
 
@@ -163,21 +174,18 @@ namespace ippl {
         }
 
         /**
-         * @brief Apply pre-correction for Type 2 NUFFT (pre-FFT) on IPPL Fields.
+         * @brief Apply pre-correction for Type 2 NUFFT (pre-IFFT).
          *
-         * Works locally on distributed fields. Input and output have the same size.
-         * Applies correction factors based on global frequency indices.
+         * Type 2: uniform Fourier modes -> nonuniform points.
+         * Before the IFFT and cell-centered gather, the mode field must be
+         * pre-multiplied so that the gather recovers the correct values:
          *
-         * Type 2: modes -> grid (pre-FFT correction)
+         *   G_hat_k = N * f_k * conj(factor_k)
          *
-         * @tparam Field IPPL Field type
-         * @tparam ExecSpace Kokkos execution space
-         * @tparam T Floating point type
-         * @param input Input field (Fourier modes)
-         * @param factors Correction factors for each dimension
-         * @param output Output field (corrected and ready for inverse FFT)
-         * @param n_modes Global number of modes in each dimension
-         * @param n_grid Global upsampled grid size in each dimension
+         * where factor_k = deconv_k * exp(-i pi k / N)  (stored in `factors`),
+         * so conj(factor_k) = deconv_k * exp(+i pi k / N).
+         *
+         * Entries outside the mode band are set to zero.
          */
         template <typename FieldIn, typename FieldOut, typename ExecSpace, typename T>
         void applyPreCorrectionType2(
@@ -189,28 +197,23 @@ namespace ippl {
 
             constexpr unsigned Dim = 3;
 
-            // Get field views
             auto input_view  = input.getView();
             auto output_view = output.getView();
 
-            // Get layout information
             const auto& layout = input.getLayout();
             const auto& lDom   = layout.getLocalNDIndex();
 
             const int nghost_in  = input.getNghost();
             const int nghost_out = output.getNghost();
 
-            // Local domain bounds (global indices)
             Vector<int, Dim> local_first, local_last;
             for (unsigned d = 0; d < Dim; ++d) {
                 local_first[d] = lDom[d].first();
                 local_last[d]  = lDom[d].last();
             }
 
-            // Zero-initialize output (in case some regions are not covered)
             Kokkos::deep_copy(output_view, complex_type(0, 0));
 
-            // Capture factors by value
             auto f0 = factors[0];
             auto f1 = factors[1];
             auto f2 = factors[2];
@@ -219,42 +222,37 @@ namespace ippl {
             const int ny = static_cast<int>(n_modes[1]);
             const int nz = static_cast<int>(n_modes[2]);
 
-            // Iterate over local domain
             Kokkos::parallel_for(
                 "precorr_type2_3d_local",
                 Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>(
                     {local_first[0], local_first[1], local_first[2]},
                     {local_last[0] + 1, local_last[1] + 1, local_last[2] + 1}),
                 KOKKOS_LAMBDA(int gi, int gj, int gk) {
-                    auto in_bounds = [&](int g, int n_modes) {
-                        return (g >= 0 && g < n_modes / 2)
-                               || (g >= n_modes + n_modes / 2 && g < 2 * n_modes);
+                    auto in_bounds = [&](int g, int n) {
+                        return (g >= 0 && g < n / 2) || (g >= n + n / 2 && g < 2 * n);
                     };
-                    int li_in = gi - local_first[0] + nghost_in;
-                    int lj_in = gj - local_first[1] + nghost_in;
-                    int lk_in = gk - local_first[2] + nghost_in;
 
-                    int li_out = gi - local_first[0] + nghost_out;
-                    int lj_out = gj - local_first[1] + nghost_out;
-                    int lk_out = gk - local_first[2] + nghost_out;
+                    const int li_in  = gi - local_first[0] + nghost_in;
+                    const int lj_in  = gj - local_first[1] + nghost_in;
+                    const int lk_in  = gk - local_first[2] + nghost_in;
+                    const int li_out = gi - local_first[0] + nghost_out;
+                    const int lj_out = gj - local_first[1] + nghost_out;
+                    const int lk_out = gk - local_first[2] + nghost_out;
 
                     if (in_bounds(gi, nx) && in_bounds(gj, ny) && in_bounds(gk, nz)) {
-                        auto rescale = [&](int in, int n_modes) {
-                            if (in < n_modes) {
-                                return in;
-                            } else {
-                                return in - n_modes;
-                            }
+                        auto rescale = [](int g, int n) {
+                            return (g < n) ? g : g - n;
                         };
 
-                        // Compute factor using shifted indices
-                        complex_type factor = f0(rescale(gi, n_modes[0]))
-                                              * f1(rescale(gj, n_modes[1]))
-                                              * f2(rescale(gk, n_modes[2]));
+                        // factor = deconv * exp(-i pi freq / N_grid)
+                        const complex_type factor =
+                            f0(rescale(gi, nx)) * f1(rescale(gj, ny)) * f2(rescale(gk, nz));
+
+                        // G_hat_k = f_k * conj(factor)  [conj gives +i pi phase]
                         output_view(li_out, lj_out, lk_out) =
-                            input_view(li_in, lj_in, lk_in) * factor;
+                            input_view(li_in, lj_in, lk_in) * Kokkos::conj(factor);
                     } else {
-                        output_view(li_out, lj_out, lk_out) = 0.0;
+                        output_view(li_out, lj_out, lk_out) = complex_type(0, 0);
                     }
                 });
 
@@ -264,12 +262,9 @@ namespace ippl {
         /**
          * @brief Apply deconvolution for Type 1 NUFFT on the pruned mode grid.
          *
-         * This assumes field is defined on the pruned mode layout
-         * (0..n_modes[d]-1 per dim, distributed over ranks) and that
-         * factors store the same per-dimension deconvolution factors
-         * used in the upsampled case.
+         * Same as applyDeconvolutionType1 but operates directly on a field
+         * already living in mode space (0..n_modes[d]-1 per dim, corner-DC).
          *
-         * For each local (global) mode index (gi,gj,gk), we do:
          *   field(gi,gj,gk) <- conj( field(gi,gj,gk) * f0(gi)*f1(gj)*f2(gk) )
          */
         template <typename FieldType, typename ExecSpace, typename T>
@@ -287,7 +282,6 @@ namespace ippl {
 
             const int nghost = field.getNghost();
 
-            // Local domain bounds (global indices in mode space)
             Vector<int, Dim> local_first, local_last;
             for (unsigned d = 0; d < Dim; ++d) {
                 local_first[d] = lDom[d].first();
@@ -308,18 +302,18 @@ namespace ippl {
                     {local_first[0], local_first[1], local_first[2]},
                     {local_last[0] + 1, local_last[1] + 1, local_last[2] + 1}),
                 KOKKOS_LAMBDA(int gi, int gj, int gk) {
-                    // Guard in case n_modes is smaller than global layout (shouldn't happen,
-                    // but keeps us safe on edges)
-                    if (gi < 0 || gj < 0 || gk < 0 || gi >= nx || gj >= ny || gk >= nz) {
+                    if (gi < 0 || gj < 0 || gk < 0 || gi >= nx || gj >= ny || gk >= nz)
                         return;
-                    }
 
                     const int li = gi - local_first[0] + nghost;
                     const int lj = gj - local_first[1] + nghost;
                     const int lk = gk - local_first[2] + nghost;
 
-                    complex_type factor = f0(gi) * f1(gj) * f2(gk);
-                    view(li, lj, lk)    = Kokkos::conj(view(li, lj, lk) * factor);
+                    // factor = deconv * exp(-i pi freq / N_grid)
+                    const complex_type factor = f0(gi) * f1(gj) * f2(gk);
+
+                    // f_k = conj(G_hat_k * factor)
+                    view(li, lj, lk) = Kokkos::conj(view(li, lj, lk) * factor);
                 });
 
             Kokkos::fence();
@@ -328,11 +322,13 @@ namespace ippl {
         /**
          * @brief Apply pre-correction for Type 2 NUFFT on the pruned mode grid.
          *
-         * This assumes field is the pruned mode field (0..n_modes[d]-1 per dim
-         * in corner-DC format), and multiplies each local mode by the same
-         * per-dimension factors used in the upsampled case:
+         * Same as applyPreCorrectionType2 but operates directly on a field
+         * already in mode space (0..n_modes[d]-1 per dim, corner-DC).
          *
-         *   field(gi,gj,gk) <- field(gi,gj,gk) * f0(gi)*f1(gj)*f2(gk)
+         *   field(gi,gj,gk) <- field(gi,gj,gk) * conj( f0(gi)*f1(gj)*f2(gk) )
+         *
+         * The conj gives the +i pi phase needed for the IFFT + cell-centered gather
+         * to recover the correct values.
          */
         template <typename FieldType, typename ExecSpace, typename T>
         void applyPrecorrectionPruned(
@@ -369,21 +365,24 @@ namespace ippl {
                     {local_first[0], local_first[1], local_first[2]},
                     {local_last[0] + 1, local_last[1] + 1, local_last[2] + 1}),
                 KOKKOS_LAMBDA(int gi, int gj, int gk) {
-                    if (gi < 0 || gj < 0 || gk < 0 || gi >= nx || gj >= ny || gk >= nz) {
+                    if (gi < 0 || gj < 0 || gk < 0 || gi >= nx || gj >= ny || gk >= nz)
                         return;
-                    }
 
                     const int li = gi - local_first[0] + nghost;
                     const int lj = gj - local_first[1] + nghost;
                     const int lk = gk - local_first[2] + nghost;
 
-                    complex_type factor = f0(gi) * f1(gj) * f2(gk);
-                    view(li, lj, lk) *= factor;
+                    // factor = deconv * exp(-i pi freq / N_grid)
+                    const complex_type factor = f0(gi) * f1(gj) * f2(gk);
+
+                    // G_hat_k = f_k * conj(factor)  [conj gives +i pi phase]
+                    view(li, lj, lk) *= Kokkos::conj(factor);
                 });
 
             Kokkos::fence();
         }
-    }  // namespace NUFFT
+
+    }  // namespace nufft
 }  // namespace ippl
 
 #endif  // IPPL_NUFFT_CORRECTION_H

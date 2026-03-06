@@ -709,8 +709,6 @@ public:
 
         T maxAsymmetry = 0.0;
 
-
-
         int centerI = gridSize[0] / 2;
         int centerJ = gridSize[1] / 2;
 
@@ -979,15 +977,14 @@ public:
             field_type field(*mesh_local, *layout_local, nghost);
             field = T(0);
 
-            // One particle per cell at (cell + 0.75)*hx — offset avoids trivial K(0)
-            const size_t nParticles = [&]() {
-                size_t n = 1;
-                for (unsigned d = 0; d < Dim; ++d)
-                    n *= static_cast<size_t>(nGrid);
-                return n;
-            }();
+            const auto& lDom = layout_local->getLocalNDIndex();
 
-            bunch_local->create(nParticles);
+            // Each rank owns only the cells in its subdomain
+            size_t localParticles = 1;
+            for (unsigned d = 0; d < Dim; ++d)
+                localParticles *= static_cast<size_t>(lDom[d].length());
+
+            bunch_local->create(localParticles);
             {
                 auto R_view      = bunch_local->R.getView();
                 auto weight_view = bunch_local->weight.getView();
@@ -995,15 +992,25 @@ public:
                 auto hx_         = hx_local;
                 auto extent_     = extent;
 
+                // Encode only the local cells: flatten lDom into a linear index
+                Kokkos::Array<int, Dim> local_size;
+                Kokkos::Array<int, Dim> local_start;
+                for (unsigned d = 0; d < Dim; ++d) {
+                    local_size[d]  = static_cast<int>(lDom[d].length());
+                    local_start[d] = static_cast<int>(lDom[d].first());
+                }
+
                 Kokkos::parallel_for(
-                    "create_regular_scatter", Kokkos::RangePolicy<ExecSpace>(0, nParticles),
+                    "create_regular_scatter", Kokkos::RangePolicy<ExecSpace>(0, localParticles),
                     KOKKOS_LAMBDA(size_t idx) {
                         size_t tmp = idx;
                         ippl::Vector<T, Dim> pos;
                         for (unsigned d = 0; d < Dim; ++d) {
-                            const int cell = static_cast<int>(tmp % static_cast<size_t>(nGrid));
-                            tmp /= static_cast<size_t>(nGrid);
-                            pos[d] = origin_[d] + (static_cast<T>(cell) + T(0.75)) * hx_[d];
+                            const int local_cell =
+                                static_cast<int>(tmp % static_cast<size_t>(local_size[d]));
+                            tmp /= static_cast<size_t>(local_size[d]);
+                            const int global_cell = local_start[d] + local_cell;
+                            pos[d] = origin_[d] + (static_cast<T>(global_cell) + T(0.75)) * hx_[d];
                         }
                         R_view(idx) = pos;
 
@@ -1015,14 +1022,12 @@ public:
                     });
                 Kokkos::fence();
             }
-            bunch_local->update();
 
             auto scatter_op = ippl::Scatter<decltype(kernel), Dim>(kernel, config);
             scatter_op(field, bunch_local->R, bunch_local->weight);
 
             // Avg |field_j - f(x_j)| over interior cells
             auto view        = field.getView();
-            const auto& lDom = layout_local->getLocalNDIndex();
             const int ng     = nghost;
             auto origin_     = origin;
             auto hx_         = hx_local;

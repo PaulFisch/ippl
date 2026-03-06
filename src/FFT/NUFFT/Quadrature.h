@@ -10,7 +10,7 @@
 #include <limits>
 
 namespace ippl {
-namespace NUFFT {
+namespace nufft {
 
     /**
      * @brief Computes Gauss-Legendre quadrature nodes and weights on [-1, 1].
