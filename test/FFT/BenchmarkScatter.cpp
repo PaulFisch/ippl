@@ -226,7 +226,7 @@ private:
     }
 
     benchmark::BenchmarkParams params_;
-    ippl::NUFFT::ESKernel<real_type> kernel_;
+    ippl::nufft::ESKernel<real_type> kernel_;
     int nghost_;
 
     ippl::Vector<std::size_t, Dim> n_grid_;

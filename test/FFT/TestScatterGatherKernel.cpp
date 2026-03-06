@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
         Mesh_t mesh(domain, hx, origin);
 
         // ---------------- NUFFT kernel / ghosts ----------
-        ippl::NUFFT::ESKernel<real_type> kernel(1e-6);
+        ippl::nufft::ESKernel<real_type> kernel(1e-6);
         const int nghost = (kernel.width()) / 2 + 1;
 
         Field_t grid_random(mesh, layout, nghost);
