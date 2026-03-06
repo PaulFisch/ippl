@@ -104,6 +104,38 @@ namespace ippl {
 
     private:
         // ------------------------------------------------------------------
+        // get_device_shmem
+        //
+        // Returns the maximum available shared memory per block on the current
+        // device.  On CPU execution spaces returns a large sentinel so the
+        // scratch check never triggers.
+        // ------------------------------------------------------------------
+        static size_t get_device_shmem() {
+            static size_t cached = 0;
+            if (cached > 0)
+                return cached;
+#if defined(KOKKOS_ENABLE_CUDA)
+            {
+                int dev = 0, b = 0;
+                cudaGetDevice(&dev);
+                cudaDeviceGetAttribute(&b, cudaDevAttrMaxSharedMemoryPerBlock, dev);
+                cached = static_cast<size_t>(std::max(b, 0));
+            }
+#elif defined(KOKKOS_ENABLE_HIP)
+            {
+                int dev = 0;
+                hipGetDevice(&dev);
+                hipDeviceProp_t prop;
+                hipGetDeviceProperties(&prop, dev);
+                cached = prop.sharedMemPerBlock;
+            }
+#else
+            cached = static_cast<size_t>(1) << 30;  // no GPU limit on CPU
+#endif
+            return cached;
+        }
+
+        // ------------------------------------------------------------------
         // resolve_config
         //
         // Returns a copy of config_m with all benchmarked-optimal parameters
@@ -184,6 +216,52 @@ namespace ippl {
             return config_m;
         }
 
+        // ------------------------------------------------------------------
+        // clamp_tile_to_shmem
+        //
+        // Reduces the tile size in the supplied config until the kernel's
+        // shared-memory requirement fits within the device's available
+        // shared memory.  Operates on all Dim dimensions, reducing the
+        // largest dimension first (isotropic degradation).
+        //
+        // This is a safety net: the primary source of truth is the BO-tuned
+        // or user-supplied tile size.  Silently clamping prevents a hard
+        // runtime crash (illegal launch / OOM) when the resolved config
+        // exceeds device limits.
+        // ------------------------------------------------------------------
+        template <template <int, class, class> class Impl, int W, class Types, class Policy,
+                  bool IsComplex>
+        static void clamp_tile_to_shmem(Interpolation::ScatterConfig<Dim>& cfg) {
+            if constexpr (!Impl<W, Types, Policy>::requires_binning)
+                return;
+
+            const size_t avail = get_device_shmem();
+
+            Vector<int, Dim> tile = cfg.get_tile_size();
+
+            // Up to 64 reduction steps; each step removes 1 from the largest dim.
+            for (int itr = 0; itr < 64; ++itr) {
+                const size_t req =
+                    Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(
+                        tile, cfg.team_size);
+                if (req <= avail)
+                    break;
+
+                // Find the largest dimension to shrink.
+                unsigned maxd = 0;
+                for (unsigned d = 1; d < Dim; ++d)
+                    if (tile[d] > tile[maxd])
+                        maxd = d;
+
+                if (tile[maxd] <= 1)
+                    break;  // cannot reduce further — launch will fail gracefully
+
+                --tile[maxd];
+            }
+
+            cfg.set_tile_size(tile);
+        }
+
         template <template <int, class, class> class Impl, class Types, class Policy, class Field,
                   class Positions, class Values>
         void dispatch(Field& field, const Positions& positions, const Values& values) {
@@ -214,6 +292,19 @@ namespace ippl {
                         tuned_config.set_tile_size(tuned_tile);
                     }
                 }
+
+                // ── Step 1b: Safety – clamp tile to shared-memory budget ──────
+                //
+                // Regardless of the source (cache, tuner, or default), reduce the
+                // tile dimensions until the kernel's scratch-memory requirement is
+                // satisfied.  This prevents illegal-launch / OOM crashes when:
+                //   • The cache was built on a different GPU model.
+                //   • The user explicitly requested an oversized tile.
+                //   • A large kernel width makes even the default tile too big.
+                //
+                // The reduction is isotropic (largest dimension first) and noisy
+                // enough to warn the user if verbose output is enabled elsewhere.
+                clamp_tile_to_shmem<Impl, W, Types, Policy, is_complex>(tuned_config);
 
                 const Vector<int, Dim> tile_size = tuned_config.get_tile_size();
 

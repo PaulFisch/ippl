@@ -23,7 +23,7 @@ namespace ippl {
         struct ScatterConfig {
             ScatterMethod method = ScatterMethod::Atomic;
             bool sort            = false;
-            bool enable_tuning = false;
+            bool enable_tuning   = false;
 
             // Tile size per dimension
             std::array<int, Dim> tile_size;
@@ -35,15 +35,26 @@ namespace ippl {
             int oversubscription_factor = 4;
 
             /**
-             * @brief Default constructor - initializes tile sizes based on Dim
+             * @brief Default constructor - initializes tile sizes based on Dim.
+             *
+             * 3-D defaults are intentionally conservative: the shared-memory
+             * footprint of the scatter histogram grows as
+             *   (tile + W + 1)^3  *  sizeof(RealType)  *  (2 if complex)
+             * For the largest supported kernel width (W = 14) and complex<double>:
+             *   (2 + 14 + 1)^3 * 8 * 2 = 17^3 * 16 ≈ 78 KB  — fits in 96 KB L1.
+             *   (3 + 14 + 1)^3 * 8 * 2 = 18^3 * 16 ≈ 93 KB  — marginal.
+             * Tile = 2 is therefore the safe 3-D default.  Scatter::dispatch()
+             * further reduces the tile at runtime if the resolved config would
+             * still exceed the device's available shared memory.
              */
             ScatterConfig() {
                 if constexpr (Dim == 1) {
                     tile_size.fill(512);
                 } else if constexpr (Dim == 2) {
-                    tile_size.fill(32);
+                    tile_size.fill(16);
                 } else {
-                    tile_size.fill(8);
+                    // Dim == 3: conservative default (see comment above)
+                    tile_size.fill(2);
                 }
             }
 
@@ -104,9 +115,7 @@ namespace ippl {
                 return *this;
             }
 
-            bool do_binning() const {
-                return !(method == ScatterMethod::Atomic && sort == false);
-            }
+            bool do_binning() const { return !(method == ScatterMethod::Atomic && sort == false); }
 
             /**
              * @brief Get default configuration for an execution space
@@ -152,8 +161,9 @@ namespace ippl {
                         config.tile_size = {512};
                     } else if constexpr (Dim == 2) {
                         config.tile_size = {16, 16};
-                    } else if constexpr (Dim == 3) {
-                        config.tile_size = {4, 4, 4};
+                    } else {
+                        // Dim == 3: conservative default (see ScatterConfig() comment)
+                        config.tile_size = {2, 2, 2};
                     }
                     return config;
                 }
@@ -173,7 +183,7 @@ namespace ippl {
                         config.tile_size = {256};
                     } else if constexpr (Dim == 2) {
                         config.tile_size = {16, 16};
-                    } else if constexpr (Dim == 3) {
+                    } else {
                         config.tile_size = {9, 9, 9};
                     }
                     return config;
@@ -194,8 +204,9 @@ namespace ippl {
                         config.tile_size = {512};
                     } else if constexpr (Dim == 2) {
                         config.tile_size = {16, 16};
-                    } else if constexpr (Dim == 3) {
-                        config.tile_size = {6, 6, 6};
+                    } else {
+                        // Dim == 3: conservative (same rationale as CUDA)
+                        config.tile_size = {2, 2, 2};
                     }
                     return config;
                 }
