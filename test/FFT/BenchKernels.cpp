@@ -231,7 +231,7 @@ public:
             std::vector<double> tolerances = {1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9};
             for (double tol : tolerances) {
                 if (true || std::abs(tol - params_.kernel_tol) > 1e-15) {
-                    ippl::NUFFT::ESKernel<real_type> sweep_kernel(tol);
+                    ippl::nufft::ESKernel<real_type> sweep_kernel(tol);
                     run_all_kernels(sweep_kernel, results);
                 }
             }
@@ -265,7 +265,7 @@ public:
         std::cout << "================================================================\n\n";
     }
 
-    void run_all_kernels(const ippl::NUFFT::ESKernel<real_type>& kernel,
+    void run_all_kernels(const ippl::nufft::ESKernel<real_type>& kernel,
                          std::vector<ThroughputMetrics>& results) {
         int w = kernel.width();
         int nghost = w / 2 + 1;
@@ -316,7 +316,7 @@ public:
 
     ThroughputMetrics benchmark_scatter(const std::string& name,
                                          const ippl::Interpolation::ScatterConfig<Dim>& cfg,
-                                         const ippl::NUFFT::ESKernel<real_type>& kernel,
+                                         const ippl::nufft::ESKernel<real_type>& kernel,
                                          int /*nghost*/,
                                          size_t n_particles) {
         if (ippl::Comm->rank() == 0 && params_.verbose)
@@ -349,7 +349,7 @@ public:
 
     ThroughputMetrics benchmark_gather(const std::string& name,
                                         const ippl::Interpolation::GatherConfig<Dim>& cfg,
-                                        const ippl::NUFFT::ESKernel<real_type>& kernel,
+                                        const ippl::nufft::ESKernel<real_type>& kernel,
                                         int /*nghost*/,
                                         size_t n_particles) {
         if (ippl::Comm->rank() == 0 && params_.verbose)
@@ -383,7 +383,7 @@ public:
     // -----------------------------------------------------------------------
     ThroughputMetrics make_metrics(const std::string& name,
                                     const std::string& op,
-                                    const ippl::NUFFT::ESKernel<real_type>& kernel,
+                                    const ippl::nufft::ESKernel<real_type>& kernel,
                                     size_t n_particles,
                                     const std::vector<double>& total_times) {
         ThroughputMetrics m;
@@ -425,7 +425,7 @@ public:
         mesh_ = std::make_unique<Mesh_t>(domain, hx_, origin_);
     }
 
-    void initialize(const ippl::NUFFT::ESKernel<real_type>& /*kernel*/, int nghost) {
+    void initialize(const ippl::nufft::ESKernel<real_type>& /*kernel*/, int nghost) {
         grid_    = std::make_unique<Field_t>(*mesh_, *layout_, nghost);
         playout_ = std::make_unique<PLayout_t>(*layout_, *mesh_);
         bunch_   = std::make_unique<Bunch_t>(*playout_);
@@ -597,7 +597,7 @@ public:
     }
 
     BenchParams params_;
-    ippl::NUFFT::ESKernel<real_type> kernel_;
+    ippl::nufft::ESKernel<real_type> kernel_;
 
     ippl::Vector<std::size_t, Dim> n_grid_;
     ippl::Vector<real_type, Dim>   origin_;

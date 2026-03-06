@@ -568,7 +568,7 @@ public:
 
     template <int W>
     using TiledTypes =
-        ippl::Interpolation::detail::ScatterTypes<Dim, real_type, ippl::NUFFT::ESKernel<real_type>,
+        ippl::Interpolation::detail::ScatterTypes<Dim, real_type, ippl::nufft::ESKernel<real_type>,
                                                   DummyFieldView, DummyPosView, DummyValView>;
     template <int W>
     using GPTypes      = TiledTypes<W>;
@@ -694,7 +694,7 @@ public:
 
         for (int width : widths) {
             double tol = std::pow(10.0, -(width - 1));
-            ippl::NUFFT::ESKernel<real_type> kernel(tol);
+            ippl::nufft::ESKernel<real_type> kernel(tol);
             int actual_width = kernel.width();
             if (actual_width != width && ippl::Comm->rank() == 0)
                 std::cout << "Note: Requested width " << width << ", got " << actual_width << "\n";
@@ -777,7 +777,7 @@ public:
     // ------------------------------------------------------------------
     BenchmarkResult benchmark_scatter(const std::string& method,
                                       const ippl::Interpolation::ScatterConfig<Dim>& cfg,
-                                      const ippl::NUFFT::ESKernel<real_type>& kernel,
+                                      const ippl::nufft::ESKernel<real_type>& kernel,
                                       size_t n_particles, std::array<int, 3> tile_arr,
                                       bool from_optimizer) {
         BenchmarkResult r;
@@ -849,7 +849,7 @@ public:
     //   3. Local hill-climb polish   (≤30 extra)   — greedy ±1 in each dimension
     //
     // ============================================================================
-    BOResult run_bo(const std::string& method, const ippl::NUFFT::ESKernel<real_type>& kernel,
+    BOResult run_bo(const std::string& method, const ippl::nufft::ESKernel<real_type>& kernel,
                     size_t n_particles) {
         BOResult bo;
         bo.method       = method;
@@ -1167,7 +1167,7 @@ public:
         mesh_ = std::make_unique<Mesh_t>(domain, hx_, origin_);
     }
 
-    void initialize(const ippl::NUFFT::ESKernel<real_type>& /*kernel*/, int nghost) {
+    void initialize(const ippl::nufft::ESKernel<real_type>& /*kernel*/, int nghost) {
         grid_    = std::make_unique<Field_t>(*mesh_, *layout_, nghost);
         playout_ = std::make_unique<PLayout_t>(*layout_, *mesh_);
         bunch_   = std::make_unique<Bunch_t>(*playout_);
