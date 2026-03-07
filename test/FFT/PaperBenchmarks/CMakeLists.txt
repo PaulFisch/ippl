@@ -39,6 +39,9 @@ add_paper_benchmark(TileSweep      LABELS paper benchmark fft)
 
 # ── NUFFT time breakdown (Fig 4) ──────────────────────────────────────────────
 add_paper_benchmark(BreakdownNUFFT LABELS paper benchmark fft)
+if(TARGET finufft OR TARGET cufinufft)
+    target_link_libraries(BreakdownNUFFT PRIVATE finufft cufinufft)
+endif()
 
 # ── cuFINUFFT comparison (Fig 5) ──────────────────────────────────────────────
 add_paper_benchmark(BenchDensities LABELS paper benchmark fft)
@@ -48,6 +51,9 @@ endif()
 
 # ── Distributed strong-scaling (Figs 6, 7) ────────────────────────────────────
 add_paper_benchmark(BenchmarkNUFFT LABELS paper benchmark fft)
+if(TARGET finufft OR TARGET cufinufft)
+    target_link_libraries(BenchmarkNUFFT PRIVATE finufft cufinufft)
+endif()
 
 # ── Pruned-FFT performance (Fig 8) ────────────────────────────────────────────
 add_paper_benchmark(TestPrunedFFTPerformance LABELS paper benchmark fft)
