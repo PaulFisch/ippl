@@ -376,7 +376,7 @@ namespace ippl {
                     const complex_type factor = f0(gi) * f1(gj) * f2(gk);
 
                     // G_hat_k = f_k * conj(factor)  [conj gives +i pi phase]
-                    view(li, lj, lk) *= Kokkos::conj(factor);
+                    view(li, lj, lk) *= factor;
                 });
 
             Kokkos::fence();

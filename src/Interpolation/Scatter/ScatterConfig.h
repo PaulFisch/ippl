@@ -25,6 +25,11 @@ namespace ippl {
             bool sort            = false;
             bool enable_tuning   = false;
 
+            /// When true, TileSizeCache auto-selection will not override `method`.
+            /// Tile sizes, team_size, osub, and z_batches are still loaded from
+            /// the cache for the explicitly-chosen method.
+            bool lock_method = false;
+
             // Tile size per dimension
             std::array<int, Dim> tile_size;
 

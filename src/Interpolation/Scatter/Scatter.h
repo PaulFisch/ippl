@@ -91,7 +91,7 @@ namespace ippl {
             // false and a cache has been loaded.
             {
                 auto& cache = Interpolation::TileSizeCache::instance();
-                if (!config_m.enable_tuning && cache.loaded()) {
+                if (!config_m.enable_tuning && !config_m.lock_method && cache.loaded()) {
                     if (auto best = cache.get_best(kernel_m.width(), is_complex_field, rho_est)) {
                         static std::unordered_set<std::size_t> reported;
                         const std::size_t rkey = (static_cast<std::size_t>(config_m.method) * 3
@@ -267,14 +267,17 @@ namespace ippl {
 
             using execution_space = typename Types::execution_space;
             using team_policy     = Kokkos::TeamPolicy<execution_space>;
-            const size_t avail    = team_policy(1, cfg.team_size).scratch_size_max(0);
 
             Vector<int, Dim> tile = cfg.get_tile_size();
 
             // Upper bound on iterations: even in the worst case each step reduces
-            // at least one dimension, so Dim * max_tile_size steps is sufficient.
-            const int max_iter = static_cast<int>(Dim) * 64;
+            // at least one dimension or halves team_size.
+            const int max_iter = static_cast<int>(Dim) * 64 + 8;
             for (int itr = 0; itr < max_iter; ++itr) {
+                // Recompute avail each iteration: some backends report higher
+                // available shared memory for smaller team sizes (lower occupancy).
+                const size_t avail = team_policy(1, cfg.team_size).scratch_size_max(0);
+
                 const size_t req = Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(
                     tile, cfg.team_size, cfg.z_batches);
                 if (req <= avail)
@@ -299,10 +302,20 @@ namespace ippl {
                     }
                 }
 
-                if (best_dim < 0)
-                    break;  // all dimensions at minimum, launch may fail gracefully
-
-                --tile[best_dim];
+                if (best_dim < 0) {
+                    // All tile dimensions are already at 1.  For implementations
+                    // where team_size contributes to scratch size (e.g.
+                    // GridParallelScatter), halving team_size may bring usage
+                    // within limits.  TiledScatter ignores team_size in its
+                    // scratch calculation, so this is a no-op for that kernel.
+                    if (cfg.team_size > 1) {
+                        cfg.team_size = std::max(1, cfg.team_size / 2);
+                    } else {
+                        break;  // cannot reduce further; launch may fail
+                    }
+                } else {
+                    --tile[best_dim];
+                }
             }
 
             cfg.set_tile_size(tile);

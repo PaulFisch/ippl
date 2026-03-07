@@ -19,6 +19,10 @@
  *   --ncu-mode      Single run mode for Nsight Compute profiling
  *   --dist D        Particle distribution: uniform, clustered (default: uniform)
  *   --real          Use real-valued field and particles instead of complex
+ *   --method M      Only benchmark scatter method M: Atomic, Tiled, OutputFocused
+ *                   (default: all).  Tile sizes and team params are loaded from
+ *                   the TileSizeCache CSV (IPPL_TILE_CSV env var or auto-discovered)
+ *                   for the chosen method; auto-method-selection is suppressed.
  *   -v, --verbose   Verbose output
  */
 
@@ -75,7 +79,8 @@ struct BenchParams {
     std::string distribution = "uniform";
     bool verbose = false;
     bool ncu_mode = false;
-    bool use_real = false;          // NEW: use real-valued field/particles
+    bool use_real = false;          // use real-valued field/particles
+    std::string method_filter = ""; // if non-empty, only run this scatter method
 
     size_t n_particles() const {
         return static_cast<size_t>(rho * n_grid * n_grid * n_grid);
@@ -106,6 +111,8 @@ BenchParams parse_bench_args(int argc, char* argv[]) {
             params.benchmark_runs = 1;
         } else if (arg == "--real") {
             params.use_real = true;
+        } else if (arg == "--method" && i + 1 < argc) {
+            params.method_filter = argv[++i];
         } else if (arg == "-v" || arg == "--verbose") {
             params.verbose = true;
         }
@@ -255,7 +262,9 @@ public:
         std::cout << "Particles/grid:  " << params_.rho << "\n";
         std::cout << "Total particles: " << params_.n_particles() << "\n";
         std::cout << "Distribution:    " << params_.distribution << "\n";
-        std::cout << "Value type:      " << value_type_str() << "\n";  // NEW
+        std::cout << "Value type:      " << value_type_str() << "\n";
+        if (!params_.method_filter.empty())
+            std::cout << "Method filter:   " << params_.method_filter << " (auto-selection suppressed)\n";
         std::cout << "Tolerance:       " << params_.kernel_tol << "\n";
         std::cout << "Kernel width:    " << w << "\n";
         std::cout << "Warmup runs:     " << params_.warmup_runs << "\n";
@@ -263,6 +272,11 @@ public:
         if (params_.ncu_mode)
             std::cout << "Mode:            NCU profiling (single run)\n";
         std::cout << "================================================================\n\n";
+    }
+
+    // Returns true if `name` matches the method_filter (or filter is empty).
+    bool method_matches(const std::string& name) const {
+        return params_.method_filter.empty() || params_.method_filter == name;
     }
 
     void run_all_kernels(const ippl::nufft::ESKernel<real_type>& kernel,
@@ -279,24 +293,39 @@ public:
         size_t n_particles = bunch_->getLocalNum();
 
         // ===== SCATTER =====
-        {
+        // When --method is given, lock_method=true prevents TileSizeCache from
+        // overriding the explicitly chosen method.  Tile sizes and team params
+        // are still loaded from the cache for the chosen method (resolve_config).
+        // When no --method is given, all methods are benchmarked and cache-based
+        // auto-selection is also suppressed (lock_method=true per method), so
+        // each entry reflects the performance of exactly that method.
+        if (method_matches("Atomic")) {
             auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
+            cfg.lock_method = true;
             results.push_back(benchmark_scatter("Atomic", cfg, kernel, nghost, n_particles));
         }
-        {
+        if (method_matches("Tiled")) {
             auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::ScatterMethod::Tiled;
-            cfg.tile_size.fill(4);
+            cfg.lock_method = true;
+            // Tile sizes are loaded from cache when available; the conservative
+            // default (tile=2) is used otherwise.  clamp_tile_to_shmem ensures
+            // the launch never exceeds shared-memory limits.
             results.push_back(benchmark_scatter("Tiled", cfg, kernel, nghost, n_particles));
         }
-        {
+        if (method_matches("OutputFocused")) {
             auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = ippl::Interpolation::ScatterMethod::OutputFocused;
-            std::array<int, 10> tile_sizes = {1,1,4,3,3,2,4,2,2,2};
-            int tile_size = (w < 10) ? tile_sizes[w] : 2;
-            cfg.tile_size.fill(tile_size);
-            results.push_back(benchmark_scatter("GridParallel", cfg, kernel, nghost, n_particles));
+            cfg.lock_method = true;
+            // GridParallelScatter scratch ∝ team_size × htot.  The HIP/CUDA
+            // execution-space defaults (team_size=64) cause shared-memory
+            // exhaustion even at the minimum tile=(1,1,1) for large W.
+            // team_size=1 is the safe starting point; the cache will override
+            // this with the profiled optimum (e.g. 1–4 warps from TileSweep).
+            // clamp_tile_to_shmem will further halve team_size if needed.
+            cfg.team_size = 1;
+            results.push_back(benchmark_scatter("OutputFocused", cfg, kernel, nghost, n_particles));
         }
 
         // ===== GATHER =====
