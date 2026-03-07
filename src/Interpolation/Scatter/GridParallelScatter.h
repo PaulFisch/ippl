@@ -1127,7 +1127,7 @@ void gridScatterKernelNative(GridParallelScatterNative<W, Types, Policy> self)
     const size_t ppt    = (bin_size + self.sub_teams_per_tile_ - 1) / self.sub_teams_per_tile_;
     const size_t pstart = bin_start + sub_id * ppt;
     if (pstart >= bin_end) return;
-    const size_t pend = min(bin_end, pstart + ppt);
+    const size_t pend = Kokkos::min(bin_end, pstart + ppt);
 
     // ── Tile base coordinates (decode once in registers) ─────────────────────
     int tile_base[Dim];
