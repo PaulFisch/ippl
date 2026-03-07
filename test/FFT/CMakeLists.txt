@@ -34,3 +34,4 @@ add_ippl_integration_test(BenchDensities LABELS integration fft)
 add_ippl_integration_test(ScatterDebug LABELS integration fft)
 
 target_link_libraries(TestNUFFTPerformance finufft cufinufft)
+target_compile_options(BenchKernels PRIVATE "-lineinfo")
