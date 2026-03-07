@@ -10,7 +10,7 @@
 
 // Include the direct FINUFFT wrapper
 #ifdef ENABLE_FINUFFT
-#include "finufft_wrapper.h"
+#include "PaperBenchmarks/finufft_wrapper.h"
 #endif
 
 template <class PLayout>

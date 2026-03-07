@@ -23,15 +23,9 @@ add_ippl_integration_test(TestNUFFT2_old LABELS integration fft)
 add_ippl_integration_test(TestNUFFTPerformance LABELS integration fft benchmark)
 add_ippl_integration_test(TestNUFFTParamSweep LABELS integration fft benchmark)
 add_ippl_integration_test(TestScatterGatherKernel LABELS integration fft)
-add_ippl_integration_test(TestPrunedFFTPerformance LABELS integration fft)
-add_ippl_integration_test(BenchmarkScatter LABELS integration fft)
-add_ippl_integration_test(BenchKernels LABELS integration fft)
-add_ippl_integration_test(BenchmarkGather LABELS integration fft)
-add_ippl_integration_test(BenchmarkNUFFT LABELS integration fft)
-add_ippl_integration_test(TileSweep LABELS integration fft)
-add_ippl_integration_test(BreakdownNUFFT LABELS integration fft)
-add_ippl_integration_test(BenchDensities LABELS integration fft)
 add_ippl_integration_test(ScatterDebug LABELS integration fft)
 
 target_link_libraries(TestNUFFTPerformance PRIVATE finufft cufinufft)
-target_compile_options(BenchKernels PRIVATE "-lineinfo")
+
+# Paper benchmarks live in their own subdirectory
+add_subdirectory(PaperBenchmarks)
