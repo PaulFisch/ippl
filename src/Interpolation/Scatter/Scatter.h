@@ -57,6 +57,17 @@ namespace ippl {
 
     }  // namespace Interpolation::detail
 
+    // ─────────────────────────────────────────────────────────────────────────────
+    // Helper trait: detect Kokkos::complex<T> at compile time.
+    // Used to derive is_complex from the field's value_type in operator().
+    // ─────────────────────────────────────────────────────────────────────────────
+    namespace detail {
+        template <typename T>
+        struct is_kokkos_complex : std::false_type {};
+        template <typename T>
+        struct is_kokkos_complex<Kokkos::complex<T>> : std::true_type {};
+    }  // namespace detail
+
     template <typename Kernel, unsigned Dim>
     class Scatter {
     public:
@@ -72,6 +83,54 @@ namespace ippl {
             using Types =
                 Interpolation::detail::DeducedScatterTypes<Kernel, decltype(field),
                                                            decltype(positions), decltype(values)>;
+
+            // ── Determine field value type complexity ──────────────────────────
+            // FieldT is the grid value type.  Particle values may differ (e.g. real
+            // particles scattering to a complex grid), so we base is_complex on FieldT.
+            constexpr bool is_complex_field =
+                ippl::detail::is_kokkos_complex<FieldT>::value;
+
+            // ── Auto-select best method from benchmark cache ───────────────────
+            // If a tile-size cache is loaded (from BenchmarkTileSweep CSV output),
+            // pick the method with the highest recorded throughput for this kernel
+            // width and value type.  Users who need a specific method should either
+            // set enable_tuning=true or use an empty/absent cache file.
+            //
+            // The cache-resolved method is stored in config_m for this call so that
+            // resolve_config() (called inside dispatch) uses the same method key for
+            // its own cache tile/team lookup.  A log message is printed once per
+            // (method, width, is_complex) triple.
+            {
+                auto& cache = Interpolation::TileSizeCache::instance();
+                if (!config_m.enable_tuning && cache.loaded()) {
+                    if (auto best = cache.get_best(kernel_m.width(), is_complex_field)) {
+                        // Print info once per (original_method, best_method, width, is_complex)
+                        static std::unordered_set<std::size_t> reported;
+                        const std::size_t key =
+                            (static_cast<std::size_t>(config_m.method) * 3 +
+                             static_cast<std::size_t>(best->method)) * 10000 +
+                            static_cast<std::size_t>(kernel_m.width()) * 2 +
+                            static_cast<std::size_t>(is_complex_field);
+                        if (reported.find(key) == reported.end()) {
+                            reported.insert(key);
+                            if (best->method != config_m.method) {
+                                std::cout << "[Scatter] Auto-selecting method "
+                                          << method_name(best->method)
+                                          << " (cached throughput=" << std::fixed
+                                          << std::setprecision(1)
+                                          << best->entry.throughput_Mpts_s
+                                          << " Mpts/s) for w=" << kernel_m.width()
+                                          << " is_complex=" << is_complex_field
+                                          << " (overrides "
+                                          << method_name(config_m.method) << ")\n";
+                            }
+                        }
+                        // Override the method.  resolve_config() will subsequently
+                        // look up tile/team_size/oversubscription for this method.
+                        config_m.method = best->method;
+                    }
+                }
+            }
 
             const auto method = config_m.method;
 
@@ -104,11 +163,19 @@ namespace ippl {
 
     private:
         // ------------------------------------------------------------------
+        // Human-readable method name for log messages
+        // ------------------------------------------------------------------
+        static const char* method_name(Interpolation::ScatterMethod m) {
+            switch (m) {
+                case Interpolation::ScatterMethod::Tiled:         return "Tiled";
+                case Interpolation::ScatterMethod::OutputFocused: return "OutputFocused";
+                case Interpolation::ScatterMethod::Atomic:        return "Atomic";
+                default:                                          return "Unknown";
+            }
+        }
+
+        // ------------------------------------------------------------------
         // get_device_shmem
-        //
-        // Returns the maximum available shared memory per block on the current
-        // device.  On CPU execution spaces returns a large sentinel so the
-        // scratch check never triggers.
         // ------------------------------------------------------------------
         static size_t get_device_shmem() {
             static size_t cached = 0;
@@ -130,7 +197,7 @@ namespace ippl {
                 cached = prop.sharedMemPerBlock;
             }
 #else
-            cached = static_cast<size_t>(1) << 30;  // no GPU limit on CPU
+            cached = static_cast<size_t>(1) << 30;
 #endif
             return cached;
         }
@@ -141,28 +208,24 @@ namespace ippl {
         // Returns a copy of config_m with all benchmarked-optimal parameters
         // applied.  Priority order (highest to lowest):
         //
-        //   1. ScatterConfig::enable_tuning == true
-        //      → runtime autotuner path; returns config_m unchanged here,
-        //        dispatch will call get_tuned_tile_size() to override later.
+        //   1. ScatterConfig::enable_tuning == true  → unchanged (tuner handles it).
         //
-        //   2. TileSizeCache has an entry for (method, width, is_complex)
-        //      → apply tile sizes, team_size, and oversubscription_factor
-        //        from the benchmarked CSV.  A value of -1 in the cache entry
-        //        means "not recorded"; that field is left at its config_m value.
+        //   2. TileSizeCache has an entry for (config_m.method, width, is_complex)
+        //      → apply tile sizes, team_size, oversubscription_factor, z_batches.
+        //        A value of -1 in the cache entry means "not recorded".
         //
         //   3. Fallback: config_m unchanged (ScatterConfig defaults).
         //
-        // The resolved config is used for the entire scatter call; the runtime
-        // tuner may further override tile_size via get_tuned_tile_size.
+        // Note: config_m.method has already been overridden by get_best() in
+        // operator() before dispatch() is called, so the cache lookup here uses
+        // the already-resolved effective method.
         // ------------------------------------------------------------------
         template <template <int, class, class> class Impl, int W, class Types, class Policy,
                   bool IsComplex>
         Interpolation::ScatterConfig<Dim> resolve_config() const {
-            // Priority 1: runtime tuner takes over — dispatch handles it.
             if (config_m.enable_tuning)
                 return config_m;
 
-            // Priority 2: benchmark cache lookup
             auto& cache  = Interpolation::TileSizeCache::instance();
             auto  cached = cache.get(config_m.method, W, IsComplex);
 
@@ -177,8 +240,8 @@ namespace ippl {
                         + static_cast<std::size_t>(IsComplex);
                     if (reported.find(key) == reported.end()) {
                         reported.insert(key);
-                        std::cout << "[Scatter] Using cached config from " << cache.source()
-                                  << ": method=" << static_cast<int>(config_m.method)
+                        std::cout << "[Scatter] Applying cached config from " << cache.source()
+                                  << ": method=" << method_name(config_m.method)
                                   << " width=" << W
                                   << " is_complex=" << IsComplex
                                   << " tile=(" << e.tile[0];
@@ -189,45 +252,35 @@ namespace ippl {
                             std::cout << " team_size=" << e.team_size;
                         if (e.oversubscription_factor > 0)
                             std::cout << " oversubscription=" << e.oversubscription_factor;
-                        std::cout << "\n";
+                        if (e.z_batches > 0)
+                            std::cout << " z_batches=" << e.z_batches;
+                        std::cout << " throughput=" << std::fixed << std::setprecision(1)
+                                  << e.throughput_Mpts_s << " Mpts/s\n";
                     }
                 }
 
                 auto resolved = config_m;
 
-                // Apply tile sizes for all Dim dimensions.
                 Vector<int, Dim> tile;
                 for (unsigned d = 0; d < Dim; ++d)
                     tile[d] = e.tile[d < 3 ? d : 2];
                 resolved.set_tile_size(tile);
 
-                // Apply team_size if the cache recorded a valid value.
                 if (e.team_size > 0)
                     resolved.team_size = e.team_size;
-
-                // Apply oversubscription_factor if the cache recorded a valid value.
                 if (e.oversubscription_factor > 0)
                     resolved.oversubscription_factor = e.oversubscription_factor;
+                if (e.z_batches > 0)
+                    resolved.z_batches = e.z_batches;
 
                 return resolved;
             }
 
-            // Priority 3: ScatterConfig defaults
             return config_m;
         }
 
         // ------------------------------------------------------------------
         // clamp_tile_to_shmem
-        //
-        // Reduces the tile size in the supplied config until the kernel's
-        // shared-memory requirement fits within the device's available
-        // shared memory.  Operates on all Dim dimensions, reducing the
-        // largest dimension first (isotropic degradation).
-        //
-        // This is a safety net: the primary source of truth is the BO-tuned
-        // or user-supplied tile size.  Silently clamping prevents a hard
-        // runtime crash (illegal launch / OOM) when the resolved config
-        // exceeds device limits.
         // ------------------------------------------------------------------
         template <template <int, class, class> class Impl, int W, class Types, class Policy,
                   bool IsComplex>
@@ -238,13 +291,10 @@ namespace ippl {
             using execution_space = typename Types::execution_space;
             using team_policy     = Kokkos::TeamPolicy<execution_space>;
 
-            // Use Kokkos's scratch_size_max to get the actual available scratch,
-            // which accounts for Kokkos internal overhead (not just raw hardware limit).
             const size_t avail = team_policy(1, cfg.team_size).scratch_size_max(0);
 
             Vector<int, Dim> tile = cfg.get_tile_size();
 
-            // Up to 64 reduction steps; each step removes 1 from the largest dim.
             for (int itr = 0; itr < 64; ++itr) {
                 const size_t req =
                     Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(
@@ -252,14 +302,13 @@ namespace ippl {
                 if (req <= avail)
                     break;
 
-                // Find the largest dimension to shrink.
                 unsigned maxd = 0;
                 for (unsigned d = 1; d < Dim; ++d)
                     if (tile[d] > tile[maxd])
                         maxd = d;
 
                 if (tile[maxd] <= 1)
-                    break;  // cannot reduce further — launch will fail gracefully
+                    break;
 
                 --tile[maxd];
             }
@@ -280,17 +329,11 @@ namespace ippl {
             const size_t n_particles = positions.getParticleCount();
 
             Interpolation::WidthDispatcher<1, 14>::dispatch(width, [&]<int W>() {
-                // ── Step 1: Resolve full config from cache ────────────────────
-                //
-                // resolve_config() applies the priority chain:
-                //   tuning > cache (tile + team_size + oversubscription) > default
-                //
-                auto tuned_config =
-                    resolve_config<Impl, W, Types, Policy, is_complex>();
+                // ── Step 1: Resolve full config from cache ─────────────────────
+                auto tuned_config = resolve_config<Impl, W, Types, Policy, is_complex>();
 
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     if (config_m.enable_tuning) {
-                        // Runtime tuner may override the tile size portion.
                         Vector<int, Dim> tuned_tile =
                             get_tuned_tile_size<Impl, W, Types, Policy, is_complex>(
                                 field, tuned_config.get_tile_size());
@@ -298,22 +341,12 @@ namespace ippl {
                     }
                 }
 
-                // ── Step 1b: Safety – clamp tile to shared-memory budget ──────
-                //
-                // Regardless of the source (cache, tuner, or default), reduce the
-                // tile dimensions until the kernel's scratch-memory requirement is
-                // satisfied.  This prevents illegal-launch / OOM crashes when:
-                //   • The cache was built on a different GPU model.
-                //   • The user explicitly requested an oversized tile.
-                //   • A large kernel width makes even the default tile too big.
-                //
-                // The reduction is isotropic (largest dimension first) and noisy
-                // enough to warn the user if verbose output is enabled elsewhere.
+                // ── Step 1b: Safety – clamp tile to shared-memory budget ───────
                 clamp_tile_to_shmem<Impl, W, Types, Policy, is_complex>(tuned_config);
 
                 const Vector<int, Dim> tile_size = tuned_config.get_tile_size();
 
-                // ── Step 2: Binning ───────────────────────────────────────────
+                // ── Step 2: Binning ────────────────────────────────────────────
                 Interpolation::detail::BinningResult<Dim, memory_space> binning;
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     binning = performBinning<Types>(positions, field, tile_size);
@@ -321,7 +354,7 @@ namespace ippl {
                     binning = performBinning<Types>(positions, field, tile_size);
                 }
 
-                // ── Step 3: Run functor ───────────────────────────────────────
+                // ── Step 3: Run functor ────────────────────────────────────────
                 auto args = Impl<W, Types, Policy>::Arguments::create(
                     field, positions, values, kernel_m, tuned_config, binning);
 
@@ -331,7 +364,7 @@ namespace ippl {
                 functor.run(n_particles);
                 Kokkos::fence();
 
-                // ── Step 4: End tuning context ────────────────────────────────
+                // ── Step 4: End tuning context ─────────────────────────────────
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     if (config_m.enable_tuning) {
                         auto& tuner = Interpolation::detail::get_scatter_tuner<Impl, Dim, RealType,

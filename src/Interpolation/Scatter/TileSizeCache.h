@@ -12,15 +12,20 @@
 //   method,kernel_width,optimal_tile_size,throughput_Mpts_s,time_ms
 //   Tiled,4,3,1234.5,6.789
 //   OutputFocused,4,2,1100.0,7.5
+//   Atomic,4,1,950.0,8.2
 //   ...
 //
 // For the rectangular-tile extension the same file is augmented by the BO
-// optimiser (write_sa_csv), whose format is:
+// optimiser (write_bo_csv / write_sa_csv), whose format is:
 //   method,value_type,kernel_width,best_tile_x,best_tile_y,best_tile_z,
-//   best_team_size,best_oversubscription_factor,throughput_Mpts_s,time_ms,evaluations
+//   best_team_size,best_oversubscription_factor,best_z_batches,
+//   throughput_Mpts_s,time_ms,kernel_evaluations,preflight_rejections
 //
 // TileSizeCache tries the rectangular file first, falls back to the uniform
 // file, and finally falls back to the default tile size baked into ScatterConfig.
+//
+// CHANGE: TileCacheEntry now stores throughput_Mpts_s so that get_best() can
+// select the highest-performing method across Atomic, Tiled, and OutputFocused.
 //
 // Environment / file discovery (checked in order):
 //   1. IPPL_TILE_CSV=<path>   — explicit override
@@ -62,7 +67,6 @@ struct TileCacheKey {
 
 struct TileCacheKeyHash {
     std::size_t operator()(const TileCacheKey& k) const noexcept {
-        // Simple polynomial hash
         std::size_t h = static_cast<std::size_t>(k.method);
         h             = h * 31 + static_cast<std::size_t>(k.kernel_width);
         h             = h * 31 + static_cast<std::size_t>(k.is_complex);
@@ -73,10 +77,18 @@ struct TileCacheKeyHash {
 // Value: per-dimension tile sizes plus team/oversubscription parameters.
 // Lower dimensions use the first N entries of `tile`.
 struct TileCacheEntry {
-    std::array<int, 3> tile    = {1, 1, 1};
-    int team_size              = -1;   // -1 → not present in CSV, keep ScatterConfig default
-    int oversubscription_factor = -1;  // -1 → not present in CSV, keep ScatterConfig default
-    bool is_rectangular        = false;  // true if tile_x != tile_y or tile_y != tile_z
+    std::array<int, 3> tile       = {1, 1, 1};
+    int team_size                 = -1;   // -1 → not present in CSV, keep ScatterConfig default
+    int oversubscription_factor   = -1;   // -1 → not present in CSV, keep ScatterConfig default
+    int z_batches                 = -1;   // -1 → not present in CSV, keep ScatterConfig default
+    bool is_rectangular           = false;
+    double throughput_Mpts_s      = 0.0;  // benchmark throughput for best-method selection
+};
+
+// Result returned by get_best(): the winning method and its full config entry.
+struct BestCacheEntry {
+    ScatterMethod method;
+    TileCacheEntry entry;
 };
 
 class TileSizeCache {
@@ -91,8 +103,8 @@ public:
     }
 
     // ------------------------------------------------------------------
-    // Lookup: returns the full cache entry, or std::nullopt if not found.
-    // Callers should fall back to ScatterConfig defaults on nullopt.
+    // Lookup by specific method: returns the full cache entry, or
+    // std::nullopt if not found.
     // ------------------------------------------------------------------
     std::optional<TileCacheEntry> get(ScatterMethod method, int kernel_width,
                                       bool is_complex) const {
@@ -103,8 +115,32 @@ public:
         return it->second;
     }
 
+    // ------------------------------------------------------------------
+    // get_best: returns the method + entry with the highest throughput
+    // for the given (kernel_width, is_complex) pair, across ALL methods
+    // (Atomic, Tiled, OutputFocused, …).  Returns std::nullopt if the
+    // cache is empty or no entry matches.
+    //
+    // This is the primary entry point for automatic method selection:
+    //   auto best = TileSizeCache::instance().get_best(width, is_complex);
+    //   if (best) use best->method and best->entry.
+    // ------------------------------------------------------------------
+    std::optional<BestCacheEntry> get_best(int kernel_width, bool is_complex) const {
+        std::optional<BestCacheEntry> best;
+        double best_tp = -1.0;
+
+        for (const auto& [key, entry] : entries_) {
+            if (key.kernel_width != kernel_width || key.is_complex != is_complex)
+                continue;
+            if (entry.throughput_Mpts_s > best_tp) {
+                best_tp = entry.throughput_Mpts_s;
+                best    = BestCacheEntry{key.method, entry};
+            }
+        }
+        return best;
+    }
+
     // Convenience overload: returns only the tile sizes as a Vector<int, Dim>.
-    // Kept for backward compatibility with any existing callers.
     template <unsigned Dim>
     std::optional<Vector<int, Dim>> get_tile(ScatterMethod method, int kernel_width,
                                              bool is_complex) const {
@@ -115,7 +151,7 @@ public:
         const auto& e = entry.value();
         Vector<int, Dim> tile;
         for (unsigned d = 0; d < Dim; ++d)
-            tile[d] = e.tile[d < 3 ? d : 2];  // clamp to available dimensions
+            tile[d] = e.tile[d < 3 ? d : 2];
         return tile;
     }
 
@@ -147,35 +183,29 @@ private:
     // Discover and load the CSV
     // ------------------------------------------------------------------
     void load() {
-        // 1. Explicit environment variable override
         if (const char* env = std::getenv("IPPL_TILE_CSV")) {
             if (load_file(std::string(env)))
                 return;
             std::cerr << "[TileSizeCache] Warning: IPPL_TILE_CSV=" << env
                       << " could not be read, falling back to defaults.\n";
         }
-
-        // 2. Rectangular BO results (preferred — more specific)
         if (load_file("tile_sweep_sa_optimal.csv"))
             return;
-
-        // 3. Uniform sweep results
         if (load_file("tile_sweep_optimal.csv"))
             return;
-
-        // 4. Nothing found — silent; Scatter will use ScatterConfig defaults.
+        // Nothing found — silent; Scatter will use ScatterConfig defaults.
     }
 
     // ------------------------------------------------------------------
-    // Parse a single CSV file.
-    // Supports both formats:
+    // Parse a single CSV file.  Supports both formats:
     //
     //   Uniform format (write_optimal_csv):
     //     method,kernel_width,optimal_tile_size,throughput_Mpts_s,time_ms
     //
-    //   Rectangular format (write_sa_csv):
+    //   Rectangular / BO format (write_bo_csv):
     //     method,value_type,kernel_width,best_tile_x,best_tile_y,best_tile_z,
-    //     best_team_size,best_oversubscription_factor,throughput_Mpts_s,time_ms,evaluations
+    //     best_team_size,best_oversubscription_factor,best_z_batches,
+    //     throughput_Mpts_s,time_ms,kernel_evaluations,preflight_rejections
     //
     // Returns true if the file was found and at least one row was parsed.
     // ------------------------------------------------------------------
@@ -185,18 +215,15 @@ private:
             return false;
 
         std::string line;
-        // Read header and detect format
         if (!std::getline(f, line))
             return false;
 
-        // Detect by presence of "best_tile_x" (rectangular) or "optimal_tile_size" (uniform)
+        // Detect format by header content
         const bool is_rect    = (line.find("best_tile_x") != std::string::npos);
         const bool is_uniform = (line.find("optimal_tile_size") != std::string::npos);
 
-        if (!is_rect && !is_uniform) {
-            // Unknown format — silently skip rather than crash.
+        if (!is_rect && !is_uniform)
             return false;
-        }
 
         int rows_parsed = 0;
         while (std::getline(f, line)) {
@@ -219,33 +246,39 @@ private:
     // ------------------------------------------------------------------
     // Parse one row of the uniform format:
     //   method,kernel_width,optimal_tile_size,throughput_Mpts_s,time_ms
+    //   0      1            2                 3                  4
     // ------------------------------------------------------------------
     bool parse_uniform_row(const std::string& line) {
         std::vector<std::string> fields = split_csv(line);
-        // Expect at least 3 usable columns (method, width, tile)
         if (fields.size() < 3)
             return false;
 
-        const std::string& method_str = fields[0];
-        int width                     = parse_int(fields[1]);
-        int tile                      = parse_int(fields[2]);
+        ScatterMethod method;
+        if (!parse_method(fields[0], method))
+            return false;
 
+        int width = parse_int(fields[1]);
+        int tile  = parse_int(fields[2]);
         if (width <= 0 || tile <= 0)
             return false;
 
-        ScatterMethod method;
-        if (!parse_method(method_str, method))
-            return false;
+        double throughput = (fields.size() >= 4) ? parse_double(fields[3]) : 0.0;
 
-        // Uniform CSV has no value_type column — insert entries for both
+        // Uniform CSV has no value_type column — insert for both
         for (bool is_complex : {false, true}) {
-            TileCacheKey key{method, width, is_complex};
+            TileCacheKey   key{method, width, is_complex};
             TileCacheEntry entry;
             entry.tile.fill(tile);
-            entry.is_rectangular        = false;
-            entry.team_size             = -1;  // not available in uniform format
+            entry.is_rectangular      = false;
+            entry.team_size           = -1;
             entry.oversubscription_factor = -1;
-            entries_[key]               = entry;
+            entry.z_batches           = -1;
+            entry.throughput_Mpts_s   = throughput;
+
+            // Only insert if no rectangular entry already exists (rect is more specific)
+            auto it = entries_.find(key);
+            if (it == entries_.end() || !it->second.is_rectangular)
+                entries_[key] = entry;
         }
         return true;
     }
@@ -254,55 +287,58 @@ private:
     // Parse one row of the rectangular BO format:
     //   method,value_type,kernel_width,
     //   best_tile_x,best_tile_y,best_tile_z,
-    //   best_team_size,best_oversubscription_factor,
-    //   throughput_Mpts_s,time_ms,evaluations
-    //
-    // Indices:  0        1           2
-    //           3        4           5
-    //           6        7
-    //           8        9           10
+    //   best_team_size,best_oversubscription_factor,best_z_batches,
+    //   throughput_Mpts_s,time_ms,kernel_evaluations,preflight_rejections
+    //   0      1          2
+    //   3      4          5
+    //   6      7          8
+    //   9                 10                11                  12
     // ------------------------------------------------------------------
     bool parse_rect_row(const std::string& line) {
         std::vector<std::string> fields = split_csv(line);
-        // Need at least columns 0-7 (8 fields); columns 8-10 are optional
-        if (fields.size() < 8)
+        // Need at least columns 0-8 (9 fields); throughput at col 9 is optional
+        if (fields.size() < 9)
             return false;
 
-        const std::string& method_str     = fields[0];
+        ScatterMethod method;
+        if (!parse_method(fields[0], method))
+            return false;
+
         const std::string& value_type_str = fields[1];
-        int width                         = parse_int(fields[2]);
-        int tx                            = parse_int(fields[3]);
-        int ty                            = parse_int(fields[4]);
-        int tz                            = parse_int(fields[5]);
-        int team_size                     = parse_int(fields[6]);
-        int oversubscription              = parse_int(fields[7]);
+        int width        = parse_int(fields[2]);
+        int tx           = parse_int(fields[3]);
+        int ty           = parse_int(fields[4]);
+        int tz           = parse_int(fields[5]);
+        int team_size    = parse_int(fields[6]);
+        int oversubscription = parse_int(fields[7]);
+        int z_batches    = parse_int(fields[8]);
 
         if (width <= 0 || tx <= 0 || ty <= 0 || tz <= 0)
             return false;
-        // team_size and oversubscription are allowed to be -1 (invalid → keep default)
 
-        ScatterMethod method;
-        if (!parse_method(method_str, method))
-            return false;
+        double throughput = (fields.size() >= 10) ? parse_double(fields[9]) : 0.0;
 
-        // value_type: "complex" → is_complex=true, "real" → false, "" → both
         bool is_complex = (value_type_str == "complex");
 
         auto insert_entry = [&](bool complex) {
-            TileCacheKey key{method, width, complex};
+            TileCacheKey   key{method, width, complex};
             TileCacheEntry entry;
-            entry.tile                  = {tx, ty, tz};
-            entry.is_rectangular        = (tx != ty || ty != tz);
-            entry.team_size             = (team_size > 0) ? team_size : -1;
-            entry.oversubscription_factor =
-                (oversubscription > 0) ? oversubscription : -1;
+            entry.tile                    = {tx, ty, tz};
+            entry.is_rectangular          = (tx != ty || ty != tz);
+            entry.team_size               = (team_size > 0) ? team_size : -1;
+            entry.oversubscription_factor = (oversubscription > 0) ? oversubscription : -1;
+            entry.z_batches               = (z_batches > 0) ? z_batches : -1;
+            entry.throughput_Mpts_s       = throughput;
 
-            // Prefer rectangular over uniform: only overwrite if new entry is
-            // more specific (rectangular beats uniform, same-type beats wildcard)
+            // Rectangular beats uniform; higher throughput beats lower (same specificity)
             auto it = entries_.find(key);
-            if (it == entries_.end() || !it->second.is_rectangular || entry.is_rectangular) {
+            if (it == entries_.end())
                 entries_[key] = entry;
-            }
+            else if (!it->second.is_rectangular && entry.is_rectangular)
+                entries_[key] = entry;  // prefer rectangular
+            else if (it->second.is_rectangular == entry.is_rectangular
+                     && entry.throughput_Mpts_s > it->second.throughput_Mpts_s)
+                entries_[key] = entry;  // prefer higher throughput at same specificity
         };
 
         if (value_type_str.empty()) {
@@ -327,15 +363,19 @@ private:
             out = ScatterMethod::OutputFocused;
             return true;
         }
+        if (s == "Atomic") {
+            out = ScatterMethod::Atomic;
+            return true;
+        }
         return false;
     }
 
     static int parse_int(const std::string& s) {
-        try {
-            return std::stoi(s);
-        } catch (...) {
-            return -1;
-        }
+        try { return std::stoi(s); } catch (...) { return -1; }
+    }
+
+    static double parse_double(const std::string& s) {
+        try { return std::stod(s); } catch (...) { return 0.0; }
     }
 
     static std::vector<std::string> split_csv(const std::string& line) {
