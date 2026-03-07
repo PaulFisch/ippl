@@ -143,7 +143,7 @@ namespace ippl {
             }
 
             if (method == Interpolation::ScatterMethod::OutputFocused) {
-                dispatch<Interpolation::detail::GridParallelScatter, Types,
+                dispatch<Interpolation::detail::GridParallelScatterNative, Types,
                          Interpolation::detail::SortedPolicy>(field, positions, values, rho_est);
             }
         }
