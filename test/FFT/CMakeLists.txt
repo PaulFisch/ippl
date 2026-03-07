@@ -25,7 +25,17 @@ add_ippl_integration_test(TestNUFFTParamSweep LABELS integration fft benchmark)
 add_ippl_integration_test(TestScatterGatherKernel LABELS integration fft)
 add_ippl_integration_test(ScatterDebug LABELS integration fft)
 
-target_link_libraries(TestNUFFTPerformance PRIVATE finufft cufinufft)
+if(TARGET finufft OR TARGET cufinufft)
+    target_link_libraries(TestNUFFTPerformance PRIVATE finufft cufinufft)
+    target_link_libraries(TestNUFFT2_new PRIVATE finufft cufinufft)
+    target_link_libraries(TestNUFFT2_old PRIVATE finufft cufinufft)
+    target_link_libraries(TestNUFFT1_new PRIVATE finufft cufinufft)
+    target_link_libraries(TestNUFFT1_compare PRIVATE finufft cufinufft)
+    target_link_libraries(TestNUFFT2 PRIVATE finufft cufinufft)
+    target_link_libraries(TestNUFFTParamSweep PRIVATE finufft cufinufft)
+    target_link_libraries(TestNUFFT1 PRIVATE finufft cufinufft)
+endif()
+
 
 # Paper benchmarks live in their own subdirectory
 add_subdirectory(PaperBenchmarks)
