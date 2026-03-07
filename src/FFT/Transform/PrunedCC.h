@@ -312,10 +312,6 @@ namespace ippl {
             IpplTimings::stopTimer(twiddleTimer);
 
         } else {
-            //=================================================================
-            // STREAM-BASED PATH: Original implementation
-            //=================================================================
-
             // Ensure temps
             for (int s = 0; s < numConcurrent_; ++s) {
                 static IpplTimings::TimerRef allocateTempTimer =
@@ -554,10 +550,6 @@ namespace ippl {
             IpplTimings::stopTimer(stridedWriteTimer);
 
         } else {
-            //=================================================================
-            // STREAM-BASED PATH: Original implementation
-            //=================================================================
-
             for (int s = 0; s < numConcurrent_; ++s) {
                 if (temps_[s].size() != input.getOwned().size()) {
                     temps_[s] =

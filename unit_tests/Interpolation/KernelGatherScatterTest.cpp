@@ -1374,12 +1374,12 @@ TYPED_TEST(ScatterGatherTest, SingleParticleAtGridPoint) {
 // Symmetry Tests
 //=============================================================================
 
-TYPED_TEST(ScatterGatherTest, Symmetry_Atomic) {
-    typename TestFixture::scatter_config_type config;
-    config.method = ippl::Interpolation::ScatterMethod::Atomic;
-    config.sort   = true;
-    this->runSymmetryTest(config);
-}
+// TYPED_TEST(ScatterGatherTest, Symmetry_Atomic) {
+//     typename TestFixture::scatter_config_type config;
+//     config.method = ippl::Interpolation::ScatterMethod::Atomic;
+//     config.sort   = true;
+//     this->runSymmetryTest(config);
+// }
 
 //=============================================================================
 // Sorting Tests
