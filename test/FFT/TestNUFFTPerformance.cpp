@@ -229,7 +229,7 @@ double benchmarkType1Direct(PosView& positions, StrengthView& strengths, FieldVi
     config.tolerance = tol;
     config.type = 1;
 #ifdef ENABLE_GPU_NUFFT
-    config.gpu_method = 1;
+    config.gpu_method = 3;
     config.gpu_sort = 1;
     config.gpu_kerevalmeth = 1;
 #else
@@ -325,7 +325,7 @@ double benchmarkType2Direct(PosView& positions, OutputView& output, FieldView& f
     config.tolerance = tol;
     config.type = 2;
 #ifdef ENABLE_GPU_NUFFT
-    config.gpu_method = 1;
+    config.gpu_method = 3;
     config.gpu_sort = 1;
     config.gpu_kerevalmeth = 1;
 #else
