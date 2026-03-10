@@ -76,11 +76,15 @@ class ManualTimer {
 public:
     using clock_type = std::chrono::high_resolution_clock;
     using time_point = clock_type::time_point;
-    void start() { Kokkos::fence(); start_time_ = clock_type::now(); }
+    void start() {
+        Kokkos::fence();
+        start_time_ = clock_type::now();
+    }
     double stop() {
         Kokkos::fence();
         return std::chrono::duration<double>(clock_type::now() - start_time_).count();
     }
+
 private:
     time_point start_time_;
 };
@@ -119,7 +123,7 @@ struct BenchParams {
     int max_osub = 8;
 
     int min_z_batches = 1;
-    int max_z_batches = 4;
+    int max_z_batches = 32;
 
     bool complementary_bo_pass = false;
 
@@ -131,7 +135,10 @@ static std::vector<int> parse_int_list(const std::string& s) {
     std::istringstream ss(s);
     std::string tok;
     while (std::getline(ss, tok, ','))
-        try { out.push_back(std::stoi(tok)); } catch (...) {}
+        try {
+            out.push_back(std::stoi(tok));
+        } catch (...) {
+        }
     return out;
 }
 
@@ -139,30 +146,60 @@ BenchParams parse_bench_args(int argc, char* argv[]) {
     BenchParams p;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
-        if ((a == "--grid" || a == "-n") && i + 1 < argc)       p.n_grid = std::atoi(argv[++i]);
-        else if (a == "--rho" && i + 1 < argc)                   p.rho = std::atof(argv[++i]);
-        else if (a == "--warmup" && i + 1 < argc)                p.warmup_runs = std::atoi(argv[++i]);
-        else if (a == "--runs" && i + 1 < argc)                  p.benchmark_runs = std::atoi(argv[++i]);
-        else if ((a == "--output" || a == "-o") && i + 1 < argc) p.output_prefix = argv[++i];
-        else if (a == "--dist" && i + 1 < argc)                  p.distribution = argv[++i];
-        else if (a == "--min-tile" && i + 1 < argc)              p.min_tile_size = std::atoi(argv[++i]);
-        else if (a == "--max-tile" && i + 1 < argc)              p.max_tile_size = std::atoi(argv[++i]);
-        else if (a == "--min-width" && i + 1 < argc)             p.min_kernel_width = std::atoi(argv[++i]);
-        else if (a == "--max-width" && i + 1 < argc)             p.max_kernel_width = std::atoi(argv[++i]);
-        else if (a == "--ncu-mode") { p.ncu_mode = true; p.warmup_runs = 1; p.benchmark_runs = 1; }
-        else if (a == "--real")                                   p.use_real = true;
-        else if (a == "--optimize")                               p.optimize = true;
-        else if ((a == "--bo-budget" || a == "--sa-steps") && i + 1 < argc) p.bo_budget = std::atoi(argv[++i]);
-        else if (a == "--bo-xi" && i + 1 < argc)                 p.bo_xi = std::atof(argv[++i]);
-        else if (a == "--bo-ucb-prob" && i + 1 < argc)           p.bo_ucb_prob = std::atof(argv[++i]);
-        else if (a == "--team-sizes" && i + 1 < argc) { auto v = parse_int_list(argv[++i]); if (!v.empty()) p.team_size_candidates = v; }
-        else if (a == "--gp-team-sizes" && i + 1 < argc) { auto v = parse_int_list(argv[++i]); if (!v.empty()) p.gp_team_size_candidates = v; }
-        else if (a == "--min-osub" && i + 1 < argc)              p.min_osub = std::atoi(argv[++i]);
-        else if (a == "--max-osub" && i + 1 < argc)              p.max_osub = std::atoi(argv[++i]);
-        else if (a == "--min-z-batches" && i + 1 < argc)         p.min_z_batches = std::atoi(argv[++i]);
-        else if (a == "--max-z-batches" && i + 1 < argc)         p.max_z_batches = std::atoi(argv[++i]);
-        else if (a == "-v" || a == "--verbose")                   p.verbose = true;
-        else if ((a == "--sa-t0" || a == "--sa-alpha") && i + 1 < argc) ++i;
+        if ((a == "--grid" || a == "-n") && i + 1 < argc)
+            p.n_grid = std::atoi(argv[++i]);
+        else if (a == "--rho" && i + 1 < argc)
+            p.rho = std::atof(argv[++i]);
+        else if (a == "--warmup" && i + 1 < argc)
+            p.warmup_runs = std::atoi(argv[++i]);
+        else if (a == "--runs" && i + 1 < argc)
+            p.benchmark_runs = std::atoi(argv[++i]);
+        else if ((a == "--output" || a == "-o") && i + 1 < argc)
+            p.output_prefix = argv[++i];
+        else if (a == "--dist" && i + 1 < argc)
+            p.distribution = argv[++i];
+        else if (a == "--min-tile" && i + 1 < argc)
+            p.min_tile_size = std::atoi(argv[++i]);
+        else if (a == "--max-tile" && i + 1 < argc)
+            p.max_tile_size = std::atoi(argv[++i]);
+        else if (a == "--min-width" && i + 1 < argc)
+            p.min_kernel_width = std::atoi(argv[++i]);
+        else if (a == "--max-width" && i + 1 < argc)
+            p.max_kernel_width = std::atoi(argv[++i]);
+        else if (a == "--ncu-mode") {
+            p.ncu_mode       = true;
+            p.warmup_runs    = 1;
+            p.benchmark_runs = 1;
+        } else if (a == "--real")
+            p.use_real = true;
+        else if (a == "--optimize")
+            p.optimize = true;
+        else if ((a == "--bo-budget" || a == "--sa-steps") && i + 1 < argc)
+            p.bo_budget = std::atoi(argv[++i]);
+        else if (a == "--bo-xi" && i + 1 < argc)
+            p.bo_xi = std::atof(argv[++i]);
+        else if (a == "--bo-ucb-prob" && i + 1 < argc)
+            p.bo_ucb_prob = std::atof(argv[++i]);
+        else if (a == "--team-sizes" && i + 1 < argc) {
+            auto v = parse_int_list(argv[++i]);
+            if (!v.empty())
+                p.team_size_candidates = v;
+        } else if (a == "--gp-team-sizes" && i + 1 < argc) {
+            auto v = parse_int_list(argv[++i]);
+            if (!v.empty())
+                p.gp_team_size_candidates = v;
+        } else if (a == "--min-osub" && i + 1 < argc)
+            p.min_osub = std::atoi(argv[++i]);
+        else if (a == "--max-osub" && i + 1 < argc)
+            p.max_osub = std::atoi(argv[++i]);
+        else if (a == "--min-z-batches" && i + 1 < argc)
+            p.min_z_batches = std::atoi(argv[++i]);
+        else if (a == "--max-z-batches" && i + 1 < argc)
+            p.max_z_batches = std::atoi(argv[++i]);
+        else if (a == "-v" || a == "--verbose")
+            p.verbose = true;
+        else if ((a == "--sa-t0" || a == "--sa-alpha") && i + 1 < argc)
+            ++i;
     }
     return p;
 }
@@ -179,21 +216,23 @@ struct TimingStats {
 TimingStats compute_stats(const std::vector<double>& times_sec) {
     TimingStats s{};
     s.count = times_sec.size();
-    if (s.count == 0) return s;
+    if (s.count == 0)
+        return s;
     std::vector<double> ms(s.count);
-    for (size_t i = 0; i < s.count; ++i) ms[i] = times_sec[i] * 1000.0;
+    for (size_t i = 0; i < s.count; ++i)
+        ms[i] = times_sec[i] * 1000.0;
     double sum = std::accumulate(ms.begin(), ms.end(), 0.0);
-    s.mean_ms   = sum / s.count;
-    double sq   = 0;
-    for (double t : ms) sq += (t - s.mean_ms) * (t - s.mean_ms);
-    s.stddev_ms = (s.count > 1) ? std::sqrt(sq / (s.count - 1)) : 0.0;
-    s.min_ms    = *std::min_element(ms.begin(), ms.end());
-    s.max_ms    = *std::max_element(ms.begin(), ms.end());
+    s.mean_ms  = sum / s.count;
+    double sq  = 0;
+    for (double t : ms)
+        sq += (t - s.mean_ms) * (t - s.mean_ms);
+    s.stddev_ms                = (s.count > 1) ? std::sqrt(sq / (s.count - 1)) : 0.0;
+    s.min_ms                   = *std::min_element(ms.begin(), ms.end());
+    s.max_ms                   = *std::max_element(ms.begin(), ms.end());
     std::vector<double> sorted = ms;
     std::sort(sorted.begin(), sorted.end());
-    s.median_ms = (s.count % 2 == 0)
-        ? (sorted[s.count / 2 - 1] + sorted[s.count / 2]) / 2.0
-        : sorted[s.count / 2];
+    s.median_ms = (s.count % 2 == 0) ? (sorted[s.count / 2 - 1] + sorted[s.count / 2]) / 2.0
+                                     : sorted[s.count / 2];
     return s;
 }
 
@@ -242,102 +281,185 @@ struct GPModel {
     std::vector<std::vector<double>> L;
     std::vector<double> alpha;
 
-    GPModel() { lo_bounds.fill(0); hi_bounds.fill(1); }
-    void set_bounds(const std::array<int, N>& lo, const std::array<int, N>& hi) { lo_bounds = lo; hi_bounds = hi; }
+    GPModel() {
+        lo_bounds.fill(0);
+        hi_bounds.fill(1);
+    }
+    void set_bounds(const std::array<int, N>& lo, const std::array<int, N>& hi) {
+        lo_bounds = lo;
+        hi_bounds = hi;
+    }
 
     std::array<double, N> normalise(const Point& p) const {
         std::array<double, N> out;
         for (int d = 0; d < N; ++d) {
             double range = std::max(hi_bounds[d] - lo_bounds[d], 1);
-            out[d] = (p[d] - lo_bounds[d]) / range;
+            out[d]       = (p[d] - lo_bounds[d]) / range;
         }
         return out;
     }
     double sq_dist(const std::array<double, N>& a, const std::array<double, N>& b) const {
-        double s = 0; for (int d = 0; d < N; ++d) s += (a[d]-b[d])*(a[d]-b[d]); return s;
+        double s = 0;
+        for (int d = 0; d < N; ++d)
+            s += (a[d] - b[d]) * (a[d] - b[d]);
+        return s;
     }
-    double kernel_val(const std::array<double, N>& a, const std::array<double, N>& b, double l) const {
+    double kernel_val(const std::array<double, N>& a, const std::array<double, N>& b,
+                      double l) const {
         return std::exp(-sq_dist(a, b) / (2.0 * l * l));
     }
 
     void fit() {
-        int n = (int)y.size(); if (n == 0) return;
-        y_mean = std::accumulate(y.begin(), y.end(), 0.0) / n;
-        double var = 0; for (double v : y) var += (v - y_mean)*(v - y_mean);
+        int n = (int)y.size();
+        if (n == 0)
+            return;
+        y_mean     = std::accumulate(y.begin(), y.end(), 0.0) / n;
+        double var = 0;
+        for (double v : y)
+            var += (v - y_mean) * (v - y_mean);
         y_std = std::sqrt(var / n + 1e-12);
-        y_norm.resize(n); for (int i = 0; i < n; ++i) y_norm[i] = (y[i] - y_mean) / y_std;
+        y_norm.resize(n);
+        for (int i = 0; i < n; ++i)
+            y_norm[i] = (y[i] - y_mean) / y_std;
         double best_lml = -1e300;
         for (double l : {0.03, 0.07, 0.15, 0.3, 0.6, 1.2, 2.5})
             for (double sn : {0.005, 0.02, 0.08, 0.2, 0.5}) {
                 double lml = lml_compute(l, sn);
-                if (lml > best_lml) { best_lml = lml; length_scale = l; sigma_n = sn; }
+                if (lml > best_lml) {
+                    best_lml     = lml;
+                    length_scale = l;
+                    sigma_n      = sn;
+                }
             }
-        build_L(length_scale, sigma_n, L); solve_alpha();
+        build_L(length_scale, sigma_n, L);
+        solve_alpha();
     }
 
     double lml_compute(double l, double sn) const {
         int n = (int)X.size();
         std::vector<std::vector<double>> Lc(n, std::vector<double>(n, 0.0));
-        for (int i = 0; i < n; ++i) { auto xi = normalise(X[i]); for (int j = 0; j <= i; ++j) {
-            auto xj = normalise(X[j]); double s = kernel_val(xi, xj, l);
-            if (i == j) s += sn*sn + 1e-8;
-            for (int k = 0; k < j; ++k) s -= Lc[i][k]*Lc[j][k];
-            if (i == j) { if (s <= 0) return -1e300; Lc[i][j] = std::sqrt(s); }
-            else Lc[i][j] = s / (Lc[j][j] > 1e-12 ? Lc[j][j] : 1e-12);
-        }}
+        for (int i = 0; i < n; ++i) {
+            auto xi = normalise(X[i]);
+            for (int j = 0; j <= i; ++j) {
+                auto xj  = normalise(X[j]);
+                double s = kernel_val(xi, xj, l);
+                if (i == j)
+                    s += sn * sn + 1e-8;
+                for (int k = 0; k < j; ++k)
+                    s -= Lc[i][k] * Lc[j][k];
+                if (i == j) {
+                    if (s <= 0)
+                        return -1e300;
+                    Lc[i][j] = std::sqrt(s);
+                } else
+                    Lc[i][j] = s / (Lc[j][j] > 1e-12 ? Lc[j][j] : 1e-12);
+            }
+        }
         std::vector<double> v(n), alph(n);
-        for (int i = 0; i < n; ++i) { double s = y_norm[i]; for (int j = 0; j < i; ++j) s -= Lc[i][j]*v[j]; v[i] = s/(Lc[i][i] > 1e-12 ? Lc[i][i] : 1e-12); }
-        for (int i = n-1; i >= 0; --i) { double s = v[i]; for (int j = i+1; j < n; ++j) s -= Lc[j][i]*alph[j]; alph[i] = s/(Lc[i][i] > 1e-12 ? Lc[i][i] : 1e-12); }
+        for (int i = 0; i < n; ++i) {
+            double s = y_norm[i];
+            for (int j = 0; j < i; ++j)
+                s -= Lc[i][j] * v[j];
+            v[i] = s / (Lc[i][i] > 1e-12 ? Lc[i][i] : 1e-12);
+        }
+        for (int i = n - 1; i >= 0; --i) {
+            double s = v[i];
+            for (int j = i + 1; j < n; ++j)
+                s -= Lc[j][i] * alph[j];
+            alph[i] = s / (Lc[i][i] > 1e-12 ? Lc[i][i] : 1e-12);
+        }
         double fit = 0, ldet = 0;
-        for (int i = 0; i < n; ++i) { fit += y_norm[i]*alph[i]; ldet += std::log(std::max(Lc[i][i], 1e-300)); }
-        return -0.5*fit - ldet - 0.5*n*std::log(2*M_PI);
+        for (int i = 0; i < n; ++i) {
+            fit += y_norm[i] * alph[i];
+            ldet += std::log(std::max(Lc[i][i], 1e-300));
+        }
+        return -0.5 * fit - ldet - 0.5 * n * std::log(2 * M_PI);
     }
 
     // Fix 1: no double-subtract on diagonal
     void build_L(double l, double sn, std::vector<std::vector<double>>& Lout) const {
-        int n = (int)X.size(); Lout.assign(n, std::vector<double>(n, 0.0));
-        for (int i = 0; i < n; ++i) { auto xi = normalise(X[i]); for (int j = 0; j <= i; ++j) {
-            auto xj = normalise(X[j]); double s = kernel_val(xi, xj, l);
-            if (i == j) s += sn*sn + 1e-8;
-            for (int k = 0; k < j; ++k) s -= Lout[i][k]*Lout[j][k];
-            if (i == j) Lout[i][j] = (s > 1e-16) ? std::sqrt(s) : 1e-8;
-            else        Lout[i][j] = s / (Lout[j][j] > 1e-12 ? Lout[j][j] : 1e-12);
-        }}
+        int n = (int)X.size();
+        Lout.assign(n, std::vector<double>(n, 0.0));
+        for (int i = 0; i < n; ++i) {
+            auto xi = normalise(X[i]);
+            for (int j = 0; j <= i; ++j) {
+                auto xj  = normalise(X[j]);
+                double s = kernel_val(xi, xj, l);
+                if (i == j)
+                    s += sn * sn + 1e-8;
+                for (int k = 0; k < j; ++k)
+                    s -= Lout[i][k] * Lout[j][k];
+                if (i == j)
+                    Lout[i][j] = (s > 1e-16) ? std::sqrt(s) : 1e-8;
+                else
+                    Lout[i][j] = s / (Lout[j][j] > 1e-12 ? Lout[j][j] : 1e-12);
+            }
+        }
     }
 
     void solve_alpha() {
-        int n = (int)X.size(); std::vector<double> v(n);
-        for (int i = 0; i < n; ++i) { double s = y_norm[i]; for (int j = 0; j < i; ++j) s -= L[i][j]*v[j]; v[i] = s/(L[i][i] > 1e-12 ? L[i][i] : 1e-12); }
+        int n = (int)X.size();
+        std::vector<double> v(n);
+        for (int i = 0; i < n; ++i) {
+            double s = y_norm[i];
+            for (int j = 0; j < i; ++j)
+                s -= L[i][j] * v[j];
+            v[i] = s / (L[i][i] > 1e-12 ? L[i][i] : 1e-12);
+        }
         alpha.resize(n);
-        for (int i = n-1; i >= 0; --i) { double s = v[i]; for (int j = i+1; j < n; ++j) s -= L[j][i]*alpha[j]; alpha[i] = s/(L[i][i] > 1e-12 ? L[i][i] : 1e-12); }
+        for (int i = n - 1; i >= 0; --i) {
+            double s = v[i];
+            for (int j = i + 1; j < n; ++j)
+                s -= L[j][i] * alpha[j];
+            alpha[i] = s / (L[i][i] > 1e-12 ? L[i][i] : 1e-12);
+        }
     }
 
-    std::pair<double,double> predict(const Point& p) const {
-        int n = (int)X.size(); if (n == 0) return {y_mean, y_std*y_std};
-        auto xt = normalise(p); std::vector<double> k(n);
-        for (int i = 0; i < n; ++i) k[i] = kernel_val(normalise(X[i]), xt, length_scale);
-        double mu_norm = 0; for (int i = 0; i < n; ++i) mu_norm += k[i]*alpha[i];
+    std::pair<double, double> predict(const Point& p) const {
+        int n = (int)X.size();
+        if (n == 0)
+            return {y_mean, y_std * y_std};
+        auto xt = normalise(p);
+        std::vector<double> k(n);
+        for (int i = 0; i < n; ++i)
+            k[i] = kernel_val(normalise(X[i]), xt, length_scale);
+        double mu_norm = 0;
+        for (int i = 0; i < n; ++i)
+            mu_norm += k[i] * alpha[i];
         std::vector<double> v(n);
-        for (int i = 0; i < n; ++i) { double s = k[i]; for (int j = 0; j < i; ++j) s -= L[i][j]*v[j]; v[i] = s/(L[i][i] > 1e-12 ? L[i][i] : 1e-12); }
-        double var = 1.0; for (int i = 0; i < n; ++i) var -= v[i]*v[i];
+        for (int i = 0; i < n; ++i) {
+            double s = k[i];
+            for (int j = 0; j < i; ++j)
+                s -= L[i][j] * v[j];
+            v[i] = s / (L[i][i] > 1e-12 ? L[i][i] : 1e-12);
+        }
+        double var = 1.0;
+        for (int i = 0; i < n; ++i)
+            var -= v[i] * v[i];
         var = std::max(var, 1e-10);
-        return {mu_norm*y_std + y_mean, var*y_std*y_std};
+        return {mu_norm * y_std + y_mean, var * y_std * y_std};
     }
 
     double expected_improvement(const Point& p, double f_best, double xi = 0.01) const {
-        auto [mu, var] = predict(p); double sigma = std::sqrt(std::max(var, 0.0));
-        if (sigma < 1e-10) return std::max(0.0, mu - f_best);
-        double imp = mu - f_best - xi*std::max(y_std, 1.0), Z = imp/sigma;
-        double Phi = 0.5*(1.0 + std::erf(Z/std::sqrt(2.0)));
-        double phi = std::exp(-0.5*Z*Z)/std::sqrt(2.0*M_PI);
-        return std::max(0.0, imp*Phi + sigma*phi);
+        auto [mu, var] = predict(p);
+        double sigma   = std::sqrt(std::max(var, 0.0));
+        if (sigma < 1e-10)
+            return std::max(0.0, mu - f_best);
+        double imp = mu - f_best - xi * std::max(y_std, 1.0), Z = imp / sigma;
+        double Phi = 0.5 * (1.0 + std::erf(Z / std::sqrt(2.0)));
+        double phi = std::exp(-0.5 * Z * Z) / std::sqrt(2.0 * M_PI);
+        return std::max(0.0, imp * Phi + sigma * phi);
     }
 
     double ucb(const Point& p, double beta = 2.0) const {
-        auto [mu, var] = predict(p); return mu + beta*std::sqrt(std::max(var, 0.0));
+        auto [mu, var] = predict(p);
+        return mu + beta * std::sqrt(std::max(var, 0.0));
     }
 
-    void add_observation(const Point& p, double tp) { X.push_back(p); y.push_back(tp); }
+    void add_observation(const Point& p, double tp) {
+        X.push_back(p);
+        y.push_back(tp);
+    }
 };
 
 // ============================================================================
@@ -359,7 +481,8 @@ struct SearchPoint {
 struct SearchPointHash {
     std::size_t operator()(const SearchPoint& p) const noexcept {
         std::size_t h = 0;
-        for (int x : p.v) h = h * 104729 + static_cast<std::size_t>(x + 100);
+        for (int x : p.v)
+            h = h * 104729 + static_cast<std::size_t>(x + 100);
         return h;
     }
 };
@@ -407,7 +530,7 @@ public:
     static constexpr bool is_complex = !std::is_same_v<ValueT, real_type>;
     static const char* value_type_str() { return is_complex ? "complex" : "real"; }
     static constexpr KOKKOS_INLINE_FUNCTION value_type zero() { return value_type(0); }
-    static constexpr KOKKOS_INLINE_FUNCTION value_type one()  { return value_type(1); }
+    static constexpr KOKKOS_INLINE_FUNCTION value_type one() { return value_type(1); }
 
     using other_value_type = std::conditional_t<is_complex, real_type, Kokkos::complex<real_type>>;
 
@@ -415,30 +538,38 @@ public:
     using DummyPosView   = typename ippl::ParticleAttrib<ippl::Vector<real_type, Dim>>::view_type;
     using DummyValView   = typename ippl::ParticleAttrib<value_type>::view_type;
 
-    template <int W> using TiledTypes = ippl::Interpolation::detail::ScatterTypes<
-        Dim, real_type, ippl::nufft::ESKernel<real_type>, DummyFieldView, DummyPosView, DummyValView>;
-    template <int W> using GPTypes = TiledTypes<W>;
+    template <int W>
+    using TiledTypes =
+        ippl::Interpolation::detail::ScatterTypes<Dim, real_type, ippl::nufft::ESKernel<real_type>,
+                                                  DummyFieldView, DummyPosView, DummyValView>;
+    template <int W>
+    using GPTypes      = TiledTypes<W>;
     using SortedPolicy = ippl::Interpolation::detail::SortedPolicy;
 
     template <int W, bool ForceComplex = is_complex>
     static size_t required_shmem_tiled(const ippl::Vector<int, Dim>& tv, int team_size) {
-        return ippl::Interpolation::detail::TiledScatter<W, TiledTypes<W>, SortedPolicy>::
-            template compute_scratch_size<ForceComplex>(tv, team_size);
+        return ippl::Interpolation::detail::TiledScatter<
+            W, TiledTypes<W>, SortedPolicy>::template compute_scratch_size<ForceComplex>(tv,
+                                                                                         team_size);
     }
     template <int W, bool ForceComplex = is_complex>
-    static size_t required_shmem_gp(const ippl::Vector<int, Dim>& tv, int team_size_warps, int z_batches = 1) {
+    static size_t required_shmem_gp(const ippl::Vector<int, Dim>& tv, int team_size_warps,
+                                    int z_batches = 1) {
         return ippl::Interpolation::detail::GridParallelScatter<W, GPTypes<W>, SortedPolicy>::
             template compute_scratch_size<ForceComplex>(tv, team_size_warps, z_batches);
     }
 
-    static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile,
-                                  int W, int team_size, int z_batches = 1, bool force_complex = false) {
-        ippl::Vector<int, Dim> tv; for (unsigned d = 0; d < Dim; ++d) tv[d] = tile[d];
+    static size_t required_shmem(const std::string& method, const std::array<int, 3>& tile, int W,
+                                 int team_size, int z_batches = 1, bool force_complex = false) {
+        ippl::Vector<int, Dim> tv;
+        for (unsigned d = 0; d < Dim; ++d)
+            tv[d] = tile[d];
         size_t result = std::numeric_limits<size_t>::max();
         ippl::Interpolation::WidthDispatcher<1, 14>::dispatch(W, [&]<int Wc>() {
             if (force_complex)
-                result = (method == "Tiled") ? required_shmem_tiled<Wc, true>(tv, team_size)
-                                             : required_shmem_gp<Wc, true>(tv, team_size, z_batches);
+                result = (method == "Tiled")
+                             ? required_shmem_tiled<Wc, true>(tv, team_size)
+                             : required_shmem_gp<Wc, true>(tv, team_size, z_batches);
             else
                 result = (method == "Tiled") ? required_shmem_tiled<Wc>(tv, team_size)
                                              : required_shmem_gp<Wc>(tv, team_size, z_batches);
@@ -453,7 +584,29 @@ public:
     //         : team_policy(1, team_size).scratch_size_max(0);
     // }
 
-    static size_t scratch_size_max_for_team(const std::string& /*method*/, int team_size) {
+    static size_t scratch_size_max_for_team(const std::string& method, int team_size) {
+        // OutputFocused uses a native <<<>>> kernel with extern __shared__,
+        // so Kokkos TeamPolicy scratch headroom does NOT apply — query hardware directly.
+#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
+        if (method == "OutputFocused") {
+            static size_t hw = 0;
+            if (!hw) {
+#if defined(KOKKOS_ENABLE_CUDA)
+                int dev = 0, v = 0;
+                cudaGetDevice(&dev);
+                cudaDeviceGetAttribute(&v, cudaDevAttrMaxSharedMemoryPerBlock, dev);
+                hw = static_cast<size_t>(v > 0 ? v : 49152);
+#else
+                int dev = 0;
+                hipGetDevice(&dev);
+                hipDeviceProp_t prop;
+                hipGetDeviceProperties(&prop, dev);
+                hw = prop.sharedMemPerBlock;
+#endif
+            }
+            return hw;
+        }
+#endif
         using team_policy = Kokkos::TeamPolicy<ExecSpace>;
         return team_policy(1, team_size).scratch_size_max(0);
     }
@@ -464,9 +617,9 @@ public:
         size_t avail = scratch_size_max_for_team(method, team_size);
         if (params_.verbose && ippl::Comm->rank() == 0)
             std::cout << "  [shmem] " << method << " tile=(" << tile[0] << "," << tile[1] << ","
-                      << tile[2] << ") W=" << W << " team=" << team_size
-                      << " zb=" << z_batches << " req=" << req << " avail=" << avail
-                      << (req <= avail ? " OK" : " SKIP") << "\n";
+                      << tile[2] << ") W=" << W << " team=" << team_size << " zb=" << z_batches
+                      << " req=" << req << " avail=" << avail << (req <= avail ? " OK" : " SKIP")
+                      << "\n";
         return req <= avail;
     }
 
@@ -474,17 +627,23 @@ public:
     //     return (method == "OutputFocused") ? team_size * BenchParams::warp_size : team_size;
     // }
 
-    static int actual_threads(const std::string& /*method*/, int team_size) {
-        return team_size;
-    }
+    static int actual_threads(const std::string& /*method*/, int team_size) { return team_size; }
 
     static int max_team_size() {
         static int cached = -1;
-        if (cached >= 0) return cached;
+        if (cached >= 0)
+            return cached;
 #if defined(KOKKOS_ENABLE_CUDA)
-        int dev = 0, v = 0; cudaGetDevice(&dev); cudaDeviceGetAttribute(&v, cudaDevAttrMaxThreadsPerBlock, dev); cached = (v > 0) ? v : 1024;
+        int dev = 0, v = 0;
+        cudaGetDevice(&dev);
+        cudaDeviceGetAttribute(&v, cudaDevAttrMaxThreadsPerBlock, dev);
+        cached = (v > 0) ? v : 1024;
 #elif defined(KOKKOS_ENABLE_HIP)
-        int dev = 0; hipGetDevice(&dev); hipDeviceProp_t prop; hipGetDeviceProperties(&prop, dev); cached = (int)prop.maxThreadsPerBlock;
+        int dev = 0;
+        hipGetDevice(&dev);
+        hipDeviceProp_t prop;
+        hipGetDeviceProperties(&prop, dev);
+        cached = (int)prop.maxThreadsPerBlock;
 #else
         cached = std::numeric_limits<int>::max();
 #endif
@@ -496,18 +655,21 @@ public:
         int threads = actual_threads(method, team_size);
         if (threads > max_team_size()) {
             if (params_.verbose && ippl::Comm->rank() == 0)
-                std::cout << "  [team-skip] " << method << " team=" << team_size
-                          << " → " << threads << " > max=" << max_team_size() << "\n";
+                std::cout << "  [team-skip] " << method << " team=" << team_size << " → " << threads
+                          << " > max=" << max_team_size() << "\n";
             return false;
         }
-        if (!fits_in_shmem(method, tile, W, team_size, z_batches, false)) return false;
+        if (!fits_in_shmem(method, tile, W, team_size, z_batches, false))
+            return false;
         if (force_complex && !is_complex)
-            if (!fits_in_shmem(method, tile, W, team_size, z_batches, true)) return false;
+            if (!fits_in_shmem(method, tile, W, team_size, z_batches, true))
+                return false;
         return true;
     }
 
     size_t get_n_local_particles() const { return bunch_ ? bunch_->getLocalNum() : 0; }
-    explicit TileSweepBenchmark(const BenchParams& params) : params_(params) {}
+    explicit TileSweepBenchmark(const BenchParams& params)
+        : params_(params) {}
 
     // ──────────────────────────────────────────────────────────────────────
     // run()
@@ -515,17 +677,19 @@ public:
     void run() {
         print_header();
         std::vector<BenchmarkResult> results;
-        std::vector<BOResult>        bo_results;
+        std::vector<BOResult> bo_results;
 
         const std::vector<std::string> tiled_methods = {"Tiled", "OutputFocused"};
 
         std::vector<int> widths, tile_sizes_1d;
-        for (int w = params_.min_kernel_width; w <= params_.max_kernel_width; ++w) widths.push_back(w);
-        for (int t = params_.min_tile_size;    t <= params_.max_tile_size;    ++t) tile_sizes_1d.push_back(t);
+        for (int w = params_.min_kernel_width; w <= params_.max_kernel_width; ++w)
+            widths.push_back(w);
+        for (int t = params_.min_tile_size; t <= params_.max_tile_size; ++t)
+            tile_sizes_1d.push_back(t);
 
         // total sweep configs: (tiled_methods + 1 Atomic) × widths × tiles
         const int total_configs = (int)widths.size() * ((int)tile_sizes_1d.size() * 2 + 1);
-        int current_config = 0;
+        int current_config      = 0;
 
         for (int width : widths) {
             double tol = std::pow(10.0, -(width - 1));
@@ -545,15 +709,25 @@ public:
                     ++current_config;
                     if (ippl::Comm->rank() == 0)
                         std::cout << "\r[sweep " << current_config << "/" << total_configs << "] "
-                                  << "width=" << actual_width << " tile=" << t
-                                  << " " << method << "     " << std::flush;
+                                  << "width=" << actual_width << " tile=" << t << " " << method
+                                  << "     " << std::flush;
                     const std::array<int, 3> ta = {t, t, t};
-                    auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-                    cfg.method = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
-                                                     : ippl::Interpolation::ScatterMethod::OutputFocused;
+                    auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+                    cfg.method = (method == "Tiled")
+                                     ? ippl::Interpolation::ScatterMethod::Tiled
+                                     : ippl::Interpolation::ScatterMethod::OutputFocused;
                     cfg.set_tile_size(t);
+                    if (method == "OutputFocused") {
+                        cfg.team_size = params_.gp_team_size_candidates.front();
+                        for (int ts : params_.gp_team_size_candidates)
+                            if (ts <= max_team_size()) {
+                                cfg.team_size = ts;
+                                break;
+                            }
+                    }
                     if (is_config_valid(method, ta, actual_width, cfg.team_size))
-                        results.push_back(benchmark_scatter(method, cfg, kernel, n_particles, ta, false));
+                        results.push_back(
+                            benchmark_scatter(method, cfg, kernel, n_particles, ta, false));
                     else if (params_.verbose && ippl::Comm->rank() == 0)
                         std::cout << "\n  [skip] " << method << " tile=" << t << "\n";
                 }
@@ -568,30 +742,34 @@ public:
                 auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                 cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
                 cfg.sort   = true;
-                results.push_back(benchmark_scatter("Atomic", cfg, kernel, n_particles,
-                                                    {1, 1, 1}, false));
+                results.push_back(
+                    benchmark_scatter("Atomic", cfg, kernel, n_particles, {1, 1, 1}, false));
             }
 
             // ── Bayesian Optimisation ─────────────────────────────────────
             if (params_.optimize) {
                 if (ippl::Comm->rank() == 0)
-                    std::cout << "\n  [BO] width=" << actual_width << " budget=" << params_.bo_budget << "\n";
+                    std::cout << "\n  [BO] width=" << actual_width
+                              << " budget=" << params_.bo_budget << "\n";
 
                 for (const std::string& method : tiled_methods) {
                     auto bo = run_bo(method, kernel, n_particles);
                     bo_results.push_back(bo);
                     const auto& bt = bo.best_tile;
                     if (bo.best_throughput_Mpts > 0.0
-                        && is_config_valid(method, bt, actual_width, bo.best_team_size, bo.best_z_batches)) {
-                        auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-                        cfg.method = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
-                                                         : ippl::Interpolation::ScatterMethod::OutputFocused;
+                        && is_config_valid(method, bt, actual_width, bo.best_team_size,
+                                           bo.best_z_batches)) {
+                        auto cfg =
+                            ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+                        cfg.method                  = (method == "Tiled")
+                                                          ? ippl::Interpolation::ScatterMethod::Tiled
+                                                          : ippl::Interpolation::ScatterMethod::OutputFocused;
                         cfg.tile_size               = {bt[0], bt[1], bt[2]};
                         cfg.team_size               = bo.best_team_size;
                         cfg.oversubscription_factor = bo.best_oversubscription_factor;
                         cfg.z_batches               = bo.best_z_batches;
-                        auto r = benchmark_scatter(method, cfg, kernel, n_particles, bt, true);
-                        r.team_size               = bo.best_team_size;
+                        auto r      = benchmark_scatter(method, cfg, kernel, n_particles, bt, true);
+                        r.team_size = bo.best_team_size;
                         r.oversubscription_factor = bo.best_oversubscription_factor;
                         r.z_batches               = bo.best_z_batches;
                         results.push_back(r);
@@ -614,11 +792,12 @@ public:
 
                     // Benchmark Atomic for the complementary type
                     {
-                        auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+                        auto cfg =
+                            ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                         cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
                         cfg.sort   = true;
-                        results.push_back(other.benchmark_scatter("Atomic", cfg, kernel,
-                                                                   other_np, {1, 1, 1}, false));
+                        results.push_back(other.benchmark_scatter("Atomic", cfg, kernel, other_np,
+                                                                  {1, 1, 1}, false));
                     }
 
                     for (const std::string& method : tiled_methods) {
@@ -626,16 +805,19 @@ public:
                         bo_results.push_back(bo);
                         const auto& bt = bo.best_tile;
                         if (bo.best_throughput_Mpts > 0.0
-                            && other.is_config_valid(method, bt, actual_width,
-                                                     bo.best_team_size, bo.best_z_batches)) {
-                            auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-                            cfg.method = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
-                                                             : ippl::Interpolation::ScatterMethod::OutputFocused;
+                            && other.is_config_valid(method, bt, actual_width, bo.best_team_size,
+                                                     bo.best_z_batches)) {
+                            auto cfg =
+                                ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+                            cfg.method                  = (method == "Tiled")
+                                                              ? ippl::Interpolation::ScatterMethod::Tiled
+                                                              : ippl::Interpolation::ScatterMethod::OutputFocused;
                             cfg.tile_size               = {bt[0], bt[1], bt[2]};
                             cfg.team_size               = bo.best_team_size;
                             cfg.oversubscription_factor = bo.best_oversubscription_factor;
                             cfg.z_batches               = bo.best_z_batches;
-                            auto r = other.benchmark_scatter(method, cfg, kernel, other_np, bt, true);
+                            auto r =
+                                other.benchmark_scatter(method, cfg, kernel, other_np, bt, true);
                             r.team_size               = bo.best_team_size;
                             r.oversubscription_factor = bo.best_oversubscription_factor;
                             r.z_batches               = bo.best_z_batches;
@@ -648,7 +830,8 @@ public:
             cleanup();
         }
 
-        if (ippl::Comm->rank() == 0) std::cout << "\n";
+        if (ippl::Comm->rank() == 0)
+            std::cout << "\n";
         write_full_csv(results);
         write_heatmap_csv(results, "Tiled");
         write_heatmap_csv(results, "OutputFocused");
@@ -688,21 +871,25 @@ public:
                 grid_->accumulateHalo();
             }
             Kokkos::fence();
-            std::vector<double> times; times.reserve(params_.benchmark_runs);
+            std::vector<double> times;
+            times.reserve(params_.benchmark_runs);
             for (int i = 0; i < params_.benchmark_runs; ++i) {
-                *grid_ = zero(); Kokkos::fence(); timer.start();
+                *grid_ = zero();
+                Kokkos::fence();
+                timer.start();
                 Q_.scatter_kernel(*grid_, R_, kernel, cfg);
                 grid_->accumulateHalo();
                 times.push_back(timer.stop());
             }
-            r.times_sec = times; r.stats = compute_stats(times);
+            r.times_sec = times;
+            r.stats     = compute_stats(times);
         } catch (const std::runtime_error& e) {
             if (ippl::Comm->rank() == 0 && params_.verbose)
                 std::cout << "\n    [SKIP] " << method << " " << e.what() << "\n";
             const double nan = std::numeric_limits<double>::quiet_NaN();
             r.stats.mean_ms = r.stats.stddev_ms = r.stats.min_ms = r.stats.max_ms =
-                r.stats.median_ms = nan;
-            r.stats.count = 0;
+                r.stats.median_ms                                = nan;
+            r.stats.count                                        = 0;
         }
         return r;
     }
@@ -713,7 +900,9 @@ private:
     // ══════════════════════════════════════════════════════════════════════
 
     // Feasible (ts_idx, z_batches, max_isotropic_tile) from pre-scan
-    struct FeasConf { int ts_idx, z_batches, max_tile; };
+    struct FeasConf {
+        int ts_idx, z_batches, max_tile;
+    };
 
     struct BOContext {
         const std::string& method;
@@ -733,15 +922,15 @@ private:
     // Pre-scan: enumerate all (ts_idx, z_batches) pairs that have at least
     // one feasible isotropic tile within [lo_tile, hi_tile].  Pure arithmetic.
     // ------------------------------------------------------------------
-    std::vector<FeasConf> compute_feasible_configs(
-        const std::string& method, int W, const std::vector<int>& ts_cands,
-        int lo_ts, int hi_ts, int lo_tile, int hi_tile, int lo_zb, int hi_zb) const
-    {
+    std::vector<FeasConf> compute_feasible_configs(const std::string& method, int W,
+                                                   const std::vector<int>& ts_cands, int lo_ts,
+                                                   int hi_ts, int lo_tile, int hi_tile, int lo_zb,
+                                                   int hi_zb) const {
         std::vector<FeasConf> feas;
         for (int tsi = lo_ts; tsi <= hi_ts; ++tsi) {
-            int ts   = ts_of(ts_cands, tsi);
-            int zb_lo = (method == "OutputFocused") ? lo_zb  : 1;
-            int zb_hi = (method == "OutputFocused") ? hi_zb  : 1;
+            int ts    = ts_of(ts_cands, tsi);
+            int zb_lo = (method == "OutputFocused") ? lo_zb : 1;
+            int zb_hi = (method == "OutputFocused") ? hi_zb : 1;
             // Scan z_batches descending: higher z_batches → smaller scratch
             for (int zb = zb_hi; zb >= zb_lo; --zb) {
                 int max_t = lo_tile - 1;
@@ -755,10 +944,12 @@ private:
                     feas.push_back({tsi, zb, max_t});
             }
         }
-        // Sort: most permissive (largest max_tile, highest zb) first
+
         std::sort(feas.begin(), feas.end(), [](const FeasConf& a, const FeasConf& b) {
-            if (a.max_tile != b.max_tile) return a.max_tile > b.max_tile;
-            return a.z_batches > b.z_batches;
+            if (a.max_tile != b.max_tile)
+                return a.max_tile > b.max_tile;
+            // Lower z_batches = smaller batch_np = less scratch = safer warm-start
+            return a.z_batches < b.z_batches;
         });
         return feas;
     }
@@ -774,23 +965,22 @@ private:
         const int kernel_W = ctx.kernel.width();
 
         const int lo_tile = ctx.lo_tile, hi_tile = ctx.hi_tile;
-        const int lo_ts   = ctx.lo_ts,   hi_ts   = ctx.hi_ts;
+        const int lo_ts = ctx.lo_ts, hi_ts = ctx.hi_ts;
         // const int lo_osub = ctx.lo_osub, hi_osub = ctx.hi_osub;
         const int lo_osub = (ctx.method == "OutputFocused") ? 1 : params_.min_osub;
         const int hi_osub = (ctx.method == "OutputFocused") ? 1 : params_.max_osub;
-        const int lo_zb   = ctx.lo_zb,   hi_zb   = ctx.hi_zb;
+        const int lo_zb = ctx.lo_zb, hi_zb = ctx.hi_zb;
 
         // ── Step 0: Feasibility pre-scan ──────────────────────────────────
-        auto feas_cfgs = compute_feasible_configs(
-            ctx.method, kernel_W, ctx.ts_candidates,
-            lo_ts, hi_ts, lo_tile, hi_tile, lo_zb, hi_zb);
+        auto feas_cfgs = compute_feasible_configs(ctx.method, kernel_W, ctx.ts_candidates, lo_ts,
+                                                  hi_ts, lo_tile, hi_tile, lo_zb, hi_zb);
 
         if (feas_cfgs.empty()) {
             if (ippl::Comm->rank() == 0) {
                 size_t min_req = required_shmem(ctx.method, {lo_tile, lo_tile, lo_tile}, kernel_W,
                                                 ts_of(ctx.ts_candidates, lo_ts), hi_zb);
-                size_t avail   = scratch_size_max_for_team(ctx.method,
-                                                           ts_of(ctx.ts_candidates, lo_ts));
+                size_t avail =
+                    scratch_size_max_for_team(ctx.method, ts_of(ctx.ts_candidates, lo_ts));
                 std::cout << "    BO [skip] " << ctx.method << " w=" << kernel_W
                           << " type=" << value_type_str()
                           << " — no feasible config (min_scratch=" << min_req
@@ -810,46 +1000,68 @@ private:
 
         // ── GP setup ──────────────────────────────────────────────────────
         std::array<int, N> lo_gp, hi_gp;
-        lo_gp[0] = lo_tile; hi_gp[0] = eff_hi_tile;
-        lo_gp[1] = lo_tile; hi_gp[1] = eff_hi_tile;
-        lo_gp[2] = lo_tile; hi_gp[2] = eff_hi_tile;
-        lo_gp[3] = lo_ts;   hi_gp[3] = hi_ts;
-        lo_gp[4] = lo_osub; hi_gp[4] = hi_osub;
-        if constexpr (N == 6) { lo_gp[5] = lo_zb; hi_gp[5] = hi_zb; }
+        lo_gp[0] = lo_tile;
+        hi_gp[0] = eff_hi_tile;
+        lo_gp[1] = lo_tile;
+        hi_gp[1] = eff_hi_tile;
+        lo_gp[2] = lo_tile;
+        hi_gp[2] = eff_hi_tile;
+        lo_gp[3] = lo_ts;
+        hi_gp[3] = hi_ts;
+        lo_gp[4] = lo_osub;
+        hi_gp[4] = hi_osub;
+        if constexpr (N == 6) {
+            lo_gp[5] = lo_zb;
+            hi_gp[5] = hi_zb;
+        }
 
-        GPModel<N> gp; gp.set_bounds(lo_gp, hi_gp);
+        GPModel<N> gp;
+        gp.set_bounds(lo_gp, hi_gp);
 
         auto gp_key = [&](const SearchPoint& pt) -> typename GPModel<N>::Point {
             typename GPModel<N>::Point k;
-            k[0]=pt.v[0]; k[1]=pt.v[1]; k[2]=pt.v[2]; k[3]=pt.v[3]; k[4]=pt.v[4];
-            if constexpr (N == 6) k[5] = pt.v[5];
+            k[0] = pt.v[0];
+            k[1] = pt.v[1];
+            k[2] = pt.v[2];
+            k[3] = pt.v[3];
+            k[4] = pt.v[4];
+            if constexpr (N == 6)
+                k[5] = pt.v[5];
             return k;
         };
 
         using GPKey = typename GPModel<N>::Point;
-        struct GPKeyHash { std::size_t operator()(const GPKey& k) const noexcept {
-            std::size_t h = 0; for (int x : k) h = h*104729 + static_cast<std::size_t>(x+100); return h;
-        }};
+        struct GPKeyHash {
+            std::size_t operator()(const GPKey& k) const noexcept {
+                std::size_t h = 0;
+                for (int x : k)
+                    h = h * 104729 + static_cast<std::size_t>(x + 100);
+                return h;
+            }
+        };
         std::unordered_set<GPKey, GPKeyHash> observed_gp;  // Fix 3
 
         std::unordered_map<SearchPoint, double, SearchPointHash> tp_cache;
-        std::unordered_set<SearchPoint, SearchPointHash>         preflight_rejected;
-        std::unordered_map<SearchPoint, bool,   SearchPointHash> feasible_cache;
+        std::unordered_set<SearchPoint, SearchPointHash> preflight_rejected;
+        std::unordered_map<SearchPoint, bool, SearchPointHash> feasible_cache;
 
         auto is_feasible = [&](const SearchPoint& pt) -> bool {
             auto it = feasible_cache.find(pt);
-            if (it != feasible_cache.end()) return it->second;
-            bool ok = is_config_valid(ctx.method, pt.tile(), kernel_W,
-                                      ts_of(ctx.ts_candidates, pt.ts_idx()), pt.z_batches());
-            feasible_cache[pt] = ok; return ok;
+            if (it != feasible_cache.end())
+                return it->second;
+            bool ok            = is_config_valid(ctx.method, pt.tile(), kernel_W,
+                                                 ts_of(ctx.ts_candidates, pt.ts_idx()), pt.z_batches());
+            feasible_cache[pt] = ok;
+            return ok;
         };
 
         auto make_cfg = [&](const SearchPoint& pt) {
-            auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-            cfg.method = (ctx.method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
-                                                 : ippl::Interpolation::ScatterMethod::OutputFocused;
-            cfg.tile_size               = {pt.tile_x(), pt.tile_y(), pt.tile_z()};
-            cfg.team_size               = ts_of(ctx.ts_candidates, pt.ts_idx());
+            auto cfg      = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
+            cfg.method    = (ctx.method == "Tiled")
+                                ? ippl::Interpolation::ScatterMethod::Tiled
+                                : ippl::Interpolation::ScatterMethod::OutputFocused;
+            cfg.tile_size = {pt.tile_x(), pt.tile_y(), pt.tile_z()};
+            cfg.team_size = ts_of(ctx.ts_candidates, pt.ts_idx());
             cfg.oversubscription_factor = pt.osub();
             cfg.z_batches               = pt.z_batches();
             return cfg;
@@ -859,34 +1071,46 @@ private:
 
         auto gp_add = [&](const SearchPoint& pt, double tp) {
             auto gk = gp_key(pt);
-            if (observed_gp.count(gk)) return;
+            if (observed_gp.count(gk))
+                return;
             observed_gp.insert(gk);
             gp.add_observation(gk, tp);
         };
 
         // Fix 2: only kernel launches increment bo.evaluations
         auto evaluate = [&](const SearchPoint& pt) -> double {
-            if (tp_cache.count(pt)) return tp_cache[pt];
-            if (preflight_rejected.count(pt)) { ++bo.preflight_rejections; return kInfeasiblePenalty; }
+            if (tp_cache.count(pt))
+                return tp_cache[pt];
+            if (preflight_rejected.count(pt)) {
+                ++bo.preflight_rejections;
+                return kInfeasiblePenalty;
+            }
             if (!is_feasible(pt)) {
-                preflight_rejected.insert(pt); ++bo.preflight_rejections;
+                preflight_rejected.insert(pt);
+                ++bo.preflight_rejections;
                 if (p.verbose && ippl::Comm->rank() == 0)
                     std::cout << "    BO [pre-OOM] tile=(" << pt.tile_x() << "," << pt.tile_y()
-                              << "," << pt.tile_z() << ") team=" << ts_of(ctx.ts_candidates, pt.ts_idx()) << "\n";
+                              << "," << pt.tile_z()
+                              << ") team=" << ts_of(ctx.ts_candidates, pt.ts_idx()) << "\n";
                 return kInfeasiblePenalty;
             }
             auto cfg = make_cfg(pt);
-            auto r   = benchmark_scatter(ctx.method, cfg, ctx.kernel, ctx.n_particles, pt.tile(), true);
+            auto r =
+                benchmark_scatter(ctx.method, cfg, ctx.kernel, ctx.n_particles, pt.tile(), true);
             ++bo.evaluations;
-            bool oom = (r.stats.count == 0) || std::isnan(r.stats.mean_ms);
-            double tp = oom ? kInfeasiblePenalty : r.throughput_Mpts_per_sec();
+            bool oom     = (r.stats.count == 0) || std::isnan(r.stats.mean_ms);
+            double tp    = oom ? kInfeasiblePenalty : r.throughput_Mpts_per_sec();
             tp_cache[pt] = tp;
-            if (oom) { feasible_cache[pt] = false; preflight_rejected.insert(pt); }
+            if (oom) {
+                feasible_cache[pt] = false;
+                preflight_rejected.insert(pt);
+            }
             if (p.verbose && ippl::Comm->rank() == 0)
-                std::cout << "    BO eval " << std::setw(4) << bo.evaluations
-                          << "  tile=(" << pt.tile_x() << "," << pt.tile_y() << "," << pt.tile_z() << ")"
-                          << " team=" << ts_of(ctx.ts_candidates, pt.ts_idx())
-                          << " (thr=" << actual_threads(ctx.method, ts_of(ctx.ts_candidates, pt.ts_idx())) << ")"
+                std::cout << "    BO eval " << std::setw(4) << bo.evaluations << "  tile=("
+                          << pt.tile_x() << "," << pt.tile_y() << "," << pt.tile_z() << ")"
+                          << " team=" << ts_of(ctx.ts_candidates, pt.ts_idx()) << " (thr="
+                          << actual_threads(ctx.method, ts_of(ctx.ts_candidates, pt.ts_idx()))
+                          << ")"
                           << " osub=" << pt.osub() << " zb=" << pt.z_batches()
                           << "  tp=" << std::fixed << std::setprecision(1) << tp << " Mpts/s\n";
             return tp;
@@ -896,27 +1120,30 @@ private:
         std::size_t mh = std::hash<std::string>{}(ctx.method);
         std::mt19937 rng(static_cast<uint32_t>(98765 + kernel_W * 1000 + (mh & 0xFFFF)));
         std::uniform_real_distribution<double> unif(0.0, 1.0);
-        auto rand_int = [&](int lo, int hi) { return lo + (int)(unif(rng) * (hi - lo + 1)); };
+        auto rand_int = [&](int lo, int hi) {
+            return lo + (int)(unif(rng) * (hi - lo + 1));
+        };
 
         std::array<int, 6> lo6 = {lo_tile, lo_tile, lo_tile, lo_ts, lo_osub, lo_zb};
         std::array<int, 6> hi6 = {eff_hi_tile, eff_hi_tile, eff_hi_tile, hi_ts, hi_osub, hi_zb};
 
         const int total_budget = p.bo_budget;
-        const int n_init       = std::min(total_budget / 4,
-                                          std::max(8, (int)feas_cfgs.size() * 4));
+        const int n_init       = std::min(total_budget / 4, std::max(8, (int)feas_cfgs.size() * 4));
         const int n_bo_steps   = total_budget - n_init;
 
         // Add: warm-start from smallest tile of best feasible config
         SearchPoint best_pt;
-        { const auto& fc = feas_cfgs[0];
-          best_pt.v = {lo_tile, lo_tile, lo_tile, fc.ts_idx,
-                       (lo_osub + hi_osub) / 2, fc.z_batches}; }
+        {
+            const auto& fc = feas_cfgs[0];
+            best_pt.v      = {lo_tile,     lo_tile, lo_tile, fc.ts_idx, (lo_osub + hi_osub) / 2,
+                              fc.z_batches};
+        }
         double best_tp = 0.0;
 
         // ── Phase 1: Feasibility-guided LHS ───────────────────────────────
         if (ippl::Comm->rank() == 0)
-            std::cout << "    BO [init] " << N << "D feasibility-guided LHS ("
-                      << n_init << " kernel evals, " << feas_cfgs.size() << " feas pairs)\n";
+            std::cout << "    BO [init] " << N << "D feasibility-guided LHS (" << n_init
+                      << " kernel evals, " << feas_cfgs.size() << " feas pairs)\n";
         {
             std::uniform_int_distribution<int> fc_pick(0, (int)feas_cfgs.size() - 1);
             std::vector<int> osub_strat(n_init);
@@ -929,19 +1156,21 @@ private:
             for (int i = 0; i < n_init; ++i) {
                 const auto& fc = feas_cfgs[fc_pick(rng)];
                 SearchPoint pt;
-                pt.v[0] = rand_int(lo_tile, fc.max_tile);
-                pt.v[1] = rand_int(lo_tile, fc.max_tile);
-                pt.v[2] = rand_int(lo_tile, fc.max_tile);
-                pt.v[3] = fc.ts_idx;
-                pt.v[4] = cell_f(osub_strat[i], n_init, lo_osub, hi_osub);
-                pt.v[5] = fc.z_batches;
+                pt.v[0]   = rand_int(lo_tile, fc.max_tile);
+                pt.v[1]   = rand_int(lo_tile, fc.max_tile);
+                pt.v[2]   = rand_int(lo_tile, fc.max_tile);
+                pt.v[3]   = fc.ts_idx;
+                pt.v[4]   = cell_f(osub_strat[i], n_init, lo_osub, hi_osub);
+                pt.v[5]   = fc.z_batches;
                 double tp = evaluate(pt);
                 gp_add(pt, tp);
-                bo.history.emplace_back(bo.evaluations + bo.preflight_rejections,
-                                        pt.tile_x(), pt.tile_y(), pt.tile_z(),
-                                        ts_of(ctx.ts_candidates, pt.ts_idx()),
-                                        pt.osub(), pt.z_batches(), tp);
-                if (tp > best_tp) { best_tp = tp; best_pt = pt; }
+                bo.history.emplace_back(
+                    bo.evaluations + bo.preflight_rejections, pt.tile_x(), pt.tile_y(), pt.tile_z(),
+                    ts_of(ctx.ts_candidates, pt.ts_idx()), pt.osub(), pt.z_batches(), tp);
+                if (tp > best_tp) {
+                    best_tp = tp;
+                    best_pt = pt;
+                }
             }
         }
         if (best_tp <= 0.0 && ippl::Comm->rank() == 0)
@@ -951,8 +1180,8 @@ private:
         if (ippl::Comm->rank() == 0)
             std::cout << "    BO [opt] acquisition loop (" << n_bo_steps << " kernel evals)\n";
         {
-            int bo_step   = 0;
-            int acq_iters = 0;
+            int bo_step             = 0;
+            int acq_iters           = 0;
             const int max_acq_iters = n_bo_steps * 6 + 50;
             while (bo.evaluations < total_budget && acq_iters < max_acq_iters) {
                 ++acq_iters;
@@ -970,11 +1199,15 @@ private:
                 // Pre-flight-rejected candidates are NOT skipped — the GP
                 // naturally guides away from infeasible regions.
                 auto score = [&](const SearchPoint& c) {
-                    if (tp_cache.count(c)) return;
+                    if (tp_cache.count(c))
+                        return;
                     auto gk    = gp_key(c);
                     double acq = use_ucb ? gp.ucb(gk, beta_ucb)
                                          : gp.expected_improvement(gk, best_tp, p.bo_xi);
-                    if (acq > best_acq) { best_acq = acq; next = c; }
+                    if (acq > best_acq) {
+                        best_acq = acq;
+                        next     = c;
+                    }
                 };
 
                 if (do_restart) {
@@ -984,69 +1217,91 @@ private:
                     pt2.v[0] = rand_int(lo_tile, fc2.max_tile);
                     pt2.v[1] = rand_int(lo_tile, fc2.max_tile);
                     pt2.v[2] = rand_int(lo_tile, fc2.max_tile);
-                    pt2.v[3] = fc2.ts_idx; pt2.v[4] = rand_int(lo_osub, hi_osub); pt2.v[5] = fc2.z_batches;
+                    pt2.v[3] = fc2.ts_idx;
+                    pt2.v[4] = rand_int(lo_osub, hi_osub);
+                    pt2.v[5] = fc2.z_batches;
                     score(pt2);
                 }
                 for (int s = 0; s < 3000; ++s) {
                     SearchPoint c;
-                    c.v[0] = rand_int(lo_tile, eff_hi_tile); c.v[1] = rand_int(lo_tile, eff_hi_tile);
-                    c.v[2] = rand_int(lo_tile, eff_hi_tile); c.v[3] = rand_int(lo_ts, hi_ts);
-                    c.v[4] = rand_int(lo_osub, hi_osub);     c.v[5] = rand_int(lo_zb, hi_zb);
+                    c.v[0] = rand_int(lo_tile, eff_hi_tile);
+                    c.v[1] = rand_int(lo_tile, eff_hi_tile);
+                    c.v[2] = rand_int(lo_tile, eff_hi_tile);
+                    c.v[3] = rand_int(lo_ts, hi_ts);
+                    c.v[4] = rand_int(lo_osub, hi_osub);
+                    c.v[5] = rand_int(lo_zb, hi_zb);
                     score(c);
                 }
                 for (int d = 0; d < 6; ++d)
                     for (int delta : {-2, -1, +1, +2}) {
                         SearchPoint c = best_pt;
-                        c.v[d] = std::clamp(best_pt.v[d] + delta, lo6[d], hi6[d]);
+                        c.v[d]        = std::clamp(best_pt.v[d] + delta, lo6[d], hi6[d]);
                         score(c);
                     }
 
                 if (best_acq <= -1e200) {
                     if (ippl::Comm->rank() == 0)
-                        std::cout << "    BO [done] space exhausted after " << bo.evaluations << " kernel evals\n";
+                        std::cout << "    BO [done] space exhausted after " << bo.evaluations
+                                  << " kernel evals\n";
                     break;
                 }
                 double tp = evaluate(next);
                 gp_add(next, tp);
-                bo.history.emplace_back(bo.evaluations + bo.preflight_rejections,
-                                        next.tile_x(), next.tile_y(), next.tile_z(),
-                                        ts_of(ctx.ts_candidates, next.ts_idx()),
-                                        next.osub(), next.z_batches(), tp);
-                if (tp > best_tp) { best_tp = tp; best_pt = next; }
-                if (tp > kInfeasiblePenalty) ++bo_step;
+                bo.history.emplace_back(bo.evaluations + bo.preflight_rejections, next.tile_x(),
+                                        next.tile_y(), next.tile_z(),
+                                        ts_of(ctx.ts_candidates, next.ts_idx()), next.osub(),
+                                        next.z_batches(), tp);
+                if (tp > best_tp) {
+                    best_tp = tp;
+                    best_pt = next;
+                }
+                if (tp > kInfeasiblePenalty)
+                    ++bo_step;
             }
         }
 
         // ── Phase 3: All-dimension hill-climb polish ──────────────────────
         if (ippl::Comm->rank() == 0)
             std::cout << "    BO [polish] tile=(" << best_pt.tile_x() << "," << best_pt.tile_y()
-                      << "," << best_pt.tile_z() << ") team=" << ts_of(ctx.ts_candidates, best_pt.ts_idx())
+                      << "," << best_pt.tile_z()
+                      << ") team=" << ts_of(ctx.ts_candidates, best_pt.ts_idx())
                       << " osub=" << best_pt.osub() << " zb=" << best_pt.z_batches() << "\n";
         {
             bool improved = true;
             int budget    = 40;
             while (improved && budget > 0) {
-                improved = false;
+                improved              = false;
                 SearchPoint best_cand = best_pt;
-                double      best_cand_tp = best_tp;
+                double best_cand_tp   = best_tp;
                 for (int d = 0; d < 6; ++d)
                     for (int delta : {-1, +1}) {
                         SearchPoint c = best_pt;
-                        c.v[d] = std::clamp(best_pt.v[d] + delta, lo6[d], hi6[d]);
-                        if (c == best_pt) continue;
+                        c.v[d]        = std::clamp(best_pt.v[d] + delta, lo6[d], hi6[d]);
+                        if (c == best_pt)
+                            continue;
                         double tp;
-                        if (tp_cache.count(c))           tp = tp_cache[c];
-                        else if (preflight_rejected.count(c)) tp = kInfeasiblePenalty;
+                        if (tp_cache.count(c))
+                            tp = tp_cache[c];
+                        else if (preflight_rejected.count(c))
+                            tp = kInfeasiblePenalty;
                         else {
-                            tp = evaluate(c); --budget;
+                            tp = evaluate(c);
+                            --budget;
                             bo.history.emplace_back(bo.evaluations + bo.preflight_rejections,
-                                c.tile_x(), c.tile_y(), c.tile_z(),
-                                ts_of(ctx.ts_candidates, c.ts_idx()),
-                                c.osub(), c.z_batches(), tp);
+                                                    c.tile_x(), c.tile_y(), c.tile_z(),
+                                                    ts_of(ctx.ts_candidates, c.ts_idx()), c.osub(),
+                                                    c.z_batches(), tp);
                         }
-                        if (tp > best_cand_tp) { best_cand_tp = tp; best_cand = c; improved = true; }
+                        if (tp > best_cand_tp) {
+                            best_cand_tp = tp;
+                            best_cand    = c;
+                            improved     = true;
+                        }
                     }
-                if (improved) { best_tp = best_cand_tp; best_pt = best_cand; }
+                if (improved) {
+                    best_tp = best_cand_tp;
+                    best_pt = best_cand;
+                }
             }
         }
 
@@ -1058,8 +1313,9 @@ private:
         {
             auto cfg = make_cfg(best_pt);
             if (is_feasible(best_pt) && best_tp > 0.0) {
-                auto r = benchmark_scatter(ctx.method, cfg, ctx.kernel, ctx.n_particles, best_pt.tile(), true);
-                bo.best_time_ms         = r.stats.mean_ms;
+                auto r          = benchmark_scatter(ctx.method, cfg, ctx.kernel, ctx.n_particles,
+                                                    best_pt.tile(), true);
+                bo.best_time_ms = r.stats.mean_ms;
                 bo.best_throughput_Mpts = r.throughput_Mpts_per_sec();
             } else {
                 bo.best_time_ms         = std::numeric_limits<double>::quiet_NaN();
@@ -1068,14 +1324,14 @@ private:
         }
 
         if (ippl::Comm->rank() == 0)
-            std::cout << "  [BO] " << ctx.method << " w=" << kernel_W
-                      << "  best tile=(" << bo.best_tile[0] << "," << bo.best_tile[1] << "," << bo.best_tile[2]
+            std::cout << "  [BO] " << ctx.method << " w=" << kernel_W << "  best tile=("
+                      << bo.best_tile[0] << "," << bo.best_tile[1] << "," << bo.best_tile[2]
                       << ") team=" << bo.best_team_size
-                      << " osub=" << bo.best_oversubscription_factor
-                      << " zb=" << bo.best_z_batches << "  tp=" << std::fixed << std::setprecision(1)
-                      << bo.best_throughput_Mpts << " Mpts/s"
-                      << "  (" << bo.evaluations << " kernel evals, "
-                      << bo.preflight_rejections << " pre-flight skips)\n";
+                      << " osub=" << bo.best_oversubscription_factor << " zb=" << bo.best_z_batches
+                      << "  tp=" << std::fixed << std::setprecision(1) << bo.best_throughput_Mpts
+                      << " Mpts/s"
+                      << "  (" << bo.evaluations << " kernel evals, " << bo.preflight_rejections
+                      << " pre-flight skips)\n";
         return bo;
     }
 
@@ -1091,17 +1347,16 @@ public:
         bo.preflight_rejections = 0;
 
         const int kernel_W = kernel.width();
-        const int lo_tile  = params_.min_tile_size, hi_tile = params_.max_tile_size;
+        const int lo_tile = params_.min_tile_size, hi_tile = params_.max_tile_size;
         const std::vector<int>& ts_cands =
             (method == "Tiled") ? params_.team_size_candidates : params_.gp_team_size_candidates;
         const int lo_ts = 0, hi_ts = (int)ts_cands.size() - 1;
         const int lo_osub = params_.min_osub, hi_osub = params_.max_osub;
-        const int lo_zb   = (method == "OutputFocused") ? params_.min_z_batches : 1;
-        const int hi_zb   = (method == "OutputFocused") ? params_.max_z_batches : 1;
+        const int lo_zb = (method == "OutputFocused") ? params_.min_z_batches : 1;
+        const int hi_zb = (method == "OutputFocused") ? params_.max_z_batches : 1;
 
-        BOContext ctx{method, kernel, n_particles, bo,
-                      lo_tile, hi_tile, lo_ts, hi_ts, lo_osub, hi_osub, lo_zb, hi_zb,
-                      ts_cands, params_};
+        BOContext ctx{method, kernel,  n_particles, bo,    lo_tile, hi_tile,  lo_ts,
+                      hi_ts,  lo_osub, hi_osub,     lo_zb, hi_zb,   ts_cands, params_};
 
         return (method == "Tiled") ? run_bo_impl<5>(ctx) : run_bo_impl<6>(ctx);
     }
@@ -1110,12 +1365,19 @@ public:
     // Domain setup / teardown
     // ──────────────────────────────────────────────────────────────────────
     void setup_domain(int /*nghost*/) {
-        for (unsigned d = 0; d < Dim; ++d) n_grid_[d] = params_.n_grid;
+        for (unsigned d = 0; d < Dim; ++d)
+            n_grid_[d] = params_.n_grid;
         ippl::NDIndex<Dim> domain;
-        for (unsigned d = 0; d < Dim; ++d) domain[d] = ippl::Index(n_grid_[d]);
-        std::array<bool, Dim> isParallel; isParallel.fill(true);
-        layout_ = std::make_unique<ippl::FieldLayout<Dim>>(MPI_COMM_WORLD, domain, isParallel, true);
-        for (unsigned d = 0; d < Dim; ++d) { origin_[d] = 0.0; hx_[d] = 2.0*M_PI/static_cast<real_type>(n_grid_[d]); }
+        for (unsigned d = 0; d < Dim; ++d)
+            domain[d] = ippl::Index(n_grid_[d]);
+        std::array<bool, Dim> isParallel;
+        isParallel.fill(true);
+        layout_ =
+            std::make_unique<ippl::FieldLayout<Dim>>(MPI_COMM_WORLD, domain, isParallel, true);
+        for (unsigned d = 0; d < Dim; ++d) {
+            origin_[d] = 0.0;
+            hx_[d]     = 2.0 * M_PI / static_cast<real_type>(n_grid_[d]);
+        }
         mesh_ = std::make_unique<Mesh_t>(domain, hx_, origin_);
     }
 
@@ -1123,44 +1385,59 @@ public:
         grid_    = std::make_unique<Field_t>(*mesh_, *layout_, nghost);
         playout_ = std::make_unique<PLayout_t>(*layout_, *mesh_);
         bunch_   = std::make_unique<Bunch_t>(*playout_);
-        bunch_->addAttribute(R_); bunch_->addAttribute(Q_);
+        bunch_->addAttribute(R_);
+        bunch_->addAttribute(Q_);
         bunch_->setParticleBC(ippl::BC::PERIODIC);
         size_t n_local = params_.n_particles() / ippl::Comm->size();
         bunch_->create(n_local);
         auto R_view = R_.getView();
         Kokkos::Random_XorShift64_Pool<> rand_pool(42 + ippl::Comm->rank());
         if (params_.distribution == "uniform") {
-            Kokkos::parallel_for("init_uniform", n_local, KOKKOS_LAMBDA(const size_t i) {
-                auto gen = rand_pool.get_state();
-                for (unsigned d = 0; d < Dim; ++d) R_view(i)[d] = gen.drand() * 2.0 * M_PI;
-                rand_pool.free_state(gen);
-            });
+            Kokkos::parallel_for(
+                "init_uniform", n_local, KOKKOS_LAMBDA(const size_t i) {
+                    auto gen = rand_pool.get_state();
+                    for (unsigned d = 0; d < Dim; ++d)
+                        R_view(i)[d] = gen.drand() * 2.0 * M_PI;
+                    rand_pool.free_state(gen);
+                });
         } else if (params_.distribution == "clustered") {
-            Kokkos::parallel_for("init_clustered", n_local, KOKKOS_LAMBDA(const size_t i) {
-                auto gen = rand_pool.get_state();
-                for (unsigned d = 0; d < Dim; ++d) {
-                    double u1 = gen.drand(), u2 = gen.drand();
-                    double z = Kokkos::sqrt(-2.0*Kokkos::log(u1+1e-10)) * Kokkos::cos(2.0*M_PI*u2);
-                    R_view(i)[d] = M_PI + 0.3*z;
-                    while (R_view(i)[d] < 0)           R_view(i)[d] += 2.0*M_PI;
-                    while (R_view(i)[d] >= 2.0*M_PI)   R_view(i)[d] -= 2.0*M_PI;
-                }
-                rand_pool.free_state(gen);
-            });
+            Kokkos::parallel_for(
+                "init_clustered", n_local, KOKKOS_LAMBDA(const size_t i) {
+                    auto gen = rand_pool.get_state();
+                    for (unsigned d = 0; d < Dim; ++d) {
+                        double u1 = gen.drand(), u2 = gen.drand();
+                        double z = Kokkos::sqrt(-2.0 * Kokkos::log(u1 + 1e-10))
+                                   * Kokkos::cos(2.0 * M_PI * u2);
+                        R_view(i)[d] = M_PI + 0.3 * z;
+                        while (R_view(i)[d] < 0)
+                            R_view(i)[d] += 2.0 * M_PI;
+                        while (R_view(i)[d] >= 2.0 * M_PI)
+                            R_view(i)[d] -= 2.0 * M_PI;
+                    }
+                    rand_pool.free_state(gen);
+                });
         }
         auto Q_view = Q_.getView();
-        Kokkos::parallel_for("init_values", n_local, KOKKOS_LAMBDA(const size_t i) { Q_view(i) = one(); });
+        Kokkos::parallel_for(
+            "init_values", n_local, KOKKOS_LAMBDA(const size_t i) { Q_view(i) = one(); });
         Kokkos::fence();
     }
 
-    void cleanup() { bunch_.reset(); playout_.reset(); grid_.reset(); mesh_.reset(); layout_.reset(); }
+    void cleanup() {
+        bunch_.reset();
+        playout_.reset();
+        grid_.reset();
+        mesh_.reset();
+        layout_.reset();
+    }
 
     // ──────────────────────────────────────────────────────────────────────
     // Output
     // ──────────────────────────────────────────────────────────────────────
 
     void print_header() {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
         std::cout << "\n"
                   << "================================================================\n"
                   << "    Tile x Team-Size x Oversubscription Sweep Benchmark\n"
@@ -1170,8 +1447,10 @@ public:
                   << "Total particles:  " << params_.n_particles() << "\n"
                   << "Distribution:     " << params_.distribution << "\n"
                   << "Value type:       " << value_type_str() << "\n"
-                  << "Tile sizes:       " << params_.min_tile_size << " - " << params_.max_tile_size << "\n"
-                  << "Kernel widths:    " << params_.min_kernel_width << " - " << params_.max_kernel_width << "\n"
+                  << "Tile sizes:       " << params_.min_tile_size << " - " << params_.max_tile_size
+                  << "\n"
+                  << "Kernel widths:    " << params_.min_kernel_width << " - "
+                  << params_.max_kernel_width << "\n"
                   << "Warmup runs:      " << params_.warmup_runs << "\n"
                   << "Benchmark runs:   " << params_.benchmark_runs << "\n";
         if (params_.optimize) {
@@ -1183,7 +1462,8 @@ public:
     }
 
     void write_full_csv(const std::vector<BenchmarkResult>& results) {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
         const std::string fn = params_.output_prefix + "_full.csv";
         const std::string hdr =
             "method,distribution,value_type,"
@@ -1196,44 +1476,54 @@ public:
             out << r.method << "," << r.distribution << "," << r.value_type << ","
                 << r.tile_sizes[0] << "," << r.tile_sizes[1] << "," << r.tile_sizes[2] << ","
                 << r.team_size << "," << r.oversubscription_factor << "," << r.z_batches << ","
-                << r.kernel_width << "," << r.n_particles << "," << r.n_grid << ","
-                << std::fixed << std::setprecision(4) << r.rho << ",";
+                << r.kernel_width << "," << r.n_particles << "," << r.n_grid << "," << std::fixed
+                << std::setprecision(4) << r.rho << ",";
             if (std::isnan(r.stats.mean_ms))
-                out << "nan,nan,nan,nan,nan,nan,nan," << (r.from_optimizer ? "1" : "0") << ",failed\n";
+                out << "nan,nan,nan,nan,nan,nan,nan," << (r.from_optimizer ? "1" : "0")
+                    << ",failed\n";
             else
-                out << r.stats.mean_ms << "," << r.stats.stddev_ms << ","
-                    << r.stats.min_ms << "," << r.stats.max_ms << "," << r.stats.median_ms << ","
-                    << std::setprecision(2) << r.throughput_Mpts_per_sec() << ","
-                    << r.time_per_point_ns() << ","
+                out << r.stats.mean_ms << "," << r.stats.stddev_ms << "," << r.stats.min_ms << ","
+                    << r.stats.max_ms << "," << r.stats.median_ms << "," << std::setprecision(2)
+                    << r.throughput_Mpts_per_sec() << "," << r.time_per_point_ns() << ","
                     << (r.from_optimizer ? "1" : "0") << ",ok\n";
         }
         std::cout << "Wrote full results to: " << fn << "\n";
     }
 
     void write_heatmap_csv(const std::vector<BenchmarkResult>& results, const std::string& method) {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
         const std::string fn = params_.output_prefix + "_heatmap_" + method + ".csv";
         std::vector<int> widths, tiles;
         for (const auto& r : results)
             if (r.method == method && !r.from_optimizer) {
-                if (std::find(widths.begin(), widths.end(), r.kernel_width) == widths.end()) widths.push_back(r.kernel_width);
-                if (std::find(tiles.begin(),  tiles.end(),  r.tile_sizes[0]) == tiles.end())  tiles.push_back(r.tile_sizes[0]);
+                if (std::find(widths.begin(), widths.end(), r.kernel_width) == widths.end())
+                    widths.push_back(r.kernel_width);
+                if (std::find(tiles.begin(), tiles.end(), r.tile_sizes[0]) == tiles.end())
+                    tiles.push_back(r.tile_sizes[0]);
             }
-        std::sort(widths.begin(), widths.end()); std::sort(tiles.begin(), tiles.end());
+        std::sort(widths.begin(), widths.end());
+        std::sort(tiles.begin(), tiles.end());
 
         std::string hdr = "tile_size";
-        for (int w : widths) hdr += ",width_" + std::to_string(w);
+        for (int w : widths)
+            hdr += ",width_" + std::to_string(w);
         auto out = open_csv(fn, hdr);
         for (int t : tiles) {
             out << t;
             for (int w : widths) {
                 bool found = false;
                 for (const auto& r : results)
-                    if (r.method == method && !r.from_optimizer && r.tile_sizes[0] == t && r.kernel_width == w) {
-                        out << (std::isnan(r.stats.mean_ms) ? ",nan" : "," + std::to_string(r.throughput_Mpts_per_sec()));
-                        found = true; break;
+                    if (r.method == method && !r.from_optimizer && r.tile_sizes[0] == t
+                        && r.kernel_width == w) {
+                        out << (std::isnan(r.stats.mean_ms)
+                                    ? ",nan"
+                                    : "," + std::to_string(r.throughput_Mpts_per_sec()));
+                        found = true;
+                        break;
                     }
-                if (!found) out << ",nan";
+                if (!found)
+                    out << ",nan";
             }
             out << "\n";
         }
@@ -1244,9 +1534,11 @@ public:
     // write_optimal_csv — includes Atomic; adds rho column; append mode.
     // ------------------------------------------------------------------
     void write_optimal_csv(const std::vector<BenchmarkResult>& results) {
-        if (ippl::Comm->rank() != 0) return;
-        const std::string fn  = params_.output_prefix + "_optimal.csv";
-        const std::string hdr = "method,kernel_width,rho,optimal_tile_size,throughput_Mpts_s,time_ms";
+        if (ippl::Comm->rank() != 0)
+            return;
+        const std::string fn = params_.output_prefix + "_optimal.csv";
+        const std::string hdr =
+            "method,kernel_width,rho,optimal_tile_size,throughput_Mpts_s,time_ms";
         auto out = open_csv(fn, hdr);
 
         std::vector<int> widths;
@@ -1257,18 +1549,22 @@ public:
 
         for (const std::string& method : {"Tiled", "OutputFocused", "Atomic"}) {
             for (int w : widths) {
-                const BenchmarkResult* best = nullptr; double bt = 0;
+                const BenchmarkResult* best = nullptr;
+                double bt                   = 0;
                 for (const auto& r : results)
                     if (r.method == method && r.kernel_width == w && !r.from_optimizer
                         && !std::isnan(r.stats.mean_ms)) {
                         double tp = r.throughput_Mpts_per_sec();
-                        if (tp > bt) { bt = tp; best = &r; }
+                        if (tp > bt) {
+                            bt   = tp;
+                            best = &r;
+                        }
                     }
                 if (best)
                     out << method << "," << w << "," << std::fixed << std::setprecision(4)
-                        << best->rho << "," << best->tile_sizes[0] << ","
-                        << std::setprecision(2) << best->throughput_Mpts_per_sec() << ","
-                        << std::setprecision(4) << best->stats.mean_ms << "\n";
+                        << best->rho << "," << best->tile_sizes[0] << "," << std::setprecision(2)
+                        << best->throughput_Mpts_per_sec() << "," << std::setprecision(4)
+                        << best->stats.mean_ms << "\n";
                 else
                     out << method << "," << w << "," << params_.rho << ",nan,nan,nan\n";
             }
@@ -1282,8 +1578,9 @@ public:
     // ------------------------------------------------------------------
     void write_bo_csv(const std::vector<BOResult>& bo_results,
                       const std::vector<BenchmarkResult>& sweep_results) {
-        if (ippl::Comm->rank() != 0) return;
-        const std::string fn  = params_.output_prefix + "_sa_optimal.csv";
+        if (ippl::Comm->rank() != 0)
+            return;
+        const std::string fn = params_.output_prefix + "_sa_optimal.csv";
         const std::string hdr =
             "method,value_type,kernel_width,rho,"
             "best_tile_x,best_tile_y,best_tile_z,"
@@ -1293,103 +1590,122 @@ public:
 
         // Write BO results (Tiled + OutputFocused)
         for (const auto& r : bo_results)
-            out << r.method << "," << r.value_type << "," << r.kernel_width << ","
-                << std::fixed << std::setprecision(4) << r.rho << ","
-                << r.best_tile[0] << "," << r.best_tile[1] << "," << r.best_tile[2] << ","
-                << r.best_team_size << "," << r.best_oversubscription_factor << ","
-                << r.best_z_batches << ","
-                << std::setprecision(2) << r.best_throughput_Mpts << ","
-                << std::setprecision(4) << r.best_time_ms << ","
-                << r.evaluations << "," << r.preflight_rejections << "\n";
+            out << r.method << "," << r.value_type << "," << r.kernel_width << "," << std::fixed
+                << std::setprecision(4) << r.rho << "," << r.best_tile[0] << "," << r.best_tile[1]
+                << "," << r.best_tile[2] << "," << r.best_team_size << ","
+                << r.best_oversubscription_factor << "," << r.best_z_batches << ","
+                << std::setprecision(2) << r.best_throughput_Mpts << "," << std::setprecision(4)
+                << r.best_time_ms << "," << r.evaluations << "," << r.preflight_rejections << "\n";
 
         // Write Atomic results (from sweep_results, one per width × value_type)
         // Build map: (kernel_width, value_type) → best Atomic result
-        std::map<std::pair<int,std::string>, const BenchmarkResult*> atomic_best;
+        std::map<std::pair<int, std::string>, const BenchmarkResult*> atomic_best;
         for (const auto& r : sweep_results) {
-            if (r.method != "Atomic" || r.from_optimizer || std::isnan(r.stats.mean_ms)) continue;
+            if (r.method != "Atomic" || r.from_optimizer || std::isnan(r.stats.mean_ms))
+                continue;
             auto key = std::make_pair(r.kernel_width, r.value_type);
             auto it  = atomic_best.find(key);
-            if (it == atomic_best.end() || r.throughput_Mpts_per_sec() > it->second->throughput_Mpts_per_sec())
+            if (it == atomic_best.end()
+                || r.throughput_Mpts_per_sec() > it->second->throughput_Mpts_per_sec())
                 atomic_best[key] = &r;
         }
         for (const auto& [key, r] : atomic_best)
-            out << "Atomic," << r->value_type << "," << r->kernel_width << ","
-                << std::fixed << std::setprecision(4) << r->rho << ","
-                << r->tile_sizes[0] << "," << r->tile_sizes[1] << "," << r->tile_sizes[2] << ","
-                << r->team_size << "," << r->oversubscription_factor << "," << r->z_batches << ","
-                << std::setprecision(2) << r->throughput_Mpts_per_sec() << ","
-                << std::setprecision(4) << r->stats.mean_ms << ",0,0\n";
+            out << "Atomic," << r->value_type << "," << r->kernel_width << "," << std::fixed
+                << std::setprecision(4) << r->rho << "," << r->tile_sizes[0] << ","
+                << r->tile_sizes[1] << "," << r->tile_sizes[2] << "," << r->team_size << ","
+                << r->oversubscription_factor << "," << r->z_batches << "," << std::setprecision(2)
+                << r->throughput_Mpts_per_sec() << "," << std::setprecision(4) << r->stats.mean_ms
+                << ",0,0\n";
 
         std::cout << "Wrote BO + Atomic optimal results to: " << fn << "\n";
     }
 
     void write_bo_history_csv(const std::vector<BOResult>& rs) {
-        if (ippl::Comm->rank() != 0) return;
-        const std::string fn  = params_.output_prefix + "_sa_history.csv";
+        if (ippl::Comm->rank() != 0)
+            return;
+        const std::string fn = params_.output_prefix + "_sa_history.csv";
         const std::string hdr =
             "method,value_type,kernel_width,rho,step,tile_x,tile_y,tile_z,"
             "team_size,oversubscription_factor,z_batches,throughput_Mpts_s";
         auto out = open_csv(fn, hdr);
         for (const auto& r : rs)
             for (const auto& [step, tx, ty, tz, ts, osub, zb, tp] : r.history)
-                out << r.method << "," << r.value_type << "," << r.kernel_width << ","
-                    << std::fixed << std::setprecision(4) << r.rho << ","
-                    << step << "," << tx << "," << ty << "," << tz << ","
-                    << ts << "," << osub << "," << zb << ","
-                    << std::setprecision(2) << tp << "\n";
+                out << r.method << "," << r.value_type << "," << r.kernel_width << "," << std::fixed
+                    << std::setprecision(4) << r.rho << "," << step << "," << tx << "," << ty << ","
+                    << tz << "," << ts << "," << osub << "," << zb << "," << std::setprecision(2)
+                    << tp << "\n";
         std::cout << "Wrote BO history to: " << fn << "\n";
     }
 
     void print_summary(const std::vector<BenchmarkResult>& results,
                        const std::vector<BOResult>& bo_results) {
-        if (ippl::Comm->rank() != 0) return;
+        if (ippl::Comm->rank() != 0)
+            return;
         int failed = 0;
-        for (const auto& r : results) if (std::isnan(r.stats.mean_ms)) ++failed;
+        for (const auto& r : results)
+            if (std::isnan(r.stats.mean_ms))
+                ++failed;
         std::cout << "\n================================================================\n"
                   << "                Results Summary (rho=" << params_.rho << ", "
                   << value_type_str() << ")\n"
                   << "================================================================\n";
-        if (failed > 0) std::cout << "\nNote: " << failed << " configuration(s) failed.\n";
+        if (failed > 0)
+            std::cout << "\nNote: " << failed << " configuration(s) failed.\n";
 
         std::vector<int> widths;
         for (const auto& r : results)
-            if (!r.from_optimizer && std::find(widths.begin(), widths.end(), r.kernel_width) == widths.end())
+            if (!r.from_optimizer
+                && std::find(widths.begin(), widths.end(), r.kernel_width) == widths.end())
                 widths.push_back(r.kernel_width);
         std::sort(widths.begin(), widths.end());
 
         for (const std::string& method : {"Tiled", "OutputFocused", "Atomic"}) {
-            std::cout << "\n" << method << ":\n" << std::string(56, '-') << "\n"
-                      << std::left << std::setw(8) << "Width" << std::right
-                      << std::setw(12) << "Tile" << std::setw(14) << "Mpts/s"
-                      << std::setw(12) << "Time (ms)\n" << std::string(56, '-') << "\n";
+            std::cout << "\n"
+                      << method << ":\n"
+                      << std::string(56, '-') << "\n"
+                      << std::left << std::setw(8) << "Width" << std::right << std::setw(12)
+                      << "Tile" << std::setw(14) << "Mpts/s" << std::setw(12) << "Time (ms)\n"
+                      << std::string(56, '-') << "\n";
             for (int w : widths) {
-                const BenchmarkResult* best = nullptr; double bt = 0;
+                const BenchmarkResult* best = nullptr;
+                double bt                   = 0;
                 for (const auto& r : results)
-                    if (r.method == method && r.kernel_width == w && !r.from_optimizer && !std::isnan(r.stats.mean_ms)) {
+                    if (r.method == method && r.kernel_width == w && !r.from_optimizer
+                        && !std::isnan(r.stats.mean_ms)) {
                         double tp = r.throughput_Mpts_per_sec();
-                        if (tp > bt) { bt = tp; best = &r; }
+                        if (tp > bt) {
+                            bt   = tp;
+                            best = &r;
+                        }
                     }
                 if (best)
                     std::cout << std::left << std::setw(8) << w << std::right << std::setw(12)
                               << best->tile_sizes[0] << std::fixed << std::setprecision(1)
                               << std::setw(14) << best->throughput_Mpts_per_sec()
-                              << std::setprecision(3) << std::setw(12) << best->stats.mean_ms << "\n";
+                              << std::setprecision(3) << std::setw(12) << best->stats.mean_ms
+                              << "\n";
                 else
                     std::cout << std::left << std::setw(8) << w << "  all failed / skipped\n";
             }
         }
 
         // Cross-method winner per width
-        std::cout << "\nBest method per width:\n" << std::string(68, '-') << "\n"
-                  << std::left << std::setw(8) << "Width" << std::right << std::setw(16)
-                  << "Method" << std::setw(12) << "Tile" << std::setw(14) << "Mpts/s"
-                  << std::setw(12) << "Time (ms)\n" << std::string(68, '-') << "\n";
+        std::cout << "\nBest method per width:\n"
+                  << std::string(68, '-') << "\n"
+                  << std::left << std::setw(8) << "Width" << std::right << std::setw(16) << "Method"
+                  << std::setw(12) << "Tile" << std::setw(14) << "Mpts/s" << std::setw(12)
+                  << "Time (ms)\n"
+                  << std::string(68, '-') << "\n";
         for (int w : widths) {
-            const BenchmarkResult* g = nullptr; double bt = 0;
+            const BenchmarkResult* g = nullptr;
+            double bt                = 0;
             for (const auto& r : results)
                 if (r.kernel_width == w && !r.from_optimizer && !std::isnan(r.stats.mean_ms)) {
                     double tp = r.throughput_Mpts_per_sec();
-                    if (tp > bt) { bt = tp; g = &r; }
+                    if (tp > bt) {
+                        bt = tp;
+                        g  = &r;
+                    }
                 }
             if (g)
                 std::cout << std::left << std::setw(8) << w << std::right << std::setw(16)
@@ -1425,7 +1741,8 @@ int main(int argc, char* argv[]) {
             TileSweepBenchmark<Kokkos::DefaultExecutionSpace, double> bench(params);
             bench.run();
         } else {
-            TileSweepBenchmark<Kokkos::DefaultExecutionSpace, Kokkos::complex<double>> bench(params);
+            TileSweepBenchmark<Kokkos::DefaultExecutionSpace, Kokkos::complex<double>> bench(
+                params);
             bench.run();
         }
     }
