@@ -113,7 +113,7 @@ struct BenchParams {
     static constexpr int warp_size = 32;
 
     std::vector<int> team_size_candidates    = {8, 16, 32, 64};
-    std::vector<int> gp_team_size_candidates = {1, 2, 3, 4, 8};
+    std::vector<int> gp_team_size_candidates = {32, 64, 128, 256, 512};
 
     int min_osub = 1;
     int max_osub = 8;
@@ -446,11 +446,16 @@ public:
         return result;
     }
 
-    static size_t scratch_size_max_for_team(const std::string& method, int team_size) {
+    // static size_t scratch_size_max_for_team(const std::string& method, int team_size) {
+    //     using team_policy = Kokkos::TeamPolicy<ExecSpace>;
+    //     return (method == "OutputFocused")
+    //         ? team_policy(1, team_size, 32).scratch_size_max(0)
+    //         : team_policy(1, team_size).scratch_size_max(0);
+    // }
+
+    static size_t scratch_size_max_for_team(const std::string& /*method*/, int team_size) {
         using team_policy = Kokkos::TeamPolicy<ExecSpace>;
-        return (method == "OutputFocused")
-            ? team_policy(1, team_size, 32).scratch_size_max(0)
-            : team_policy(1, team_size).scratch_size_max(0);
+        return team_policy(1, team_size).scratch_size_max(0);
     }
 
     bool fits_in_shmem(const std::string& method, const std::array<int, 3>& tile, int W,
@@ -465,8 +470,12 @@ public:
         return req <= avail;
     }
 
-    static int actual_threads(const std::string& method, int team_size) {
-        return (method == "OutputFocused") ? team_size * BenchParams::warp_size : team_size;
+    // static int actual_threads(const std::string& method, int team_size) {
+    //     return (method == "OutputFocused") ? team_size * BenchParams::warp_size : team_size;
+    // }
+
+    static int actual_threads(const std::string& /*method*/, int team_size) {
+        return team_size;
     }
 
     static int max_team_size() {
@@ -766,7 +775,9 @@ private:
 
         const int lo_tile = ctx.lo_tile, hi_tile = ctx.hi_tile;
         const int lo_ts   = ctx.lo_ts,   hi_ts   = ctx.hi_ts;
-        const int lo_osub = ctx.lo_osub, hi_osub = ctx.hi_osub;
+        // const int lo_osub = ctx.lo_osub, hi_osub = ctx.hi_osub;
+        const int lo_osub = (ctx.method == "OutputFocused") ? 1 : params_.min_osub;
+        const int hi_osub = (ctx.method == "OutputFocused") ? 1 : params_.max_osub;
         const int lo_zb   = ctx.lo_zb,   hi_zb   = ctx.hi_zb;
 
         // ── Step 0: Feasibility pre-scan ──────────────────────────────────
