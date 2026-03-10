@@ -714,15 +714,11 @@
 
 namespace ippl::Interpolation::detail {
 
-// ── Forward declaration (needed so the __global__ kernel can reference the struct) ──
 template <int W, class Types, class Policy>
 struct GridParallelScatter;
 
-// ── Native GPU kernel (free function; __global__ cannot be a member) ─────────────
-//
-//  Parses extern __shared__ into the same scratch layout used by the Kokkos path,
-//  then delegates to GridParallelScatter::run_tile with threadIdx.x / blockIdx.x.
-//  One block per tile; blockDim.x is args.team_size.
+// ── Native GPU kernel ─────────────────────────────────────────────────────────
+//  __global__ cannot be a member; one block per tile; blockDim.x == team_size.
 #if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
 template <int W, class Types, class Policy>
 __global__ void grid_parallel_scatter_native(GridParallelScatter<W, Types, Policy> self) {
@@ -736,13 +732,11 @@ __global__ void grid_parallel_scatter_native(GridParallelScatter<W, Types, Polic
 
     extern __shared__ char sbuf[];
 
-    // ── Carve shared memory ───────────────────────────────────────────────────
-    //  All RealType arrays are laid out first (naturally aligned); the int array
-    //  is placed last with an explicit alignment step.
+    // Carve scratch: RealType arrays first (naturally aligned), int array last.
     const size_t htot = self.hist_total_;
     const int    np   = self.args.batch_np;
-
     size_t off = 0;
+
     auto alloc_r = [&](size_t n) -> RealType* {
         RealType* p  = reinterpret_cast<RealType*>(sbuf + off);
         off         += n * sizeof(RealType);
@@ -765,13 +759,12 @@ __global__ void grid_parallel_scatter_native(GridParallelScatter<W, Types, Polic
     int*      shifts   = alloc_i(static_cast<size_t>(np * Dim));
 
     self.run_tile(
-        static_cast<int>(threadIdx.x),
-        static_cast<int>(blockDim.x),
+        static_cast<int>(threadIdx.x), static_cast<int>(blockDim.x),
         static_cast<size_t>(blockIdx.x),
         local_r, local_i, kerevals, vals_r, vals_i, shifts,
         typename Scatter::NativeBarrier{});
 }
-#endif // KOKKOS_ENABLE_CUDA || KOKKOS_ENABLE_HIP
+#endif
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -789,7 +782,6 @@ struct GridParallelScatter {
     using memory_space    = typename Types::memory_space;
     using execution_space = typename Types::execution_space;
 
-    // True when we can bypass Kokkos launch and use <<<>>> directly.
     static constexpr bool use_native_gpu =
         false
 #if defined(KOKKOS_ENABLE_CUDA)
@@ -813,21 +805,17 @@ struct GridParallelScatter {
     //
     //  [A]  htot          local_r    real part of local subgrid
     //  [B]  htot          local_i    imag part (complex grids only)
-    //  [C]  np * Dim * W  kerevals   kernel weights per batch particle [bi][d][wi]
+    //  [C]  np * Dim * W  kerevals   kernel weights [bi][d][wi]
     //  [D]  np            vals_r     particle real values
     //  [E]  np            vals_i     particle imag values (complex only)
     //  [F]  np * Dim      shifts     stencil bases relative to tile [bi][d]
     //
     //  np = args.batch_np (from config.z_batches).
-    //  No shared-memory atomics: particles are scattered one at a time so all
-    //  threads write disjoint local_r cells within each particle pass.
+    //  No shared-memory atomics: one particle is active at a time so every
+    //  thread writes a disjoint local_r cell within each scatter pass.
     // ─────────────────────────────────────────────────────────────────────────
-    // ── Public scratch-size query (called by the dispatch layer) ─────────────
-    //
-    //  IsComplex refers to the grid value type (real vs complex<RealType>).
-    //  np is derived from config.z_batches (the batch-particle count).
-    //  ValueType complexity is not visible here, so we conservatively allocate
-    //  vals_i when IsComplex is true (same condition used in operator()).
+
+    // ── Public scratch-size query ─────────────────────────────────────────────
     template <bool IsComplex>
     static size_t compute_scratch_size(const Vector<int, Dim>& tile_size,
                                        int /*team_size*/, int z_batches) {
@@ -855,7 +843,7 @@ struct GridParallelScatter {
         Vector<int, Dim> num_tiles;
         Vector<int, Dim> tile_size;
         int team_size;
-        int batch_np;  // particle batch size; taken from config.z_batches
+        int batch_np;
 
         template <class Field, class Positions, class Values, class Kernel>
         static Arguments create(Field& field, const Positions& pos, const Values& vals,
@@ -876,27 +864,7 @@ struct GridParallelScatter {
     Arguments args;
     size_t    hist_total_ = 1;
 
-    // ── Geometry ──────────────────────────────────────────────────────────────
-    KOKKOS_INLINE_FUNCTION Vector<int, Dim> hist_size() const {
-        Vector<int, Dim> hs;
-        for (unsigned d = 0; d < Dim; ++d)
-            hs[d] = args.tile_size[d] + W + 1;
-        return hs;
-    }
-
-    KOKKOS_INLINE_FUNCTION Vector<int, Dim> decode_tile_base(size_t tile_id) const {
-        Vector<int, Dim> tb;
-        for (size_t t = tile_id, d = Dim; d-- > 0;) {
-            tb[d] = static_cast<int>(t % static_cast<size_t>(args.num_tiles[d]))
-                    * args.tile_size[d];
-            t    /= static_cast<size_t>(args.num_tiles[d]);
-        }
-        return tb;
-    }
-
     // ── Sync functors ─────────────────────────────────────────────────────────
-
-    // Used by the native GPU kernel path
     struct NativeBarrier {
         KOKKOS_FORCEINLINE_FUNCTION void operator()() const {
 #if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
@@ -905,7 +873,6 @@ struct GridParallelScatter {
         }
     };
 
-    // Used by the Kokkos team operator path
     struct KokkosBarrier {
         const team_member& team_;
         KOKKOS_FORCEINLINE_FUNCTION void operator()() const { team_.team_barrier(); }
@@ -913,39 +880,66 @@ struct GridParallelScatter {
 
     // ── Tile body ─────────────────────────────────────────────────────────────
     //
-    //  Shared between the Kokkos operator (KokkosBarrier, team.team_rank() as tid)
-    //  and the native __global__ kernel (NativeBarrier, threadIdx.x as tid).
+    //  All accumulators are named scalars — no local arrays, no Kokkos::Array,
+    //  no Vector indexing in hot paths — so nothing spills to local memory.
     //
-    //  Algorithm matches spread_3d_output_driven:
-    //   1. Zero local subgrid (parallel, strided by block_size).
-    //   2. For each particle batch of size np:
-    //      a. Load kerevals, vals, shifts → shared (parallel over bi).
-    //      b. For each particle bi in batch (sequential outer loop):
-    //           All threads collectively scatter the W^Dim stencil into local_r.
-    //           sync() after each particle — no shared-memory atomics since all
-    //           threads work on the same particle and each owns unique cells.
-    //   3. Flush local subgrid → global grid (Kokkos::atomic_add, parallel).
+    //  kerevals_sm / shifts_sm / local_r are pointers into shared (GPU) or
+    //  team-scratch (CPU) memory; loads/stores to those never become local mem.
     //
-    //  local_i / vals_i_sm are nullptr when the grid / particles are real.
+    //  Algorithm: matches spread_3d_output_driven —
+    //    1. Zero local_r (strided over threads).
+    //    2. For each particle batch:
+    //       a. Load: each thread loads a strided subset of particles into
+    //          kerevals_sm / vals_r_sm / shifts_sm.
+    //       b. Scatter: for each particle (sequential), ALL threads collectively
+    //          cover the W^Dim stencil.  One particle live at a time → disjoint
+    //          writes → no shared-memory atomics needed.  sync() after each.
+    //    3. Flush local_r → global grid with Kokkos::atomic_add.
     // ─────────────────────────────────────────────────────────────────────────
     template <class SyncFn>
     KOKKOS_FORCEINLINE_FUNCTION
     void run_tile(int tid, int block_size, size_t tile_id,
                   RealType* __restrict__ local_r,
                   RealType* __restrict__ local_i,
-                  RealType* __restrict__ kerevals_sm,  // [bi * Dim * W + d * W + wi]
+                  RealType* __restrict__ kerevals_sm,
                   RealType* __restrict__ vals_r_sm,
                   RealType* __restrict__ vals_i_sm,
-                  int*      __restrict__ shifts_sm,    // [bi * Dim + d]
+                  int*      __restrict__ shifts_sm,
                   SyncFn                 sync) const {
 
         using grid_value_t   = typename decltype(args.grid)::non_const_value_type;
         constexpr bool gcplx = std::is_same_v<grid_value_t, Kokkos::complex<RealType>>;
         constexpr bool vcplx = std::is_same_v<ValueType, Kokkos::complex<RealType>>;
+        constexpr int  idim  = static_cast<int>(Dim);
 
-        const size_t htot      = hist_total_;
-        const auto   hs        = hist_size();
-        const auto   tb        = decode_tile_base(tile_id);
+        // ── Histogram extents as scalars (no Vector indexing in hot paths) ────
+        const int hs0 = args.tile_size[0] + W + 1;
+        const int hs1 = (Dim >= 2) ? args.tile_size[1] + W + 1 : 1;
+        const int hs2 = (Dim == 3) ? args.tile_size[2] + W + 1 : 1;
+        const size_t htot = hist_total_;
+
+        // ── Tile base as scalars ───────────────────────────────────────────────
+        int tb0 = 0, tb1 = 0, tb2 = 0;
+        {
+            size_t t = tile_id;
+            if constexpr (Dim == 3) {
+                tb2  = static_cast<int>(t % static_cast<size_t>(args.num_tiles[2]))
+                       * args.tile_size[2];
+                t   /= static_cast<size_t>(args.num_tiles[2]);
+                tb1  = static_cast<int>(t % static_cast<size_t>(args.num_tiles[1]))
+                       * args.tile_size[1];
+                t   /= static_cast<size_t>(args.num_tiles[1]);
+                tb0  = static_cast<int>(t) * args.tile_size[0];
+            } else if constexpr (Dim == 2) {
+                tb1  = static_cast<int>(t % static_cast<size_t>(args.num_tiles[1]))
+                       * args.tile_size[1];
+                t   /= static_cast<size_t>(args.num_tiles[1]);
+                tb0  = static_cast<int>(t) * args.tile_size[0];
+            } else {
+                tb0  = static_cast<int>(t) * args.tile_size[0];
+            }
+        }
+
         const size_t bin_start = args.bin_offsets(tile_id);
         const size_t bin_end   = args.bin_offsets(tile_id + 1);
         const int    nupts     = static_cast<int>(bin_end - bin_start);
@@ -966,6 +960,9 @@ struct GridParallelScatter {
             const int batch_size = Kokkos::min(np, nupts - batch_begin);
 
             // ── 2a. Load ──────────────────────────────────────────────────────
+            //
+            //  The d-loop is unrolled via if constexpr so `d` is always a
+            //  compile-time constant; no dynamic indexing into any local array.
             for (int bi = tid; bi < batch_size; bi += block_size) {
                 const size_t p =
                     args.permute(bin_start + static_cast<size_t>(batch_begin + bi));
@@ -977,14 +974,34 @@ struct GridParallelScatter {
                     vals_r_sm[bi] = static_cast<RealType>(args.values(p));
                 }
 
-                for (unsigned d = 0; d < Dim; ++d) {
-                    const RealType gp   = transform.toGridCoordinate(args.x(p)[d], d);
+                // d = 0
+                {
+                    const RealType gp   = transform.toGridCoordinate(args.x(p)[0], 0);
                     const int      idx0 = transform.getStencilBase(gp - RealType(0.5), W);
-                    shifts_sm[bi * static_cast<int>(Dim) + static_cast<int>(d)] =
-                        idx0 - args.local_offset[d] + half_left - tb[d];
+                    shifts_sm[bi * idim + 0] =
+                        idx0 - args.local_offset[0] + half_left - tb0;
                     for (int wi = 0; wi < W; ++wi)
-                        kerevals_sm[bi * static_cast<int>(Dim) * W
-                                    + static_cast<int>(d) * W + wi] =
+                        kerevals_sm[bi * idim * W + 0 * W + wi] =
+                            args.kernel((gp - (RealType(idx0 + wi) + RealType(0.5)))
+                                        * args.inv_hw);
+                }
+                if constexpr (Dim >= 2) {
+                    const RealType gp   = transform.toGridCoordinate(args.x(p)[1], 1);
+                    const int      idx0 = transform.getStencilBase(gp - RealType(0.5), W);
+                    shifts_sm[bi * idim + 1] =
+                        idx0 - args.local_offset[1] + half_left - tb1;
+                    for (int wi = 0; wi < W; ++wi)
+                        kerevals_sm[bi * idim * W + 1 * W + wi] =
+                            args.kernel((gp - (RealType(idx0 + wi) + RealType(0.5)))
+                                        * args.inv_hw);
+                }
+                if constexpr (Dim == 3) {
+                    const RealType gp   = transform.toGridCoordinate(args.x(p)[2], 2);
+                    const int      idx0 = transform.getStencilBase(gp - RealType(0.5), W);
+                    shifts_sm[bi * idim + 2] =
+                        idx0 - args.local_offset[2] + half_left - tb2;
+                    for (int wi = 0; wi < W; ++wi)
+                        kerevals_sm[bi * idim * W + 2 * W + wi] =
                             args.kernel((gp - (RealType(idx0 + wi) + RealType(0.5)))
                                         * args.inv_hw);
                 }
@@ -993,42 +1010,43 @@ struct GridParallelScatter {
 
             // ── 2b. Scatter ───────────────────────────────────────────────────
             //
-            //  Particle bi is processed by ALL threads (they split the W^Dim stencil
-            //  cells in a strided loop over idx).  Because only one particle is live
-            //  per iteration, each thread writes to a disjoint hidx → no atomic.
-            //  sync() after each particle guards the next particle's writes to the
-            //  same local_r cells, and also guards the next batch's load phase.
+            //  All threads split W^Dim stencil cells for particle bi.
+            //  One particle live per iteration → disjoint hidx per thread
+            //  → no shared-memory atomics.
+            //  sync() after each particle guards next particle and next load.
+            //
+            //  kw / sh are pointers into shared memory; kw[i0] etc. are
+            //  shared-memory reads with compile-time-bounded offsets — no spill.
+            //  base_hidx folds particle-dependent offsets out of the hot loop so
+            //  only stencil-local offsets with invariant strides remain inside.
             constexpr int stencil_total = (Dim == 1) ? W : (Dim == 2) ? W * W : W * W * W;
 
             for (int bi = 0; bi < batch_size; ++bi) {
-                const RealType* kw = kerevals_sm + bi * static_cast<int>(Dim) * W;
-                const int*      sh = shifts_sm   + bi * static_cast<int>(Dim);
+                const RealType* kw = kerevals_sm + bi * idim * W;
+                const int*      sh = shifts_sm   + bi * idim;
 
                 const RealType vr = vals_r_sm[bi];
                 RealType       vi = RealType(0);
                 if constexpr (gcplx && vcplx) vi = vals_i_sm[bi];
 
-                // Fold all particle-dependent offsets into one scalar so the
-                // hot inner loop only adds compile-time-bounded stencil offsets
-                // (strides are loop-invariant → compiler strength-reduces to adds).
                 size_t base_hidx;
                 if constexpr (Dim == 1) {
                     base_hidx = static_cast<size_t>(sh[0]);
                 } else if constexpr (Dim == 2) {
                     base_hidx = static_cast<size_t>(sh[0])
-                              + static_cast<size_t>(hs[0]) * static_cast<size_t>(sh[1]);
+                              + static_cast<size_t>(hs0) * static_cast<size_t>(sh[1]);
                 } else {
                     base_hidx = static_cast<size_t>(sh[0])
-                              + static_cast<size_t>(hs[0])
+                              + static_cast<size_t>(hs0)
                                     * (static_cast<size_t>(sh[1])
-                                       + static_cast<size_t>(hs[1])
+                                       + static_cast<size_t>(hs1)
                                              * static_cast<size_t>(sh[2]));
                 }
 
                 for (int idx = tid; idx < stencil_total; idx += block_size) {
-                    const int i0 =                idx % W;
-                    const int i1 = (Dim >= 2) ? (idx / W) % W : 0;
-                    const int i2 = (Dim == 3) ?  idx / (W * W) : 0;
+                    const int i0 =              idx % W;
+                    const int i1 = Dim >= 2 ? (idx / W) % W : 0;
+                    const int i2 = Dim == 3 ?  idx / (W * W) : 0;
 
                     RealType w;
                     size_t   hidx;
@@ -1039,14 +1057,15 @@ struct GridParallelScatter {
                         w    = kw[i0] * kw[W + i1];
                         hidx = base_hidx
                              + static_cast<size_t>(i0)
-                             + static_cast<size_t>(hs[0]) * static_cast<size_t>(i1);
+                             + static_cast<size_t>(hs0) * static_cast<size_t>(i1);
                     } else {
                         w    = kw[i0] * kw[W + i1] * kw[2 * W + i2];
                         hidx = base_hidx
                              + static_cast<size_t>(i0)
-                             + static_cast<size_t>(hs[0])
+                             + static_cast<size_t>(hs0)
                                    * (static_cast<size_t>(i1)
-                                      + static_cast<size_t>(hs[1]) * static_cast<size_t>(i2));
+                                      + static_cast<size_t>(hs1)
+                                            * static_cast<size_t>(i2));
                     }
 
                     local_r[hidx] += vr * w;
@@ -1058,9 +1077,8 @@ struct GridParallelScatter {
 
         // ── 3. Flush local subgrid → global grid ──────────────────────────────
         //
-        //  The final sync() inside the scatter loop guarantees all local_r writes
-        //  are visible.  Each thread owns a disjoint strided slice of htot; no
-        //  additional barrier is required.
+        //  hc / gc decoded as named scalars per Dim — no local arrays, no loops
+        //  over d with dynamic indexing.  grid() called with literal arguments.
         for (size_t idx = static_cast<size_t>(tid); idx < htot;
              idx += static_cast<size_t>(block_size)) {
 
@@ -1069,48 +1087,72 @@ struct GridParallelScatter {
             if (sum_r == RealType(0) && sum_i == RealType(0))
                 continue;
 
-            // Decode flat index → histogram coordinates
-            size_t tmp = idx;
-            Kokkos::Array<int, Dim> hc{};
-            for (unsigned d = 0; d < Dim; ++d) {
-                hc[d] = static_cast<int>(tmp % static_cast<size_t>(hs[d]));
-                tmp   /= static_cast<size_t>(hs[d]);
-            }
-
-            // Map histogram → local grid; skip ghost overflow
-            Kokkos::Array<int, Dim> gc{};
-            bool valid = true;
-            for (unsigned d = 0; d < Dim; ++d) {
-                const int lc = tb[d] + hc[d] - half_left;
-                if (lc < -args.nghost || lc >= args.n_grid_local[d] + args.nghost) {
-                    valid = false;
-                    break;
-                }
-                gc[d] = lc + args.nghost;
-            }
-            if (!valid) continue;
-
-            [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+            if constexpr (Dim == 1) {
+                const int hc0 = static_cast<int>(idx);
+                const int lc0 = tb0 + hc0 - half_left;
+                if (lc0 < -args.nghost || lc0 >= args.n_grid_local[0] + args.nghost)
+                    continue;
+                const int gc0 = lc0 + args.nghost;
                 if constexpr (gcplx) {
-                    RealType* ptr = reinterpret_cast<RealType*>(&args.grid(gc[Is]...));
+                    RealType* ptr = reinterpret_cast<RealType*>(&args.grid(gc0));
                     Kokkos::atomic_add(&ptr[0], sum_r);
                     Kokkos::atomic_add(&ptr[1], sum_i);
                 } else {
-                    Kokkos::atomic_add(&args.grid(gc[Is]...),
+                    Kokkos::atomic_add(&args.grid(gc0),
                                        static_cast<grid_value_t>(sum_r));
                 }
-            }(std::make_index_sequence<Dim>{});
+
+            } else if constexpr (Dim == 2) {
+                const int hc0 = static_cast<int>(idx % static_cast<size_t>(hs0));
+                const int hc1 = static_cast<int>(idx / static_cast<size_t>(hs0));
+                const int lc0 = tb0 + hc0 - half_left;
+                const int lc1 = tb1 + hc1 - half_left;
+                if (lc0 < -args.nghost || lc0 >= args.n_grid_local[0] + args.nghost)
+                    continue;
+                if (lc1 < -args.nghost || lc1 >= args.n_grid_local[1] + args.nghost)
+                    continue;
+                const int gc0 = lc0 + args.nghost;
+                const int gc1 = lc1 + args.nghost;
+                if constexpr (gcplx) {
+                    RealType* ptr = reinterpret_cast<RealType*>(&args.grid(gc0, gc1));
+                    Kokkos::atomic_add(&ptr[0], sum_r);
+                    Kokkos::atomic_add(&ptr[1], sum_i);
+                } else {
+                    Kokkos::atomic_add(&args.grid(gc0, gc1),
+                                       static_cast<grid_value_t>(sum_r));
+                }
+
+            } else {
+                static_assert(Dim == 3);
+                const int      hc0  = static_cast<int>(idx % static_cast<size_t>(hs0));
+                const size_t   tmp1 = idx / static_cast<size_t>(hs0);
+                const int      hc1  = static_cast<int>(tmp1 % static_cast<size_t>(hs1));
+                const int      hc2  = static_cast<int>(tmp1 / static_cast<size_t>(hs1));
+                const int lc0 = tb0 + hc0 - half_left;
+                const int lc1 = tb1 + hc1 - half_left;
+                const int lc2 = tb2 + hc2 - half_left;
+                if (lc0 < -args.nghost || lc0 >= args.n_grid_local[0] + args.nghost)
+                    continue;
+                if (lc1 < -args.nghost || lc1 >= args.n_grid_local[1] + args.nghost)
+                    continue;
+                if (lc2 < -args.nghost || lc2 >= args.n_grid_local[2] + args.nghost)
+                    continue;
+                const int gc0 = lc0 + args.nghost;
+                const int gc1 = lc1 + args.nghost;
+                const int gc2 = lc2 + args.nghost;
+                if constexpr (gcplx) {
+                    RealType* ptr = reinterpret_cast<RealType*>(&args.grid(gc0, gc1, gc2));
+                    Kokkos::atomic_add(&ptr[0], sum_r);
+                    Kokkos::atomic_add(&ptr[1], sum_i);
+                } else {
+                    Kokkos::atomic_add(&args.grid(gc0, gc1, gc2),
+                                       static_cast<grid_value_t>(sum_r));
+                }
+            }
         }
     }
 
     // ── Kokkos operator ───────────────────────────────────────────────────────
-    //
-    //  Used for non-GPU backends (CPU, OpenMP, …) and as a GPU fallback when
-    //  use_native_gpu is false.  Allocates scratch from Kokkos team scratch and
-    //  calls run_tile with team.team_rank() as tid — exactly equivalent to
-    //  threadIdx.x in the native path.  All threads in the team enter this
-    //  operator simultaneously (Kokkos TeamPolicy semantics); run_tile's internal
-    //  stride loops distribute work without a wrapping TeamThreadRange.
     KOKKOS_INLINE_FUNCTION void operator()(const team_member& team) const {
         using grid_value_t   = typename decltype(args.grid)::non_const_value_type;
         constexpr bool gcplx = std::is_same_v<grid_value_t, Kokkos::complex<RealType>>;
@@ -1147,7 +1189,6 @@ struct GridParallelScatter {
             KokkosBarrier{team});
     }
 
-    // run() is defined below, after the native kernel template.
     void run(size_t n_particles);
 };
 
@@ -1174,13 +1215,12 @@ void GridParallelScatter<W, Types, Policy>::run(size_t n_particles) {
 
     if constexpr (use_native_gpu) {
 #if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
-        // Mirrors the alloc_r / alloc_i layout in grid_parallel_scatter_native.
         const size_t htot = hist_total_;
         size_t smem = (gcplx ? 2 : 1) * htot * sizeof(RealType)
                     + static_cast<size_t>(np * static_cast<int>(Dim) * W) * sizeof(RealType)
                     + static_cast<size_t>(np) * sizeof(RealType)
                     + (gcplx && vcplx ? static_cast<size_t>(np) * sizeof(RealType) : 0);
-        smem  = (smem + sizeof(int) - 1) & ~(sizeof(int) - 1); // align before int array
+        smem  = (smem + sizeof(int) - 1) & ~(sizeof(int) - 1);
         smem += static_cast<size_t>(np * static_cast<int>(Dim)) * sizeof(int);
 
         grid_parallel_scatter_native<W, Types, Policy>
