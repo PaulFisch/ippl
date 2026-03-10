@@ -130,7 +130,8 @@
 //
 //     Kokkos::parallel_reduce(
 //         "ComparePrunedWithFull",
-//         mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) - ng_p,
+//         mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) -
+//         ng_p,
 //                                        view_pruned.extent(2) - ng_p}),
 //         KOKKOS_LAMBDA(const int li_p, const int lj_p, const int lk_p, double& local_max) {
 //             int gi_p = li_p - ng_p + p0_first;
@@ -164,7 +165,8 @@
 //
 //     Kokkos::parallel_reduce(
 //         "CountComparisons",
-//         mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) - ng_p,
+//         mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) -
+//         ng_p,
 //                                        view_pruned.extent(2) - ng_p}),
 //         KOKKOS_LAMBDA(const int li_p, const int lj_p, const int lk_p, size_t& local_count) {
 //             int gi_p = li_p - ng_p + p0_first;
@@ -486,7 +488,8 @@
 //     //         std::cout << "\n=== Comparing Pruned Backward vs Full Backward FFT values ==="
 //     //                   << std::endl;
 //     //         std::cout << std::setw(20) << "Spatial Index" << std::setw(35) << "Pruned IFFT"
-//     //                   << std::setw(35) << "Full IFFT" << std::setw(15) << "Error" << std::endl;
+//     //                   << std::setw(35) << "Full IFFT" << std::setw(15) << "Error" <<
+//     std::endl;
 //     //         std::cout << std::string(105, '-') << std::endl;
 //     //
 //     //         // Print a subset to avoid overwhelming output
@@ -512,10 +515,12 @@
 //     //                     double err      = Kokkos::abs(val_pruned - val_full);
 //     //
 //     //                     std::cout << std::setw(6) << "(" << i << "," << j << "," << k << ")"
-//     //                               << std::setw(15) << std::fixed << std::setprecision(6) << "("
+//     //                               << std::setw(15) << std::fixed << std::setprecision(6) <<
+//     "("
 //     //                               << val_pruned.real() << ", " << val_pruned.imag() << ")"
 //     //                               << std::setw(15) << "(" << val_full.real() << ", "
-//     //                               << val_full.imag() << ")" << std::setw(15) << std::scientific
+//     //                               << val_full.imag() << ")" << std::setw(15) <<
+//     std::scientific
 //     //                               << err << std::endl;
 //     //
 //     //                     ++printed;
@@ -553,7 +558,8 @@
 //     //
 //     //             std::cout << std::setw(6) << "(" << i << "," << j << "," << k << ")"
 //     //                       << std::setw(15) << std::fixed << std::setprecision(6) << "("
-//     //                       << val_pruned.real() << ", " << val_pruned.imag() << ")" << std::setw(15)
+//     //                       << val_pruned.real() << ", " << val_pruned.imag() << ")" <<
+//     std::setw(15)
 //     //                       << "(" << val_full.real() << ", " << val_full.imag() << ")"
 //     //                       << std::setw(15) << std::scientific << err << std::endl;
 //     //         }
@@ -596,7 +602,8 @@
 //
 //     ippl::FieldLayout<dim> layout_real(MPI_COMM_WORLD, owned_real, isParallel);
 //     ippl::FieldLayout<dim> layout_complex_full(MPI_COMM_WORLD, owned_complex_full, isParallel);
-//     ippl::FieldLayout<dim> layout_complex_pruned(MPI_COMM_WORLD, owned_complex_pruned, isParallel);
+//     ippl::FieldLayout<dim> layout_complex_pruned(MPI_COMM_WORLD, owned_complex_pruned,
+//     isParallel);
 //
 //     std::array<double, dim> dx = {
 //         1.0 / double(pt_real[0]),
@@ -634,7 +641,8 @@
 //     typedef ippl::FFT<ippl::RCTransform, field_type_real> RCFFT_type;
 //
 //     auto pruned_fft  = std::make_unique<PrunedRCFFT_type>(layout_real, layout_complex_full,
-//                                                           layout_complex_pruned, pruning, fftParams);
+//                                                           layout_complex_pruned, pruning,
+//                                                           fftParams);
 //     auto regular_fft = std::make_unique<RCFFT_type>(layout_real, layout_complex_full, fftParams);
 //
 //     if (ippl::Comm->rank() == 0) {
@@ -704,7 +712,8 @@
 //
 //     Kokkos::parallel_reduce(
 //         "ComparePrunedWithFullRC",
-//         mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) - ng_p,
+//         mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) -
+//         ng_p,
 //                                        view_pruned.extent(2) - ng_p}),
 //         KOKKOS_LAMBDA(const int li_p, const int lj_p, const int lk_p, double& local_max) {
 //             int gi_p = li_p - ng_p + p0_first;
@@ -740,7 +749,8 @@
 //
 //     Kokkos::parallel_reduce(
 //         "CountComparisonsRC",
-//         mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) - ng_p,
+//         mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) -
+//         ng_p,
 //                                        view_pruned.extent(2) - ng_p}),
 //         KOKKOS_LAMBDA(const int li_p, const int lj_p, const int lk_p, size_t& local_count) {
 //             int gi_p = li_p - ng_p + p0_first;
@@ -792,7 +802,8 @@
 //         std::cout << "Pruned C2C backwards: " << (cc_back_passed ? "PASSED" : "FAILED")
 //                   << std::endl;
 //         std::cout << "Pruned R2C: " << (rc_passed ? "PASSED" : "FAILED") << std::endl;
-//         std::cout << "All tests: " << ((cc_passed && rc_passed) ? "PASSED" : "FAILED") << std::endl;
+//         std::cout << "All tests: " << ((cc_passed && rc_passed) ? "PASSED" : "FAILED") <<
+//         std::endl;
 //     }
 //
 //     ippl::finalize();
@@ -812,32 +823,33 @@
 // Helper function to compute field statistics
 template <typename Field>
 void printFieldStats(const std::string& name, Field& field, int rank) {
-    auto view = field.getView();
+    auto view        = field.getView();
     const int nghost = field.getNghost();
 
     using value_type = typename Field::value_type;
 
     double sum_real = 0.0, sum_imag = 0.0;
     double max_abs = 0.0;
-    size_t count = 0;
+    size_t count   = 0;
 
     using exec_space = typename Field::execution_space;
-    using mdrange_t = Kokkos::MDRangePolicy<exec_space, Kokkos::Rank<3>>;
+    using mdrange_t  = Kokkos::MDRangePolicy<exec_space, Kokkos::Rank<3>>;
 
     // For complex fields
-    if constexpr (std::is_same_v<value_type, Kokkos::complex<double>> ||
-                  std::is_same_v<value_type, Kokkos::complex<float>>) {
+    if constexpr (std::is_same_v<value_type, Kokkos::complex<double>>
+                  || std::is_same_v<value_type, Kokkos::complex<float>>) {
         Kokkos::parallel_reduce(
             "FieldStats",
             mdrange_t({nghost, nghost, nghost},
                       {view.extent(0) - nghost, view.extent(1) - nghost, view.extent(2) - nghost}),
-            KOKKOS_LAMBDA(const int i, const int j, const int k,
-                         double& lsum_r, double& lsum_i, double& lmax, size_t& lcount) {
+            KOKKOS_LAMBDA(const int i, const int j, const int k, double& lsum_r, double& lsum_i,
+                          double& lmax, size_t& lcount) {
                 auto val = view(i, j, k);
                 lsum_r += val.real();
                 lsum_i += val.imag();
                 double abs_val = Kokkos::abs(val);
-                if (abs_val > lmax) lmax = abs_val;
+                if (abs_val > lmax)
+                    lmax = abs_val;
                 ++lcount;
             },
             sum_real, sum_imag, Kokkos::Max<double>(max_abs), count);
@@ -847,12 +859,13 @@ void printFieldStats(const std::string& name, Field& field, int rank) {
             "FieldStats",
             mdrange_t({nghost, nghost, nghost},
                       {view.extent(0) - nghost, view.extent(1) - nghost, view.extent(2) - nghost}),
-            KOKKOS_LAMBDA(const int i, const int j, const int k,
-                         double& lsum_r, double& /*lsum_i*/, double& lmax, size_t& lcount) {
+            KOKKOS_LAMBDA(const int i, const int j, const int k, double& lsum_r, double& /*lsum_i*/,
+                          double& lmax, size_t& lcount) {
                 double val = view(i, j, k);
                 lsum_r += val;
                 double abs_val = Kokkos::fabs(val);
-                if (abs_val > lmax) lmax = abs_val;
+                if (abs_val > lmax)
+                    lmax = abs_val;
                 ++lcount;
             },
             sum_real, sum_imag, Kokkos::Max<double>(max_abs), count);
@@ -863,15 +876,17 @@ void printFieldStats(const std::string& name, Field& field, int rank) {
     // Gather global statistics
     double global_sum_real, global_sum_imag, global_max_abs;
     size_t global_count;
-    MPI_Allreduce(&sum_real, &global_sum_real, 1, MPI_DOUBLE, MPI_SUM, ippl::Comm->getCommunicator());
-    MPI_Allreduce(&sum_imag, &global_sum_imag, 1, MPI_DOUBLE, MPI_SUM, ippl::Comm->getCommunicator());
+    MPI_Allreduce(&sum_real, &global_sum_real, 1, MPI_DOUBLE, MPI_SUM,
+                  ippl::Comm->getCommunicator());
+    MPI_Allreduce(&sum_imag, &global_sum_imag, 1, MPI_DOUBLE, MPI_SUM,
+                  ippl::Comm->getCommunicator());
     MPI_Allreduce(&max_abs, &global_max_abs, 1, MPI_DOUBLE, MPI_MAX, ippl::Comm->getCommunicator());
-    MPI_Allreduce(&count, &global_count, 1, MPI_UNSIGNED_LONG, MPI_SUM, ippl::Comm->getCommunicator());
+    MPI_Allreduce(&count, &global_count, 1, MPI_UNSIGNED_LONG, MPI_SUM,
+                  ippl::Comm->getCommunicator());
 
     if (rank == 0) {
-        std::cout << "  " << name << ": count=" << global_count
-                  << ", sum=(" << std::scientific << std::setprecision(6)
-                  << global_sum_real << ", " << global_sum_imag << ")"
+        std::cout << "  " << name << ": count=" << global_count << ", sum=(" << std::scientific
+                  << std::setprecision(6) << global_sum_real << ", " << global_sum_imag << ")"
                   << ", max_abs=" << global_max_abs << std::endl;
     }
 }
@@ -879,7 +894,8 @@ void printFieldStats(const std::string& name, Field& field, int rank) {
 // Print first few values of a field
 template <typename Field>
 void printFieldSample(const std::string& name, Field& field, int rank, int max_print = 5) {
-    if (rank != 0) return;
+    if (rank != 0)
+        return;
 
     auto host_view = field.getHostMirror();
     Kokkos::deep_copy(host_view, field.getView());
@@ -892,14 +908,16 @@ void printFieldSample(const std::string& name, Field& field, int rank, int max_p
         for (size_t j = nghost; j < host_view.extent(1) - nghost && printed < max_print; ++j) {
             for (size_t k = nghost; k < host_view.extent(2) - nghost && printed < max_print; ++k) {
                 auto val = host_view(i, j, k);
-                if constexpr (std::is_same_v<std::decay_t<decltype(val)>, Kokkos::complex<double>> ||
-                              std::is_same_v<std::decay_t<decltype(val)>, Kokkos::complex<float>>) {
-                    std::cout << "    [" << i-nghost << "," << j-nghost << "," << k-nghost << "] = ("
-                              << std::scientific << std::setprecision(6)
-                              << val.real() << ", " << val.imag() << ")" << std::endl;
+                if constexpr (std::is_same_v<std::decay_t<decltype(val)>, Kokkos::complex<double>>
+                              || std::is_same_v<std::decay_t<decltype(val)>,
+                                                Kokkos::complex<float>>) {
+                    std::cout << "    [" << i - nghost << "," << j - nghost << "," << k - nghost
+                              << "] = (" << std::scientific << std::setprecision(6) << val.real()
+                              << ", " << val.imag() << ")" << std::endl;
                 } else {
-                    std::cout << "    [" << i-nghost << "," << j-nghost << "," << k-nghost << "] = "
-                              << std::scientific << std::setprecision(6) << val << std::endl;
+                    std::cout << "    [" << i - nghost << "," << j - nghost << "," << k - nghost
+                              << "] = " << std::scientific << std::setprecision(6) << val
+                              << std::endl;
                 }
                 ++printed;
             }
@@ -922,8 +940,10 @@ bool testPrunedCC() {
     if (myRank == 0) {
         std::cout << "\n=== Testing Pruned C2C FFT ===" << std::endl;
         std::cout << "Running on " << nProcs << " MPI ranks" << std::endl;
-        std::cout << "Full grid: " << pt_full[0] << "x" << pt_full[1] << "x" << pt_full[2] << std::endl;
-        std::cout << "Pruned to: " << pt_pruned[0] << "x" << pt_pruned[1] << "x" << pt_pruned[2] << std::endl;
+        std::cout << "Full grid: " << pt_full[0] << "x" << pt_full[1] << "x" << pt_full[2]
+                  << std::endl;
+        std::cout << "Pruned to: " << pt_pruned[0] << "x" << pt_pruned[1] << "x" << pt_pruned[2]
+                  << std::endl;
     }
 
     // Create layouts
@@ -944,17 +964,16 @@ bool testPrunedCC() {
     ippl::FieldLayout<dim> layout_pruned(MPI_COMM_WORLD, owned_pruned, isParallel);
 
     // Debug: print layout info
-    const auto& lDom_full = layout_full.getLocalNDIndex();
+    const auto& lDom_full   = layout_full.getLocalNDIndex();
     const auto& lDom_pruned = layout_pruned.getLocalNDIndex();
 
-    std::cout << "Rank " << myRank << " layout_full: ["
-              << lDom_full[0].first() << "-" << lDom_full[0].last() << ", "
-              << lDom_full[1].first() << "-" << lDom_full[1].last() << ", "
-              << lDom_full[2].first() << "-" << lDom_full[2].last() << "]" << std::endl;
-    std::cout << "Rank " << myRank << " layout_pruned: ["
-              << lDom_pruned[0].first() << "-" << lDom_pruned[0].last() << ", "
-              << lDom_pruned[1].first() << "-" << lDom_pruned[1].last() << ", "
-              << lDom_pruned[2].first() << "-" << lDom_pruned[2].last() << "]" << std::endl;
+    std::cout << "Rank " << myRank << " layout_full: [" << lDom_full[0].first() << "-"
+              << lDom_full[0].last() << ", " << lDom_full[1].first() << "-" << lDom_full[1].last()
+              << ", " << lDom_full[2].first() << "-" << lDom_full[2].last() << "]" << std::endl;
+    std::cout << "Rank " << myRank << " layout_pruned: [" << lDom_pruned[0].first() << "-"
+              << lDom_pruned[0].last() << ", " << lDom_pruned[1].first() << "-"
+              << lDom_pruned[1].last() << ", " << lDom_pruned[2].first() << "-"
+              << lDom_pruned[2].last() << "]" << std::endl;
 
     std::array<double, dim> dx = {
         1.0 / double(pt_full[0]),
@@ -985,15 +1004,18 @@ bool testPrunedCC() {
     typedef ippl::FFT<ippl::PrunedCCTransform, field_type> PrunedFFT_type;
     typedef ippl::FFT<ippl::CCTransform, field_type> FFT_type;
 
-    if (myRank == 0) std::cout << "Creating pruned FFT..." << std::endl;
-    auto pruned_fft = std::make_unique<PrunedFFT_type>(layout_full, layout_pruned, pruning, fftParams);
+    if (myRank == 0)
+        std::cout << "Creating pruned FFT..." << std::endl;
+    auto pruned_fft =
+        std::make_unique<PrunedFFT_type>(layout_full, layout_pruned, pruning, fftParams);
 
-    if (myRank == 0) std::cout << "Creating regular FFT..." << std::endl;
+    if (myRank == 0)
+        std::cout << "Creating regular FFT..." << std::endl;
     auto regular_fft = std::make_unique<FFT_type>(layout_full, fftParams);
 
     // Initialize with random data using FIXED seed for reproducibility
-    const int nghost = field_input.getNghost();
-    auto& view_full = field_input.getView();
+    const int nghost                           = field_input.getNghost();
+    auto& view_full                            = field_input.getView();
     typename field_type::HostMirror field_host = field_input.getHostMirror();
 
     // Use global index as seed for deterministic values across ranks
@@ -1014,32 +1036,36 @@ bool testPrunedCC() {
     Kokkos::deep_copy(field_input.getView(), field_host);
 
     // Print input statistics
-    if (myRank == 0) std::cout << "\nInput field statistics:" << std::endl;
+    if (myRank == 0)
+        std::cout << "\nInput field statistics:" << std::endl;
     printFieldStats("field_input", field_input, myRank);
     printFieldSample("field_input", field_input, myRank);
 
     // Save input and compute both FFTs
     field_full_result = field_input;
 
-    if (myRank == 0) std::cout << "\nExecuting pruned FFT forward..." << std::endl;
+    if (myRank == 0)
+        std::cout << "\nExecuting pruned FFT forward..." << std::endl;
     MPI_Barrier(ippl::Comm->getCommunicator());
     pruned_fft->transform(ippl::FORWARD, field_input, field_pruned_result);
     MPI_Barrier(ippl::Comm->getCommunicator());
 
-    if (myRank == 0) std::cout << "Executing regular FFT forward..." << std::endl;
+    if (myRank == 0)
+        std::cout << "Executing regular FFT forward..." << std::endl;
     MPI_Barrier(ippl::Comm->getCommunicator());
     regular_fft->transform(ippl::FORWARD, field_full_result);
     MPI_Barrier(ippl::Comm->getCommunicator());
 
     // Print output statistics
-    if (myRank == 0) std::cout << "\nOutput field statistics:" << std::endl;
+    if (myRank == 0)
+        std::cout << "\nOutput field statistics:" << std::endl;
     printFieldStats("field_pruned_result", field_pruned_result, myRank);
     printFieldStats("field_full_result", field_full_result, myRank);
     printFieldSample("field_pruned_result", field_pruned_result, myRank);
     printFieldSample("field_full_result", field_full_result, myRank);
 
     // Compare pruned result with corresponding modes from full result
-    auto view_pruned = field_pruned_result.getView();
+    auto view_pruned      = field_pruned_result.getView();
     auto view_full_result = field_full_result.getView();
 
     const int nghost_pruned = field_pruned_result.getNghost();
@@ -1056,15 +1082,15 @@ bool testPrunedCC() {
     const int f1_first = lDom_full[1].first(), f1_last = lDom_full[1].last();
     const int f2_first = lDom_full[2].first(), f2_last = lDom_full[2].last();
 
-    const int ng = nghost;
+    const int ng   = nghost;
     const int ng_p = nghost_pruned;
 
     // Find worst errors with their indices
     double max_error = 0.0;
-    size_t count = 0;
+    size_t count     = 0;
 
     using exec_space = typename field_type::execution_space;
-    using mdrange_t = Kokkos::MDRangePolicy<exec_space, Kokkos::Rank<3>>;
+    using mdrange_t  = Kokkos::MDRangePolicy<exec_space, Kokkos::Rank<3>>;
 
     // First pass: find max error
     Kokkos::parallel_reduce(
@@ -1090,7 +1116,7 @@ bool testPrunedCC() {
             int lk_f = gk_f - f2_first + ng;
 
             auto val_pruned = view_pruned(li_p, lj_p, lk_p);
-            auto val_full = view_full_result(li_f, lj_f, lk_f);
+            auto val_full   = view_full_result(li_f, lj_f, lk_f);
 
             double error = Kokkos::abs(val_pruned - val_full);
             if (error > local_max) {
@@ -1126,23 +1152,28 @@ bool testPrunedCC() {
 
     double global_max_error;
     size_t global_count;
-    MPI_Allreduce(&max_error, &global_max_error, 1, MPI_DOUBLE, MPI_MAX, ippl::Comm->getCommunicator());
-    MPI_Allreduce(&count, &global_count, 1, MPI_UNSIGNED_LONG, MPI_SUM, ippl::Comm->getCommunicator());
+    MPI_Allreduce(&max_error, &global_max_error, 1, MPI_DOUBLE, MPI_MAX,
+                  ippl::Comm->getCommunicator());
+    MPI_Allreduce(&count, &global_count, 1, MPI_UNSIGNED_LONG, MPI_SUM,
+                  ippl::Comm->getCommunicator());
 
     // Print worst mismatches on each rank
     if (max_error > 1e-10) {
         auto host_pruned = field_pruned_result.getHostMirror();
-        auto host_full = field_full_result.getHostMirror();
+        auto host_full   = field_full_result.getHostMirror();
         Kokkos::deep_copy(host_pruned, field_pruned_result.getView());
         Kokkos::deep_copy(host_full, field_full_result.getView());
 
         std::cout << "\nRank " << myRank << " worst mismatches (error > 1e-10):" << std::endl;
-        int printed = 0;
+        int printed   = 0;
         int max_print = 10;
 
-        for (size_t li_p = ng_p; li_p < host_pruned.extent(0) - ng_p && printed < max_print; ++li_p) {
-            for (size_t lj_p = ng_p; lj_p < host_pruned.extent(1) - ng_p && printed < max_print; ++lj_p) {
-                for (size_t lk_p = ng_p; lk_p < host_pruned.extent(2) - ng_p && printed < max_print; ++lk_p) {
+        for (size_t li_p = ng_p; li_p < host_pruned.extent(0) - ng_p && printed < max_print;
+             ++li_p) {
+            for (size_t lj_p = ng_p; lj_p < host_pruned.extent(1) - ng_p && printed < max_print;
+                 ++lj_p) {
+                for (size_t lk_p = ng_p; lk_p < host_pruned.extent(2) - ng_p && printed < max_print;
+                     ++lk_p) {
                     int gi_p = li_p - ng_p + p0_first;
                     int gj_p = lj_p - ng_p + p1_first;
                     int gk_p = lk_p - ng_p + p2_first;
@@ -1161,8 +1192,8 @@ bool testPrunedCC() {
                     int lk_f = gk_f - f2_first + ng;
 
                     auto val_pruned = host_pruned(li_p, lj_p, lk_p);
-                    auto val_full = host_full(li_f, lj_f, lk_f);
-                    double error = Kokkos::abs(val_pruned - val_full);
+                    auto val_full   = host_full(li_f, lj_f, lk_f);
+                    double error    = Kokkos::abs(val_pruned - val_full);
 
                     if (error > 1e-10) {
                         std::cout << "  pruned[" << gi_p << "," << gj_p << "," << gk_p << "]="
@@ -1204,8 +1235,10 @@ bool testPrunedCCBackward() {
     if (myRank == 0) {
         std::cout << "\n=== Testing Pruned C2C Backward FFT ===" << std::endl;
         std::cout << "Running on " << nProcs << " MPI ranks" << std::endl;
-        std::cout << "Pruned frequency: " << pt_pruned[0] << "x" << pt_pruned[1] << "x" << pt_pruned[2] << std::endl;
-        std::cout << "Full spatial: " << pt_full[0] << "x" << pt_full[1] << "x" << pt_full[2] << std::endl;
+        std::cout << "Pruned frequency: " << pt_pruned[0] << "x" << pt_pruned[1] << "x"
+                  << pt_pruned[2] << std::endl;
+        std::cout << "Full spatial: " << pt_full[0] << "x" << pt_full[1] << "x" << pt_full[2]
+                  << std::endl;
     }
 
     // Create layouts
@@ -1226,17 +1259,16 @@ bool testPrunedCCBackward() {
     ippl::FieldLayout<dim> layout_pruned(MPI_COMM_WORLD, owned_pruned, isParallel);
 
     // Debug: print layout info
-    const auto& lDom_full = layout_full.getLocalNDIndex();
+    const auto& lDom_full   = layout_full.getLocalNDIndex();
     const auto& lDom_pruned = layout_pruned.getLocalNDIndex();
 
-    std::cout << "Rank " << myRank << " layout_full: ["
-              << lDom_full[0].first() << "-" << lDom_full[0].last() << ", "
-              << lDom_full[1].first() << "-" << lDom_full[1].last() << ", "
-              << lDom_full[2].first() << "-" << lDom_full[2].last() << "]" << std::endl;
-    std::cout << "Rank " << myRank << " layout_pruned: ["
-              << lDom_pruned[0].first() << "-" << lDom_pruned[0].last() << ", "
-              << lDom_pruned[1].first() << "-" << lDom_pruned[1].last() << ", "
-              << lDom_pruned[2].first() << "-" << lDom_pruned[2].last() << "]" << std::endl;
+    std::cout << "Rank " << myRank << " layout_full: [" << lDom_full[0].first() << "-"
+              << lDom_full[0].last() << ", " << lDom_full[1].first() << "-" << lDom_full[1].last()
+              << ", " << lDom_full[2].first() << "-" << lDom_full[2].last() << "]" << std::endl;
+    std::cout << "Rank " << myRank << " layout_pruned: [" << lDom_pruned[0].first() << "-"
+              << lDom_pruned[0].last() << ", " << lDom_pruned[1].first() << "-"
+              << lDom_pruned[1].last() << ", " << lDom_pruned[2].first() << "-"
+              << lDom_pruned[2].last() << "]" << std::endl;
 
     std::array<double, dim> dx = {
         1.0 / double(pt_full[0]),
@@ -1267,11 +1299,13 @@ bool testPrunedCCBackward() {
     typedef ippl::FFT<ippl::PrunedCCTransform, field_type> PrunedFFT_type;
     typedef ippl::FFT<ippl::CCTransform, field_type> FFT_type;
 
-    if (myRank == 0) std::cout << "Creating FFTs..." << std::endl;
-    auto pruned_fft = std::make_unique<PrunedFFT_type>(layout_full, layout_pruned, pruning, fftParams);
+    if (myRank == 0)
+        std::cout << "Creating FFTs..." << std::endl;
+    auto pruned_fft =
+        std::make_unique<PrunedFFT_type>(layout_full, layout_pruned, pruning, fftParams);
     auto regular_fft = std::make_unique<FFT_type>(layout_full, fftParams);
 
-    const int nghost = field_full_output.getNghost();
+    const int nghost        = field_full_output.getNghost();
     const int nghost_pruned = field_pruned_input.getNghost();
 
     const int N0 = pt_full[0], K0 = pt_pruned[0];
@@ -1287,10 +1321,11 @@ bool testPrunedCCBackward() {
     const int f2_first = lDom_full[2].first(), f2_last = lDom_full[2].last();
 
     // Initialize fields with deterministic data
-    typename field_type::HostMirror pruned_host = field_pruned_input.getHostMirror();
+    typename field_type::HostMirror pruned_host    = field_pruned_input.getHostMirror();
     typename field_type::HostMirror full_freq_host = field_full_freq.getHostMirror();
 
-    if (myRank == 0) std::cout << "Initializing input fields..." << std::endl;
+    if (myRank == 0)
+        std::cout << "Initializing input fields..." << std::endl;
 
     // Initialize pruned field with deterministic values
     auto& view_pruned = field_pruned_input.getView();
@@ -1303,7 +1338,8 @@ bool testPrunedCCBackward() {
 
                 std::mt19937_64 local_eng(gi_p * 10000 + gj_p * 100 + gk_p + 123);
                 std::uniform_real_distribution<double> local_unif(-1.0, 1.0);
-                pruned_host(i, j, k) = Kokkos::complex<double>(local_unif(local_eng), local_unif(local_eng));
+                pruned_host(i, j, k) =
+                    Kokkos::complex<double>(local_unif(local_eng), local_unif(local_eng));
             }
         }
     }
@@ -1343,7 +1379,8 @@ bool testPrunedCCBackward() {
                 if (gi_p >= 0 && gi_p < K0 && gj_p >= 0 && gj_p < K1 && gk_p >= 0 && gk_p < K2) {
                     std::mt19937_64 local_eng(gi_p * 10000 + gj_p * 100 + gk_p + 123);
                     std::uniform_real_distribution<double> local_unif(-1.0, 1.0);
-                    full_freq_host(i, j, k) = Kokkos::complex<double>(local_unif(local_eng), local_unif(local_eng));
+                    full_freq_host(i, j, k) =
+                        Kokkos::complex<double>(local_unif(local_eng), local_unif(local_eng));
                 } else {
                     full_freq_host(i, j, k) = Kokkos::complex<double>(0.0, 0.0);
                 }
@@ -1353,44 +1390,49 @@ bool testPrunedCCBackward() {
     Kokkos::deep_copy(field_full_reference.getView(), full_freq_host);
 
     // Print input statistics
-    if (myRank == 0) std::cout << "\nInput field statistics:" << std::endl;
+    if (myRank == 0)
+        std::cout << "\nInput field statistics:" << std::endl;
     printFieldStats("field_pruned_input", field_pruned_input, myRank);
     printFieldStats("field_full_reference (freq)", field_full_reference, myRank);
 
     // Apply backward transforms
-    if (myRank == 0) std::cout << "\nExecuting pruned backward FFT..." << std::endl;
+    if (myRank == 0)
+        std::cout << "\nExecuting pruned backward FFT..." << std::endl;
     MPI_Barrier(ippl::Comm->getCommunicator());
     pruned_fft->transform(ippl::BACKWARD, field_pruned_input, field_full_output);
     MPI_Barrier(ippl::Comm->getCommunicator());
 
-    if (myRank == 0) std::cout << "Executing regular backward FFT..." << std::endl;
+    if (myRank == 0)
+        std::cout << "Executing regular backward FFT..." << std::endl;
     MPI_Barrier(ippl::Comm->getCommunicator());
     regular_fft->transform(ippl::BACKWARD, field_full_reference);
     MPI_Barrier(ippl::Comm->getCommunicator());
 
     // Print output statistics
-    if (myRank == 0) std::cout << "\nOutput field statistics:" << std::endl;
+    if (myRank == 0)
+        std::cout << "\nOutput field statistics:" << std::endl;
     printFieldStats("field_full_output (pruned)", field_full_output, myRank);
     printFieldStats("field_full_reference (regular)", field_full_reference, myRank);
 
     // Compare results
-    auto view_output = field_full_output.getView();
+    auto view_output    = field_full_output.getView();
     auto view_reference = field_full_reference.getView();
 
     double max_error = 0.0;
-    size_t count = 0;
+    size_t count     = 0;
 
     using exec_space = typename field_type::execution_space;
-    using mdrange_t = Kokkos::MDRangePolicy<exec_space, Kokkos::Rank<3>>;
+    using mdrange_t  = Kokkos::MDRangePolicy<exec_space, Kokkos::Rank<3>>;
 
     Kokkos::parallel_reduce(
         "CompareBackwardResults",
         mdrange_t({nghost, nghost, nghost},
-                  {view_output.extent(0) - nghost, view_output.extent(1) - nghost, view_output.extent(2) - nghost}),
+                  {view_output.extent(0) - nghost, view_output.extent(1) - nghost,
+                   view_output.extent(2) - nghost}),
         KOKKOS_LAMBDA(const int i, const int j, const int k, double& local_max) {
             auto val_pruned = view_output(i, j, k);
-            auto val_full = view_reference(i, j, k);
-            double error = Kokkos::abs(val_pruned - val_full);
+            auto val_full   = view_reference(i, j, k);
+            double error    = Kokkos::abs(val_pruned - val_full);
             if (error > local_max) {
                 local_max = error;
             }
@@ -1402,41 +1444,47 @@ bool testPrunedCCBackward() {
     Kokkos::parallel_reduce(
         "CountBackwardComparisons",
         mdrange_t({nghost, nghost, nghost},
-                  {view_output.extent(0) - nghost, view_output.extent(1) - nghost, view_output.extent(2) - nghost}),
-        KOKKOS_LAMBDA(int, int, int, size_t& local_count) { ++local_count; },
-        count);
+                  {view_output.extent(0) - nghost, view_output.extent(1) - nghost,
+                   view_output.extent(2) - nghost}),
+        KOKKOS_LAMBDA(int, int, int, size_t& local_count) { ++local_count; }, count);
 
     Kokkos::fence();
 
     double global_max_error;
     size_t global_count;
-    MPI_Allreduce(&max_error, &global_max_error, 1, MPI_DOUBLE, MPI_MAX, ippl::Comm->getCommunicator());
-    MPI_Allreduce(&count, &global_count, 1, MPI_UNSIGNED_LONG, MPI_SUM, ippl::Comm->getCommunicator());
+    MPI_Allreduce(&max_error, &global_max_error, 1, MPI_DOUBLE, MPI_MAX,
+                  ippl::Comm->getCommunicator());
+    MPI_Allreduce(&count, &global_count, 1, MPI_UNSIGNED_LONG, MPI_SUM,
+                  ippl::Comm->getCommunicator());
 
     // Print worst mismatches if error is large
     if (max_error > 1e-10) {
-        auto host_output = field_full_output.getHostMirror();
+        auto host_output    = field_full_output.getHostMirror();
         auto host_reference = field_full_reference.getHostMirror();
         Kokkos::deep_copy(host_output, field_full_output.getView());
         Kokkos::deep_copy(host_reference, field_full_reference.getView());
 
-        std::cout << "\nRank " << myRank << " worst backward mismatches (error > 1e-10):" << std::endl;
-        int printed = 0;
+        std::cout << "\nRank " << myRank
+                  << " worst backward mismatches (error > 1e-10):" << std::endl;
+        int printed   = 0;
         int max_print = 10;
 
         for (size_t i = nghost; i < host_output.extent(0) - nghost && printed < max_print; ++i) {
-            for (size_t j = nghost; j < host_output.extent(1) - nghost && printed < max_print; ++j) {
-                for (size_t k = nghost; k < host_output.extent(2) - nghost && printed < max_print; ++k) {
+            for (size_t j = nghost; j < host_output.extent(1) - nghost && printed < max_print;
+                 ++j) {
+                for (size_t k = nghost; k < host_output.extent(2) - nghost && printed < max_print;
+                     ++k) {
                     auto val_pruned = host_output(i, j, k);
-                    auto val_full = host_reference(i, j, k);
-                    double error = Kokkos::abs(val_pruned - val_full);
+                    auto val_full   = host_reference(i, j, k);
+                    double error    = Kokkos::abs(val_pruned - val_full);
 
                     if (error > 1e-10) {
                         int gi = i - nghost + f0_first;
                         int gj = j - nghost + f1_first;
                         int gk = k - nghost + f2_first;
                         std::cout << "  [" << gi << "," << gj << "," << gk << "]"
-                                  << " pruned=(" << val_pruned.real() << "," << val_pruned.imag() << ")"
+                                  << " pruned=(" << val_pruned.real() << "," << val_pruned.imag()
+                                  << ")"
                                   << " full=(" << val_full.real() << "," << val_full.imag() << ")"
                                   << " error=" << std::scientific << error << std::endl;
                         ++printed;
@@ -1451,8 +1499,10 @@ bool testPrunedCCBackward() {
     if (myRank == 0) {
         std::cout << "\n=== Pruned C2C Backward FFT Results ===" << std::endl;
         std::cout << "Compared " << global_count << " spatial points" << std::endl;
-        std::cout << "Max error vs full IFFT: " << std::scientific << std::setprecision(6) << global_max_error << std::endl;
-        std::cout << "Pruned C2C Backward FFT test: " << (passed ? "PASSED" : "FAILED") << std::endl;
+        std::cout << "Max error vs full IFFT: " << std::scientific << std::setprecision(6)
+                  << global_max_error << std::endl;
+        std::cout << "Pruned C2C Backward FFT test: " << (passed ? "PASSED" : "FAILED")
+                  << std::endl;
     }
 
     return passed;
@@ -1474,9 +1524,12 @@ bool testPrunedRC() {
     if (myRank == 0) {
         std::cout << "\n=== Testing Pruned R2C FFT ===" << std::endl;
         std::cout << "Running on " << nProcs << " MPI ranks" << std::endl;
-        std::cout << "Real grid: " << pt_real[0] << "x" << pt_real[1] << "x" << pt_real[2] << std::endl;
-        std::cout << "Full complex: " << pt_complex_full[0] << "x" << pt_complex_full[1] << "x" << pt_complex_full[2] << std::endl;
-        std::cout << "Pruned complex: " << pt_complex_pruned[0] << "x" << pt_complex_pruned[1] << "x" << pt_complex_pruned[2] << std::endl;
+        std::cout << "Real grid: " << pt_real[0] << "x" << pt_real[1] << "x" << pt_real[2]
+                  << std::endl;
+        std::cout << "Full complex: " << pt_complex_full[0] << "x" << pt_complex_full[1] << "x"
+                  << pt_complex_full[2] << std::endl;
+        std::cout << "Pruned complex: " << pt_complex_pruned[0] << "x" << pt_complex_pruned[1]
+                  << "x" << pt_complex_pruned[2] << std::endl;
     }
 
     // Create layouts
@@ -1503,22 +1556,21 @@ bool testPrunedRC() {
     ippl::FieldLayout<dim> layout_complex_pruned(MPI_COMM_WORLD, owned_complex_pruned, isParallel);
 
     // Debug: print layout info
-    const auto& lDom_real = layout_real.getLocalNDIndex();
-    const auto& lDom_cfull = layout_complex_full.getLocalNDIndex();
+    const auto& lDom_real    = layout_real.getLocalNDIndex();
+    const auto& lDom_cfull   = layout_complex_full.getLocalNDIndex();
     const auto& lDom_cpruned = layout_complex_pruned.getLocalNDIndex();
 
-    std::cout << "Rank " << myRank << " layout_real: ["
-              << lDom_real[0].first() << "-" << lDom_real[0].last() << ", "
-              << lDom_real[1].first() << "-" << lDom_real[1].last() << ", "
-              << lDom_real[2].first() << "-" << lDom_real[2].last() << "]" << std::endl;
-    std::cout << "Rank " << myRank << " layout_complex_full: ["
-              << lDom_cfull[0].first() << "-" << lDom_cfull[0].last() << ", "
-              << lDom_cfull[1].first() << "-" << lDom_cfull[1].last() << ", "
-              << lDom_cfull[2].first() << "-" << lDom_cfull[2].last() << "]" << std::endl;
-    std::cout << "Rank " << myRank << " layout_complex_pruned: ["
-              << lDom_cpruned[0].first() << "-" << lDom_cpruned[0].last() << ", "
-              << lDom_cpruned[1].first() << "-" << lDom_cpruned[1].last() << ", "
-              << lDom_cpruned[2].first() << "-" << lDom_cpruned[2].last() << "]" << std::endl;
+    std::cout << "Rank " << myRank << " layout_real: [" << lDom_real[0].first() << "-"
+              << lDom_real[0].last() << ", " << lDom_real[1].first() << "-" << lDom_real[1].last()
+              << ", " << lDom_real[2].first() << "-" << lDom_real[2].last() << "]" << std::endl;
+    std::cout << "Rank " << myRank << " layout_complex_full: [" << lDom_cfull[0].first() << "-"
+              << lDom_cfull[0].last() << ", " << lDom_cfull[1].first() << "-"
+              << lDom_cfull[1].last() << ", " << lDom_cfull[2].first() << "-"
+              << lDom_cfull[2].last() << "]" << std::endl;
+    std::cout << "Rank " << myRank << " layout_complex_pruned: [" << lDom_cpruned[0].first() << "-"
+              << lDom_cpruned[0].last() << ", " << lDom_cpruned[1].first() << "-"
+              << lDom_cpruned[1].last() << ", " << lDom_cpruned[2].first() << "-"
+              << lDom_cpruned[2].last() << "]" << std::endl;
 
     std::array<double, dim> dx = {
         1.0 / double(pt_real[0]),
@@ -1533,7 +1585,8 @@ bool testPrunedRC() {
     Mesh_t mesh_complex_pruned(owned_complex_pruned, hx, origin);
 
     typedef ippl::Field<double, dim, Mesh_t, Centering_t>::uniform_type field_type_real;
-    typedef ippl::Field<Kokkos::complex<double>, dim, Mesh_t, Centering_t>::uniform_type field_type_complex;
+    typedef ippl::Field<Kokkos::complex<double>, dim, Mesh_t, Centering_t>::uniform_type
+        field_type_complex;
 
     field_type_real field_real_input(mesh_real, layout_real);
     field_type_real field_real_copy(mesh_real, layout_real);
@@ -1553,15 +1606,17 @@ bool testPrunedRC() {
     typedef ippl::FFT<ippl::PrunedRCTransform, field_type_real> PrunedRCFFT_type;
     typedef ippl::FFT<ippl::RCTransform, field_type_real> RCFFT_type;
 
-    if (myRank == 0) std::cout << "Creating pruned R2C FFT..." << std::endl;
+    if (myRank == 0)
+        std::cout << "Creating pruned R2C FFT..." << std::endl;
     auto pruned_fft = std::make_unique<PrunedRCFFT_type>(layout_real, layout_complex_full,
                                                          layout_complex_pruned, pruning, fftParams);
-    if (myRank == 0) std::cout << "Creating regular R2C FFT..." << std::endl;
+    if (myRank == 0)
+        std::cout << "Creating regular R2C FFT..." << std::endl;
     auto regular_fft = std::make_unique<RCFFT_type>(layout_real, layout_complex_full, fftParams);
 
     // Initialize with deterministic random data
-    const int nghost = field_real_input.getNghost();
-    auto& view_real = field_real_input.getView();
+    const int nghost                                = field_real_input.getNghost();
+    auto& view_real                                 = field_real_input.getView();
     typename field_type_real::HostMirror field_host = field_real_input.getHostMirror();
 
     for (size_t i = nghost; i < view_real.extent(0) - nghost; ++i) {
@@ -1580,24 +1635,28 @@ bool testPrunedRC() {
     Kokkos::deep_copy(field_real_input.getView(), field_host);
 
     // Print input statistics
-    if (myRank == 0) std::cout << "\nInput field statistics:" << std::endl;
+    if (myRank == 0)
+        std::cout << "\nInput field statistics:" << std::endl;
     printFieldStats("field_real_input", field_real_input, myRank);
 
     // Save input and compute both FFTs
     field_real_copy = field_real_input;
 
-    if (myRank == 0) std::cout << "\nExecuting pruned R2C FFT forward..." << std::endl;
+    if (myRank == 0)
+        std::cout << "\nExecuting pruned R2C FFT forward..." << std::endl;
     MPI_Barrier(ippl::Comm->getCommunicator());
     pruned_fft->transform(ippl::FORWARD, field_real_input, field_complex_pruned);
     MPI_Barrier(ippl::Comm->getCommunicator());
 
-    if (myRank == 0) std::cout << "Executing regular R2C FFT forward..." << std::endl;
+    if (myRank == 0)
+        std::cout << "Executing regular R2C FFT forward..." << std::endl;
     MPI_Barrier(ippl::Comm->getCommunicator());
     regular_fft->transform(ippl::FORWARD, field_real_copy, field_complex_full);
     MPI_Barrier(ippl::Comm->getCommunicator());
 
     // Print output statistics
-    if (myRank == 0) std::cout << "\nOutput field statistics:" << std::endl;
+    if (myRank == 0)
+        std::cout << "\nOutput field statistics:" << std::endl;
     printFieldStats("field_complex_pruned", field_complex_pruned, myRank);
     printFieldStats("field_complex_full", field_complex_full, myRank);
 
@@ -1625,14 +1684,15 @@ bool testPrunedRC() {
     const int ng_f = nghost_full;
 
     double max_error = 0.0;
-    size_t count = 0;
+    size_t count     = 0;
 
     using exec_space = typename field_type_complex::execution_space;
     using mdrange_t  = Kokkos::MDRangePolicy<exec_space, Kokkos::Rank<3>>;
 
     Kokkos::parallel_reduce(
         "ComparePrunedWithFullRC",
-        mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) - ng_p, view_pruned.extent(2) - ng_p}),
+        mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) - ng_p,
+                                       view_pruned.extent(2) - ng_p}),
         KOKKOS_LAMBDA(const int li_p, const int lj_p, const int lk_p, double& local_max) {
             int gi_p = li_p - ng_p + p0_first;
             int gj_p = lj_p - ng_p + p1_first;
@@ -1665,7 +1725,8 @@ bool testPrunedRC() {
 
     Kokkos::parallel_reduce(
         "CountComparisonsRC",
-        mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) - ng_p, view_pruned.extent(2) - ng_p}),
+        mdrange_t({ng_p, ng_p, ng_p}, {view_pruned.extent(0) - ng_p, view_pruned.extent(1) - ng_p,
+                                       view_pruned.extent(2) - ng_p}),
         KOKKOS_LAMBDA(const int li_p, const int lj_p, const int lk_p, size_t& local_count) {
             int gi_p = li_p - ng_p + p0_first;
             int gj_p = lj_p - ng_p + p1_first;
@@ -1686,23 +1747,28 @@ bool testPrunedRC() {
 
     double global_max_error;
     size_t global_count;
-    MPI_Allreduce(&max_error, &global_max_error, 1, MPI_DOUBLE, MPI_MAX, ippl::Comm->getCommunicator());
-    MPI_Allreduce(&count, &global_count, 1, MPI_UNSIGNED_LONG, MPI_SUM, ippl::Comm->getCommunicator());
+    MPI_Allreduce(&max_error, &global_max_error, 1, MPI_DOUBLE, MPI_MAX,
+                  ippl::Comm->getCommunicator());
+    MPI_Allreduce(&count, &global_count, 1, MPI_UNSIGNED_LONG, MPI_SUM,
+                  ippl::Comm->getCommunicator());
 
     // Print worst mismatches if error is large
     if (max_error > 1e-10) {
         auto host_pruned = field_complex_pruned.getHostMirror();
-        auto host_full = field_complex_full.getHostMirror();
+        auto host_full   = field_complex_full.getHostMirror();
         Kokkos::deep_copy(host_pruned, field_complex_pruned.getView());
         Kokkos::deep_copy(host_full, field_complex_full.getView());
 
         std::cout << "\nRank " << myRank << " worst R2C mismatches (error > 1e-10):" << std::endl;
-        int printed = 0;
+        int printed   = 0;
         int max_print = 10;
 
-        for (size_t li_p = ng_p; li_p < host_pruned.extent(0) - ng_p && printed < max_print; ++li_p) {
-            for (size_t lj_p = ng_p; lj_p < host_pruned.extent(1) - ng_p && printed < max_print; ++lj_p) {
-                for (size_t lk_p = ng_p; lk_p < host_pruned.extent(2) - ng_p && printed < max_print; ++lk_p) {
+        for (size_t li_p = ng_p; li_p < host_pruned.extent(0) - ng_p && printed < max_print;
+             ++li_p) {
+            for (size_t lj_p = ng_p; lj_p < host_pruned.extent(1) - ng_p && printed < max_print;
+                 ++lj_p) {
+                for (size_t lk_p = ng_p; lk_p < host_pruned.extent(2) - ng_p && printed < max_print;
+                     ++lk_p) {
                     int gi_p = li_p - ng_p + p0_first;
                     int gj_p = lj_p - ng_p + p1_first;
                     int gk_p = lk_p - ng_p + p2_first;
@@ -1721,8 +1787,8 @@ bool testPrunedRC() {
                     int lk_f = gk_f - f2_first + ng_f;
 
                     auto val_pruned = host_pruned(li_p, lj_p, lk_p);
-                    auto val_full = host_full(li_f, lj_f, lk_f);
-                    double error = Kokkos::abs(val_pruned - val_full);
+                    auto val_full   = host_full(li_f, lj_f, lk_f);
+                    double error    = Kokkos::abs(val_pruned - val_full);
 
                     if (error > 1e-10) {
                         std::cout << "  pruned[" << gi_p << "," << gj_p << "," << gk_p << "]="
@@ -1742,8 +1808,324 @@ bool testPrunedRC() {
     if (myRank == 0) {
         std::cout << "\n=== Pruned R2C FFT Results ===" << std::endl;
         std::cout << "Compared " << global_count << " modes" << std::endl;
-        std::cout << "Max error vs full R2C FFT: " << std::scientific << std::setprecision(6) << global_max_error << std::endl;
+        std::cout << "Max error vs full R2C FFT: " << std::scientific << std::setprecision(6)
+                  << global_max_error << std::endl;
         std::cout << "Pruned R2C FFT test: " << (passed ? "PASSED" : "FAILED") << std::endl;
+    }
+
+    return passed;
+}
+bool testPrunedRCBackward() {
+    constexpr unsigned int dim = 3;
+    using Mesh_t               = ippl::UniformCartesian<double, dim>;
+    using Centering_t          = Mesh_t::DefaultCentering;
+
+    std::array<int, dim> pt_real           = {64, 64, 64};
+    std::array<int, dim> pt_complex_full   = {33, 64, 64};  // R2C in dim 0: N/2+1
+    std::array<int, dim> pt_complex_pruned = {17, 32, 32};  // pruned modes
+
+    int myRank = ippl::Comm->rank();
+    int nProcs = ippl::Comm->size();
+
+    if (myRank == 0) {
+        std::cout << "\n=== Testing Pruned R2C Backward FFT ===" << std::endl;
+        std::cout << "Running on " << nProcs << " MPI ranks" << std::endl;
+        std::cout << "Pruned complex: " << pt_complex_pruned[0] << "x" << pt_complex_pruned[1]
+                  << "x" << pt_complex_pruned[2] << std::endl;
+        std::cout << "Full complex:   " << pt_complex_full[0] << "x" << pt_complex_full[1] << "x"
+                  << pt_complex_full[2] << std::endl;
+        std::cout << "Real output:    " << pt_real[0] << "x" << pt_real[1] << "x" << pt_real[2]
+                  << std::endl;
+    }
+
+    // ----------------------------------------------------------------
+    // Layouts
+    // ----------------------------------------------------------------
+    auto owned_real = ippl::NDIndex<dim>(ippl::Index(pt_real[0]), ippl::Index(pt_real[1]),
+                                         ippl::Index(pt_real[2]));
+    auto owned_complex_full =
+        ippl::NDIndex<dim>(ippl::Index(pt_complex_full[0]), ippl::Index(pt_complex_full[1]),
+                           ippl::Index(pt_complex_full[2]));
+    auto owned_complex_pruned =
+        ippl::NDIndex<dim>(ippl::Index(pt_complex_pruned[0]), ippl::Index(pt_complex_pruned[1]),
+                           ippl::Index(pt_complex_pruned[2]));
+
+    std::array<bool, dim> isParallel;
+    isParallel.fill(true);
+
+    ippl::FieldLayout<dim> layout_real(MPI_COMM_WORLD, owned_real, isParallel);
+    ippl::FieldLayout<dim> layout_complex_full(MPI_COMM_WORLD, owned_complex_full, isParallel);
+    ippl::FieldLayout<dim> layout_complex_pruned(MPI_COMM_WORLD, owned_complex_pruned, isParallel);
+
+    const auto& lDom_real    = layout_real.getLocalNDIndex();
+    const auto& lDom_cfull   = layout_complex_full.getLocalNDIndex();
+    const auto& lDom_cpruned = layout_complex_pruned.getLocalNDIndex();
+
+    std::cout << "Rank " << myRank << " layout_real:           [" << lDom_real[0].first() << "-"
+              << lDom_real[0].last() << ", " << lDom_real[1].first() << "-" << lDom_real[1].last()
+              << ", " << lDom_real[2].first() << "-" << lDom_real[2].last() << "]" << std::endl;
+    std::cout << "Rank " << myRank << " layout_complex_full:   [" << lDom_cfull[0].first() << "-"
+              << lDom_cfull[0].last() << ", " << lDom_cfull[1].first() << "-"
+              << lDom_cfull[1].last() << ", " << lDom_cfull[2].first() << "-"
+              << lDom_cfull[2].last() << "]" << std::endl;
+    std::cout << "Rank " << myRank << " layout_complex_pruned: [" << lDom_cpruned[0].first() << "-"
+              << lDom_cpruned[0].last() << ", " << lDom_cpruned[1].first() << "-"
+              << lDom_cpruned[1].last() << ", " << lDom_cpruned[2].first() << "-"
+              << lDom_cpruned[2].last() << "]" << std::endl;
+
+    // ----------------------------------------------------------------
+    // Meshes & fields
+    // ----------------------------------------------------------------
+    ippl::Vector<double, 3> hx     = {1.0 / pt_real[0], 1.0 / pt_real[1], 1.0 / pt_real[2]};
+    ippl::Vector<double, 3> origin = {0, 0, 0};
+
+    Mesh_t mesh_real(owned_real, hx, origin);
+    Mesh_t mesh_complex_full(owned_complex_full, hx, origin);
+    Mesh_t mesh_complex_pruned(owned_complex_pruned, hx, origin);
+
+    typedef ippl::Field<double, dim, Mesh_t, Centering_t>::uniform_type field_type_real;
+    typedef ippl::Field<Kokkos::complex<double>, dim, Mesh_t, Centering_t>::uniform_type
+        field_type_complex;
+
+    field_type_complex field_complex_pruned_input(mesh_complex_pruned, layout_complex_pruned);
+    field_type_complex field_complex_full_ref(mesh_complex_full, layout_complex_full);
+    field_type_real field_real_pruned_output(mesh_real, layout_real);
+    field_type_real field_real_full_output(mesh_real, layout_real);
+
+    // ----------------------------------------------------------------
+    // FFT objects
+    // ----------------------------------------------------------------
+    ippl::PruningParams<dim> pruning;
+    pruning.n_modes = ippl::Vector<size_t, dim>{static_cast<size_t>(pt_complex_pruned[0]),
+                                                static_cast<size_t>(pt_complex_pruned[1]),
+                                                static_cast<size_t>(pt_complex_pruned[2])};
+
+    ippl::ParameterList fftParams;
+    fftParams.add("use_heffte_defaults", true);
+    fftParams.add("r2c_direction", 0);
+
+    typedef ippl::FFT<ippl::PrunedRCTransform, field_type_real> PrunedRCFFT_type;
+    typedef ippl::FFT<ippl::RCTransform, field_type_real> RCFFT_type;
+
+    if (myRank == 0)
+        std::cout << "Creating FFT objects..." << std::endl;
+    auto pruned_fft  = std::make_unique<PrunedRCFFT_type>(layout_real, layout_complex_full,
+                                                          layout_complex_pruned, pruning, fftParams);
+    auto regular_fft = std::make_unique<RCFFT_type>(layout_real, layout_complex_full, fftParams);
+
+    const int ng_p = field_complex_pruned_input.getNghost();
+    const int ng_f = field_complex_full_ref.getNghost();
+    const int ng_r = field_real_pruned_output.getNghost();
+
+    // Pruned counts and real-grid sizes for the reverse mapping
+    const int K0 = pt_complex_pruned[0];  // 17  (R2C dim)
+    const int K1 = pt_complex_pruned[1];  // 32
+    const int K2 = pt_complex_pruned[2];  // 32
+    const int N1 = pt_real[1];            // 64
+    const int N2 = pt_real[2];            // 64
+
+    const int p0_first = lDom_cpruned[0].first();
+    const int p1_first = lDom_cpruned[1].first();
+    const int p2_first = lDom_cpruned[2].first();
+
+    const int f0_first = lDom_cfull[0].first();
+    const int f1_first = lDom_cfull[1].first();
+    const int f2_first = lDom_cfull[2].first();
+    const int f0_last  = lDom_cfull[0].last();
+    const int f1_last  = lDom_cfull[1].last();
+    const int f2_last  = lDom_cfull[2].last();
+
+    // ----------------------------------------------------------------
+    // Helper: deterministic value from global pruned index.
+    // Used identically in both the pruned-input fill and the reference
+    // fill so the two are always consistent — no MPI required.
+    // ----------------------------------------------------------------
+    auto prunedValue = [](int gi_p, int gj_p, int gk_p) -> Kokkos::complex<double> {
+        std::mt19937_64 eng(gi_p * 10000LL + gj_p * 100LL + gk_p + 777LL);
+        std::uniform_real_distribution<double> u(-1.0, 1.0);
+        return {u(eng), u(eng)};
+    };
+
+    // ----------------------------------------------------------------
+    // Fill pruned complex input (local modes only)
+    // ----------------------------------------------------------------
+    {
+        auto& view_p = field_complex_pruned_input.getView();
+        auto h       = field_complex_pruned_input.getHostMirror();
+        for (size_t i = ng_p; i < view_p.extent(0) - ng_p; ++i)
+            for (size_t j = ng_p; j < view_p.extent(1) - ng_p; ++j)
+                for (size_t k = ng_p; k < view_p.extent(2) - ng_p; ++k) {
+                    int gi     = int(i) - ng_p + p0_first;
+                    int gj     = int(j) - ng_p + p1_first;
+                    int gk     = int(k) - ng_p + p2_first;
+                    h(i, j, k) = prunedValue(gi, gj, gk);
+                }
+        Kokkos::deep_copy(field_complex_pruned_input.getView(), h);
+    }
+
+    // ----------------------------------------------------------------
+    // Fill reference full-complex field (standard layout, this rank's box)
+    //
+    // For each position in this rank's standard full-complex box we compute
+    // the reverse map to pruned indices and look up the deterministic value.
+    //
+    // R2C dim 0 reverse map  (FIX 1: use K0, not K0/2):
+    //   gi_p = gi_f          if gi_f < K0   (direct — R2C has no negative freqs)
+    //   gi_p = invalid       if gi_f >= K0  (beyond pruned range → zero-pad)
+    //
+    // Non-R2C dims 1,2 reverse map (unchanged from original):
+    //   gj_p = gj_f                  if gj_f < K1/2
+    //   gj_p = gj_f - (N1-K1)        if gj_f >= N1 - K1/2
+    //   gj_p = invalid               otherwise (→ zero-pad)
+    //
+    // FIX 2 (cross-rank coverage): because prunedValue() is a pure function
+    // of (gi_p,gj_p,gk_p), rank 0 can compute values for pruned modes
+    // [8-15] (owned by rank 1) entirely locally.  No MPI needed.
+    //
+    // Coverage check:
+    //   Rank 0 (full box [0-15,*,*]): gi_f=0..15 → gi_p=0..15 (16 modes) ✓
+    //   Rank 1 (full box [16-32,*,*]): gi_f=16 → gi_p=16 (1 mode) ✓
+    //   Union [0..16] = all K0=17 pruned modes ✓
+    // ----------------------------------------------------------------
+    {
+        auto h = field_complex_full_ref.getHostMirror();
+        Kokkos::deep_copy(h, Kokkos::complex<double>(0.0, 0.0));
+
+        for (int gi_f = f0_first; gi_f <= f0_last; ++gi_f) {
+            const int gi_p = (gi_f < K0) ? gi_f : -1;  // FIX 1
+            if (gi_p < 0)
+                continue;
+
+            for (int gj_f = f1_first; gj_f <= f1_last; ++gj_f) {
+                int gj_p = -1;
+                if (gj_f < K1 / 2)
+                    gj_p = gj_f;
+                else if (gj_f >= N1 - K1 / 2)
+                    gj_p = gj_f - (N1 - K1);
+                if (gj_p < 0)
+                    continue;
+
+                for (int gk_f = f2_first; gk_f <= f2_last; ++gk_f) {
+                    int gk_p = -1;
+                    if (gk_f < K2 / 2)
+                        gk_p = gk_f;
+                    else if (gk_f >= N2 - K2 / 2)
+                        gk_p = gk_f - (N2 - K2);
+                    if (gk_p < 0)
+                        continue;
+
+                    // FIX 2: compute value from global index — no rank-ownership check needed
+                    h(gi_f - f0_first + ng_f, gj_f - f1_first + ng_f, gk_f - f2_first + ng_f) =
+                        prunedValue(gi_p, gj_p, gk_p);
+                }
+            }
+        }
+        Kokkos::deep_copy(field_complex_full_ref.getView(), h);
+    }
+
+    // Print input stats
+    if (myRank == 0)
+        std::cout << "\nInput field statistics:" << std::endl;
+    printFieldStats("field_complex_pruned_input", field_complex_pruned_input, myRank);
+    printFieldStats("field_complex_full_ref (zero-padded)", field_complex_full_ref, myRank);
+
+    // ----------------------------------------------------------------
+    // Execute transforms
+    // ----------------------------------------------------------------
+    if (myRank == 0)
+        std::cout << "\nExecuting pruned R2C backward..." << std::endl;
+    MPI_Barrier(ippl::Comm->getCommunicator());
+    pruned_fft->transform(ippl::BACKWARD, field_real_pruned_output, field_complex_pruned_input);
+    MPI_Barrier(ippl::Comm->getCommunicator());
+
+    if (myRank == 0)
+        std::cout << "Executing regular R2C backward (reference)..." << std::endl;
+    MPI_Barrier(ippl::Comm->getCommunicator());
+    regular_fft->transform(ippl::BACKWARD, field_real_full_output, field_complex_full_ref);
+    MPI_Barrier(ippl::Comm->getCommunicator());
+
+    // Print output stats
+    if (myRank == 0)
+        std::cout << "\nOutput field statistics:" << std::endl;
+    printFieldStats("field_real_pruned_output", field_real_pruned_output, myRank);
+    printFieldStats("field_real_full_output (ref)", field_real_full_output, myRank);
+
+    // ----------------------------------------------------------------
+    // Compare real outputs
+    // ----------------------------------------------------------------
+    auto view_out = field_real_pruned_output.getView();
+    auto view_ref = field_real_full_output.getView();
+
+    const int r0_first = lDom_real[0].first();
+    const int r1_first = lDom_real[1].first();
+    const int r2_first = lDom_real[2].first();
+
+    double max_error = 0.0;
+    size_t count     = 0;
+
+    using exec_space = typename field_type_real::execution_space;
+    using mdrange_t  = Kokkos::MDRangePolicy<exec_space, Kokkos::Rank<3>>;
+
+    Kokkos::parallel_reduce(
+        "CompareRCBackward",
+        mdrange_t({ng_r, ng_r, ng_r},
+                  {int(view_out.extent(0)) - ng_r, int(view_out.extent(1)) - ng_r,
+                   int(view_out.extent(2)) - ng_r}),
+        KOKKOS_LAMBDA(int i, int j, int k, double& lmax) {
+            double e = Kokkos::fabs(view_out(i, j, k) - view_ref(i, j, k));
+            if (e > lmax)
+                lmax = e;
+        },
+        Kokkos::Max<double>(max_error));
+
+    Kokkos::parallel_reduce(
+        "CountRCBackward",
+        mdrange_t({ng_r, ng_r, ng_r},
+                  {int(view_out.extent(0)) - ng_r, int(view_out.extent(1)) - ng_r,
+                   int(view_out.extent(2)) - ng_r}),
+        KOKKOS_LAMBDA(int, int, int, size_t& lc) { ++lc; }, count);
+
+    Kokkos::fence();
+
+    double global_max_error;
+    size_t global_count;
+    MPI_Allreduce(&max_error, &global_max_error, 1, MPI_DOUBLE, MPI_MAX,
+                  ippl::Comm->getCommunicator());
+    MPI_Allreduce(&count, &global_count, 1, MPI_UNSIGNED_LONG, MPI_SUM,
+                  ippl::Comm->getCommunicator());
+
+    if (max_error > 1e-10) {
+        auto hout = field_real_pruned_output.getHostMirror();
+        auto href = field_real_full_output.getHostMirror();
+        Kokkos::deep_copy(hout, field_real_pruned_output.getView());
+        Kokkos::deep_copy(href, field_real_full_output.getView());
+
+        std::cout << "\nRank " << myRank
+                  << " worst R2C backward mismatches (error > 1e-10):" << std::endl;
+        int printed = 0;
+        for (size_t i = ng_r; i < hout.extent(0) - ng_r && printed < 10; ++i)
+            for (size_t j = ng_r; j < hout.extent(1) - ng_r && printed < 10; ++j)
+                for (size_t k = ng_r; k < hout.extent(2) - ng_r && printed < 10; ++k) {
+                    double e = std::fabs(hout(i, j, k) - href(i, j, k));
+                    if (e > 1e-10) {
+                        std::cout << "  [" << int(i) - ng_r + r0_first << ","
+                                  << int(j) - ng_r + r1_first << "," << int(k) - ng_r + r2_first
+                                  << "]"
+                                  << " pruned=" << std::scientific << hout(i, j, k)
+                                  << " ref=" << href(i, j, k) << " err=" << e << std::endl;
+                        ++printed;
+                    }
+                }
+    }
+
+    bool passed = (global_max_error < 1e-10);
+
+    if (myRank == 0) {
+        std::cout << "\n=== Pruned R2C Backward FFT Results ===" << std::endl;
+        std::cout << "Compared " << global_count << " real-space points" << std::endl;
+        std::cout << "Max error vs full C2R IFFT: " << std::scientific << std::setprecision(6)
+                  << global_max_error << std::endl;
+        std::cout << "Pruned R2C Backward test: " << (passed ? "PASSED" : "FAILED") << std::endl;
     }
 
     return passed;
@@ -1769,6 +2151,9 @@ int main(int argc, char* argv[]) {
     bool rc_passed = testPrunedRC();
     MPI_Barrier(ippl::Comm->getCommunicator());
 
+    bool rc_back_passed = testPrunedRCBackward();
+    MPI_Barrier(ippl::Comm->getCommunicator());
+
     if (myRank == 0) {
         std::cout << "\n========================================" << std::endl;
         std::cout << "=== Overall Results ===" << std::endl;
@@ -1776,9 +2161,13 @@ int main(int argc, char* argv[]) {
         std::cout << "Pruned C2C Forward:  " << (cc_passed ? "PASSED" : "FAILED") << std::endl;
         std::cout << "Pruned C2C Backward: " << (cc_back_passed ? "PASSED" : "FAILED") << std::endl;
         std::cout << "Pruned R2C Forward:  " << (rc_passed ? "PASSED" : "FAILED") << std::endl;
-        std::cout << "All tests: " << ((cc_passed && rc_passed && cc_back_passed) ? "PASSED" : "FAILED") << std::endl;
+        std::cout << "Pruned R2C Backward: " << (rc_back_passed ? "PASSED" : "FAILED") << std::endl;
+        std::cout << "All tests: "
+                  << ((cc_passed && cc_back_passed && rc_passed && rc_back_passed) ? "PASSED"
+                                                                                   : "FAILED")
+                  << std::endl;
     }
 
     ippl::finalize();
-    return (cc_passed && rc_passed && cc_back_passed) ? 0 : 1;
+    return (cc_passed && cc_back_passed && rc_passed && rc_back_passed) ? 0 : 1;
 }
