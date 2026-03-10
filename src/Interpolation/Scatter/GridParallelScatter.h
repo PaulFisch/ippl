@@ -1175,7 +1175,7 @@ namespace ippl::Interpolation::detail {
             if (n_tiles == 0 || n_particles == 0) return;
 
             setup_hist_total();
-            const size_t scratch = compute_scratch_size<cplx>(args.tile_size);
+            const size_t scratch = compute_scratch_size<cplx>(args.tile_size, 1, 1);
 
             Kokkos::parallel_for(
                 "GridParallelScatterStaged",
