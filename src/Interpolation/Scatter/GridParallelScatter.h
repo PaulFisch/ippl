@@ -219,7 +219,8 @@
 //                         const RealType gp   = transform.toGridCoordinate(args.x(p)[d], d);
 //                         const int      idx0 = transform.getStencilBase(gp - RealType(0.5), W);
 //                         my_kw[d * W + i] =
-//                             args.kernel((gp - (RealType(idx0 + i) + RealType(0.5))) * args.inv_hw);
+//                             args.kernel((gp - (RealType(idx0 + i) + RealType(0.5))) *
+//                             args.inv_hw);
 //                         if (i == 0)
 //                             my_base[d] = idx0 - args.local_offset[d];
 //                     });
@@ -393,14 +394,14 @@ namespace ippl::Interpolation::detail {
         static_assert(Policy::use_sorting,
                       "GridParallelScatter assumes sorted/bin-partitioned particles");
 
-        static constexpr bool     requires_binning = true;
-        static constexpr unsigned Dim              = Types::Dim;
-        static constexpr int      half_left        = (W + 1) / 2;
-        static constexpr int      vector_length    = 32;
+        static constexpr bool requires_binning = true;
+        static constexpr unsigned Dim          = Types::Dim;
+        static constexpr int half_left         = (W + 1) / 2;
+        static constexpr int vector_length     = 32;
 
         // Particles loaded per batch.  Increasing this raises occupancy up to the
         // point where scratch spills; 16 is a safe starting value to tune from.
-        static constexpr int batch_np = 16;
+        // static constexpr int batch_np = 16;
 
         using RealType        = typename Types::RealType;
         using ValueType       = typename Types::ValueType;
@@ -430,16 +431,17 @@ namespace ippl::Interpolation::detail {
         //  for typical nv=32, eliminating the reduction pass entirely.
         // ─────────────────────────────────────────────────────────────────────
         template <bool IsComplex>
-        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int /*team_size*/, int /* z_batches */) {
+        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int /*team_size*/,
+                                           int batches) {
             size_t htot = 1;
             for (unsigned d = 0; d < Dim; ++d)
                 htot *= static_cast<size_t>(tile_size[d] + W + 1);
 
             return (IsComplex ? 2 : 1) * scratch_real_view::shmem_size(htot)
-                 + scratch_real_view::shmem_size(batch_np * static_cast<int>(Dim) * W)
-                 + (IsComplex ? scratch_real_view::shmem_size(batch_np) : 0)
-                 + scratch_real_view::shmem_size(batch_np)
-                 + scratch_int_view::shmem_size(batch_np * static_cast<int>(Dim));
+                   + scratch_real_view::shmem_size(batches * static_cast<int>(Dim) * W)
+                   + (IsComplex ? scratch_real_view::shmem_size(batches) : 0)
+                   + scratch_real_view::shmem_size(batches)
+                   + scratch_int_view::shmem_size(batches * static_cast<int>(Dim));
         }
 
         // ── Arguments ─────────────────────────────────────────────────────────
@@ -450,6 +452,7 @@ namespace ippl::Interpolation::detail {
             Vector<int, Dim> tile_size;
             int team_size;
             int oversubscription_factor;
+            int batches;
 
             template <class Field, class Positions, class Values, class Kernel>
             static Arguments create(Field& field, const Positions& pos, const Values& vals,
@@ -463,6 +466,7 @@ namespace ippl::Interpolation::detail {
                 a.tile_size               = config.get_tile_size();
                 a.team_size               = config.team_size;
                 a.oversubscription_factor = config.oversubscription_factor;
+                a.batches                 = config.z_batches;
                 return a;
             }
         };
@@ -500,6 +504,7 @@ namespace ippl::Interpolation::detail {
             const size_t sub_id    = league_r % sub_teams_per_tile_;
             const size_t bin_start = args.bin_offsets(tile_id);
             const size_t bin_end   = args.bin_offsets(tile_id + 1);
+            const int batches = args.batches;
             const size_t bin_size  = bin_end - bin_start;
 
             const size_t particles_per_sub =
@@ -509,9 +514,9 @@ namespace ippl::Interpolation::detail {
                 return;
             const size_t pend = Kokkos::min(bin_end, pstart + particles_per_sub);
 
-            const auto   tile_base = decode_tile_base(tile_id);
-            const auto   hs        = hist_size();
-            const size_t htot      = hist_total_;
+            const auto tile_base = decode_tile_base(tile_id);
+            const auto hs        = hist_size();
+            const size_t htot    = hist_total_;
 
             // ── Scratch allocation ─────────────────────────────────────────────
             scratch_real_view local_r(team.team_scratch(0), htot);
@@ -519,13 +524,12 @@ namespace ippl::Interpolation::detail {
             if constexpr (gcplx)
                 local_i = scratch_real_view(team.team_scratch(0), htot);
 
-            scratch_real_view kerevals(team.team_scratch(0),
-                                       batch_np * static_cast<int>(Dim) * W);
-            scratch_real_view vals_r(team.team_scratch(0), batch_np);
+            scratch_real_view kerevals(team.team_scratch(0), batches * static_cast<int>(Dim) * W);
+            scratch_real_view vals_r(team.team_scratch(0), batches);
             scratch_real_view vals_i;
             if constexpr (vcplx && gcplx)
-                vals_i = scratch_real_view(team.team_scratch(0), batch_np);
-            scratch_int_view shifts(team.team_scratch(0), batch_np * static_cast<int>(Dim));
+                vals_i = scratch_real_view(team.team_scratch(0), batches);
+            scratch_int_view shifts(team.team_scratch(0), batches * static_cast<int>(Dim));
 
             // ── Zero the local subgrid ─────────────────────────────────────────
             Kokkos::parallel_for(Kokkos::TeamVectorRange(team, htot), [&](size_t i) {
@@ -539,9 +543,9 @@ namespace ippl::Interpolation::detail {
                                                                args.n_grid};
 
             // ── Batch loop ─────────────────────────────────────────────────────
-            for (size_t batch_begin = pstart; batch_begin < pend; batch_begin += batch_np) {
+            for (size_t batch_begin = pstart; batch_begin < pend; batch_begin += batches) {
                 const int batch_size = static_cast<int>(
-                    Kokkos::min(pend - batch_begin, static_cast<size_t>(batch_np)));
+                    Kokkos::min(pend - batch_begin, static_cast<size_t>(batches)));
 
                 // ── Load phase ─────────────────────────────────────────────────
                 //
@@ -556,13 +560,12 @@ namespace ippl::Interpolation::detail {
                         const int d  = (flat / W) % static_cast<int>(Dim);
                         const int bi = flat / (W * static_cast<int>(Dim));
 
-                        const size_t   p    = args.permute(batch_begin + static_cast<size_t>(bi));
-                        const RealType gp   = transform.toGridCoordinate(args.x(p)[d], d);
-                        const int      idx0 = transform.getStencilBase(gp - RealType(0.5), W);
+                        const size_t p    = args.permute(batch_begin + static_cast<size_t>(bi));
+                        const RealType gp = transform.toGridCoordinate(args.x(p)[d], d);
+                        const int idx0    = transform.getStencilBase(gp - RealType(0.5), W);
 
                         kerevals(bi * static_cast<int>(Dim) * W + d * W + wi) =
-                            args.kernel((gp - (RealType(idx0 + wi) + RealType(0.5)))
-                                        * args.inv_hw);
+                            args.kernel((gp - (RealType(idx0 + wi) + RealType(0.5))) * args.inv_hw);
 
                         shifts(bi * static_cast<int>(Dim) + d) =
                             idx0 - args.local_offset[d] + half_left - tile_base[d];
@@ -593,9 +596,7 @@ namespace ippl::Interpolation::detail {
                 //    Dim FP loads + (Dim-1) FP multiplies  (separable weight)
                 //    1-2 FMAs               (accumulate r, i)
                 //
-                Kokkos::parallel_for(
-                    Kokkos::TeamVectorRange(team, htot), [&](size_t idx) {
-
+                Kokkos::parallel_for(Kokkos::TeamVectorRange(team, htot), [&](size_t idx) {
                     // Decode flat subgrid index → per-dim coordinates.
                     // This is hoisted outside the particle loop — the key saving
                     // vs the input-driven version where hidx was recomputed inside.
@@ -604,7 +605,7 @@ namespace ippl::Interpolation::detail {
                         size_t tmp = idx;
                         for (unsigned d = 0; d < Dim; ++d) {
                             ic[d] = static_cast<int>(tmp % static_cast<size_t>(hs[d]));
-                            tmp   /= static_cast<size_t>(hs[d]);
+                            tmp /= static_cast<size_t>(hs[d]);
                         }
                     }
 
@@ -612,19 +613,23 @@ namespace ippl::Interpolation::detail {
                     RealType acc_i = RealType(0);
 
                     for (int bi = 0; bi < batch_size; ++bi) {
-                        const int*      sh = shifts.data()   + bi * static_cast<int>(Dim);
+                        const int* sh      = shifts.data() + bi * static_cast<int>(Dim);
                         const RealType* kw = kerevals.data() + bi * static_cast<int>(Dim) * W;
 
                         // Casting to unsigned fuses the (wi < 0 || wi >= W) test
                         // into a single comparison per dimension.
-                        RealType w  = RealType(1);
-                        bool     ok = true;
+                        RealType w = RealType(1);
+                        bool ok    = true;
                         for (unsigned d = 0; d < Dim; ++d) {
                             const auto wi = static_cast<unsigned>(ic[d] - sh[d]);
-                            if (wi >= static_cast<unsigned>(W)) { ok = false; break; }
+                            if (wi >= static_cast<unsigned>(W)) {
+                                ok = false;
+                                break;
+                            }
                             w *= kw[d * W + static_cast<int>(wi)];
                         }
-                        if (!ok) continue;
+                        if (!ok)
+                            continue;
 
                         acc_r += vals_r(bi) * w;
                         if constexpr (gcplx)
@@ -650,22 +655,20 @@ namespace ippl::Interpolation::detail {
                 Kokkos::Array<int, Dim> hc{};
                 for (unsigned d = 0; d < Dim; ++d) {
                     hc[d] = static_cast<int>(tmp % static_cast<size_t>(hs[d]));
-                    tmp   /= static_cast<size_t>(hs[d]);
+                    tmp /= static_cast<size_t>(hs[d]);
                 }
 
                 Kokkos::Array<int, Dim> gc{};
                 for (unsigned d = 0; d < Dim; ++d) {
                     const int local = tile_base[d] + hc[d] - half_left;
-                    if (local < -args.nghost
-                        || local >= args.n_grid_local[d] + args.nghost)
+                    if (local < -args.nghost || local >= args.n_grid_local[d] + args.nghost)
                         return;
                     gc[d] = local + args.nghost;
                 }
 
                 [&]<std::size_t... Is>(std::index_sequence<Is...>) {
                     if constexpr (gcplx) {
-                        RealType* ptr =
-                            reinterpret_cast<RealType*>(&args.grid(gc[Is]...));
+                        RealType* ptr = reinterpret_cast<RealType*>(&args.grid(gc[Is]...));
                         Kokkos::atomic_add(&ptr[0], local_r(idx));
                         Kokkos::atomic_add(&ptr[1], local_i(idx));
                     } else {
