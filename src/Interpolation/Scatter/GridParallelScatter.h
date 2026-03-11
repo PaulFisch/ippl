@@ -1223,14 +1223,24 @@
 
 namespace ippl::Interpolation::detail {
 
+    template <int Base, int Exp>
+    struct StaticPow {
+        static constexpr int value = Base * StaticPow<Base, Exp - 1>::value;
+    };
+    template <int Base>
+    struct StaticPow<Base, 0> {
+        static constexpr int value = 1;
+    };
+
     template <int W, class Types, class Policy>
     struct GridParallelScatter {
         static_assert(Policy::use_sorting,
-                      "GridParallelScatterDense assumes sorted/bin-partitioned particles");
+                      "GridParallelScatter assumes sorted/bin-partitioned particles");
 
         static constexpr bool requires_binning = true;
         static constexpr unsigned Dim          = Types::Dim;
         static constexpr int half_left         = (W + 1) / 2;
+        static constexpr int stencil_total     = StaticPow<W, Dim>::value;
 
         using RealType        = typename Types::RealType;
         using ValueType       = typename Types::ValueType;
@@ -1246,9 +1256,6 @@ namespace ippl::Interpolation::detail {
         using scratch_int_view =
             Kokkos::View<int*, scratch_space, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
-        // Dense-tile tuning knobs.
-        static constexpr int micro_bin = 1;  // bin by exact stencil-base cell
-
         struct Arguments : ScatterArgumentsBase<Arguments, Types> {
             Kokkos::View<size_t*, memory_space> permute;
             Kokkos::View<size_t*, memory_space> bin_offsets;
@@ -1256,7 +1263,7 @@ namespace ippl::Interpolation::detail {
             Vector<int, Dim> tile_size;
             int team_size;
             int oversubscription_factor;
-            int chunk_np;
+            int batch_np;  // runtime batch size, driven by config.z_batches
 
             template <class Field, class Positions, class Values, class Kernel>
             static Arguments create(Field& field, const Positions& pos, const Values& vals,
@@ -1270,7 +1277,7 @@ namespace ippl::Interpolation::detail {
                 a.tile_size               = config.get_tile_size();
                 a.team_size               = config.team_size;
                 a.oversubscription_factor = config.oversubscription_factor;
-                a.chunk_np                = config.z_batches;
+                a.batch_np                = config.z_batches > 0 ? config.z_batches : 1;
                 return a;
             }
         };
@@ -1286,14 +1293,6 @@ namespace ippl::Interpolation::detail {
             return hs;
         }
 
-        KOKKOS_INLINE_FUNCTION Vector<int, Dim> base_size() const {
-            Vector<int, Dim> bs;
-            const auto hs = hist_size();
-            for (unsigned d = 0; d < Dim; ++d)
-                bs[d] = hs[d] - W + 1;  // valid stencil-base positions
-            return bs;
-        }
-
         KOKKOS_INLINE_FUNCTION Vector<int, Dim> decode_tile_base(size_t tile_id) const {
             Vector<int, Dim> tile_base;
             for (size_t t = tile_id, d = Dim; d-- > 0;) {
@@ -1304,14 +1303,109 @@ namespace ippl::Interpolation::detail {
             return tile_base;
         }
 
-        KOKKOS_INLINE_FUNCTION int linearize(const int* c, const int* shape) const {
-            int idx = 0;
-            int mul = 1;
-            for (unsigned d = 0; d < Dim; ++d) {
-                idx += c[d] * mul;
-                mul *= shape[d];
+        template <bool NeedsImag>
+        KOKKOS_INLINE_FUNCTION static void scatter_particle_fast(
+            const team_member& team, const Kokkos::Array<int, Dim>& shift,
+            const Kokkos::Array<size_t, Dim>& stride, const RealType* kw, const RealType vr,
+            const RealType vi, const scratch_real_view& local_r, const scratch_real_view& local_i) {
+            if constexpr (Dim == 3) {
+                constexpr int plane = W * W;
+                constexpr int total = W * W * W;
+
+                Kokkos::parallel_for(Kokkos::TeamThreadRange(team, total), [&](const int idx) {
+                    const int zz  = idx / plane;
+                    const int rem = idx - zz * plane;
+                    const int yy  = rem / W;
+                    const int xx  = rem - yy * W;
+
+                    const size_t hidx = static_cast<size_t>(shift[0] + xx) * stride[0]
+                                        + static_cast<size_t>(shift[1] + yy) * stride[1]
+                                        + static_cast<size_t>(shift[2] + zz) * stride[2];
+
+                    const RealType w = kw[0 * W + xx] * kw[1 * W + yy] * kw[2 * W + zz];
+                    local_r(hidx) += vr * w;
+                    if constexpr (NeedsImag)
+                        local_i(hidx) += vi * w;
+                });
+            } else {
+                Kokkos::parallel_for(Kokkos::TeamThreadRange(team, stencil_total),
+                                     [&](const int idx) {
+                                         int tmp     = idx;
+                                         size_t hidx = 0;
+                                         RealType w  = RealType(1);
+
+                                         for (unsigned d = 0; d < Dim; ++d) {
+                                             const int wi = tmp % W;
+                                             tmp /= W;
+                                             hidx += static_cast<size_t>(shift[d] + wi) * stride[d];
+                                             w *= kw[d * W + wi];
+                                         }
+
+                                         local_r(hidx) += vr * w;
+                                         if constexpr (NeedsImag)
+                                             local_i(hidx) += vi * w;
+                                     });
             }
-            return idx;
+        }
+
+        template <bool NeedsImag>
+        KOKKOS_INLINE_FUNCTION static void scatter_particle_checked(
+            const team_member& team, const Kokkos::Array<int, Dim>& shift,
+            const Kokkos::Array<int, Dim>& hs, const Kokkos::Array<size_t, Dim>& stride,
+            const RealType* kw, const RealType vr, const RealType vi,
+            const scratch_real_view& local_r, const scratch_real_view& local_i) {
+            if constexpr (Dim == 3) {
+                constexpr int plane = W * W;
+                constexpr int total = W * W * W;
+
+                Kokkos::parallel_for(Kokkos::TeamThreadRange(team, total), [&](const int idx) {
+                    const int zz  = idx / plane;
+                    const int rem = idx - zz * plane;
+                    const int yy  = rem / W;
+                    const int xx  = rem - yy * W;
+
+                    const int hx = shift[0] + xx;
+                    const int hy = shift[1] + yy;
+                    const int hz = shift[2] + zz;
+
+                    if (static_cast<unsigned>(hx) >= static_cast<unsigned>(hs[0])
+                        || static_cast<unsigned>(hy) >= static_cast<unsigned>(hs[1])
+                        || static_cast<unsigned>(hz) >= static_cast<unsigned>(hs[2]))
+                        return;
+
+                    const size_t hidx = static_cast<size_t>(hx) * stride[0]
+                                        + static_cast<size_t>(hy) * stride[1]
+                                        + static_cast<size_t>(hz) * stride[2];
+
+                    const RealType w = kw[0 * W + xx] * kw[1 * W + yy] * kw[2 * W + zz];
+                    local_r(hidx) += vr * w;
+                    if constexpr (NeedsImag)
+                        local_i(hidx) += vi * w;
+                });
+            } else {
+                Kokkos::parallel_for(
+                    Kokkos::TeamThreadRange(team, stencil_total), [&](const int idx) {
+                        int tmp     = idx;
+                        size_t hidx = 0;
+                        RealType w  = RealType(1);
+
+                        for (unsigned d = 0; d < Dim; ++d) {
+                            const int wi    = tmp % W;
+                            const int coord = shift[d] + wi;
+                            tmp /= W;
+
+                            if (static_cast<unsigned>(coord) >= static_cast<unsigned>(hs[d]))
+                                return;
+
+                            hidx += static_cast<size_t>(coord) * stride[d];
+                            w *= kw[d * W + wi];
+                        }
+
+                        local_r(hidx) += vr * w;
+                        if constexpr (NeedsImag)
+                            local_i(hidx) += vi * w;
+                    });
+            }
         }
 
         KOKKOS_INLINE_FUNCTION void operator()(const team_member& team) const {
@@ -1330,8 +1424,14 @@ namespace ippl::Interpolation::detail {
             if (bin_size == 0)
                 return;
 
+            const size_t target_particles_per_subteam =
+                static_cast<size_t>(Kokkos::max(128, 4 * args.team_size));
+
             const size_t active_subteams =
-                Kokkos::min(sub_teams_per_tile_, Kokkos::max<size_t>(1, (bin_size + 2047) / 2048));
+                Kokkos::min(sub_teams_per_tile_,
+                            Kokkos::max<size_t>(1, (bin_size + target_particles_per_subteam - 1)
+                                                       / target_particles_per_subteam));
+
             if (sub_id >= active_subteams)
                 return;
 
@@ -1343,15 +1443,16 @@ namespace ippl::Interpolation::detail {
 
             const auto tile_base = decode_tile_base(tile_id);
             const auto hs_vec    = hist_size();
-            const auto bs_vec    = base_size();
             const size_t htot    = hist_total_;
+            const int batch_np   = args.batch_np;
 
-            int hs[Dim], bs[Dim];
-            int nbins = 1;
+            Kokkos::Array<int, Dim> hs{};
+            Kokkos::Array<size_t, Dim> stride{};
+            stride[0] = 1;
             for (unsigned d = 0; d < Dim; ++d) {
                 hs[d] = hs_vec[d];
-                bs[d] = bs_vec[d];
-                nbins *= bs[d];
+                if (d > 0)
+                    stride[d] = stride[d - 1] * static_cast<size_t>(hs[d - 1]);
             }
 
             auto scratch = team.team_scratch(0);
@@ -1361,21 +1462,15 @@ namespace ippl::Interpolation::detail {
             if constexpr (needs_imag)
                 local_i = scratch_real_view(scratch, htot);
 
-            // Per-chunk particle data.
-            scratch_real_view kerevals(scratch, args.chunk_np * static_cast<int>(Dim) * W);
-            scratch_real_view vals_r(scratch, args.chunk_np);
+            scratch_real_view kerevals(scratch, static_cast<size_t>(batch_np) * Dim * W);
+            scratch_real_view vals_r(scratch, batch_np);
             scratch_real_view vals_i;
             if constexpr (needs_imag)
-                vals_i = scratch_real_view(scratch, args.chunk_np);
+                vals_i = scratch_real_view(scratch, batch_np);
 
-            scratch_int_view shifts(scratch, args.chunk_np * static_cast<int>(Dim));
-            scratch_int_view bin_id(scratch, args.chunk_np);
-            scratch_int_view counts(scratch, nbins + 1);
-            scratch_int_view offsets(scratch, nbins + 1);
-            scratch_int_view fill(scratch, nbins);
-            scratch_int_view plist(scratch, args.chunk_np);
+            scratch_int_view shifts(scratch, static_cast<size_t>(batch_np) * Dim);
 
-            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, htot), [&](size_t i) {
+            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, htot), [&](const size_t i) {
                 local_r(i) = RealType(0);
                 if constexpr (needs_imag)
                     local_i(i) = RealType(0);
@@ -1385,34 +1480,25 @@ namespace ippl::Interpolation::detail {
             const CoordinateTransform<RealType, Dim> transform{args.origin, args.invdx,
                                                                args.n_grid};
 
-            for (size_t chunk_begin = pstart; chunk_begin < pend; chunk_begin += args.chunk_np) {
-                const int np = static_cast<int>(
-                    Kokkos::min(pend - chunk_begin, static_cast<size_t>(args.chunk_np)));
+            for (size_t batch_begin = pstart; batch_begin < pend;
+                 batch_begin += static_cast<size_t>(batch_np)) {
+                const int batch_size = static_cast<int>(
+                    Kokkos::min(pend - batch_begin, static_cast<size_t>(batch_np)));
 
-                // Reset counts.
-                Kokkos::parallel_for(Kokkos::TeamThreadRange(team, nbins + 1), [&](int i) {
-                    counts(i)  = 0;
-                    offsets(i) = 0;
-                });
-                team.team_barrier();
+                Kokkos::parallel_for(Kokkos::TeamThreadRange(team, batch_size), [&](const int bi) {
+                    const size_t p = args.permute(batch_begin + static_cast<size_t>(bi));
 
-                // Load particle data and count microbins.
-                Kokkos::parallel_for(Kokkos::TeamThreadRange(team, np), [&](int bi) {
-                    const size_t p = args.permute(chunk_begin + static_cast<size_t>(bi));
-
-                    int base[Dim];
                     for (unsigned d = 0; d < Dim; ++d) {
                         const RealType gp = transform.toGridCoordinate(args.x(p)[d], d);
                         const int idx0    = transform.getStencilBase(gp - RealType(0.5), W);
 
                         for (int wi = 0; wi < W; ++wi) {
-                            kerevals(bi * static_cast<int>(Dim) * W + d * W + wi) = args.kernel(
+                            kerevals(static_cast<size_t>(bi) * Dim * W + d * W + wi) = args.kernel(
                                 (gp - (RealType(idx0 + wi) + RealType(0.5))) * args.inv_hw);
                         }
 
-                        const int sh = idx0 - args.local_offset[d] + half_left - tile_base[d];
-                        shifts(bi * static_cast<int>(Dim) + d) = sh;
-                        base[d]                                = sh;  // exact base-cell microbin
+                        shifts(static_cast<size_t>(bi) * Dim + d) =
+                            idx0 - args.local_offset[d] + half_left - tile_base[d];
                     }
 
                     if constexpr (value_complex) {
@@ -1422,99 +1508,36 @@ namespace ippl::Interpolation::detail {
                     } else {
                         vals_r(bi) = static_cast<RealType>(args.values(p));
                     }
-
-                    const int b = linearize(base, bs);
-                    bin_id(bi)  = b;
-                    Kokkos::atomic_inc(&counts(b));
                 });
                 team.team_barrier();
 
-                // Prefix sum over bins. Serial is okay: nbins is O(10^3), chunk is O(10^2..10^3).
-                Kokkos::single(Kokkos::PerTeam(team), [&]() {
-                    int sum = 0;
-                    for (int b = 0; b < nbins; ++b) {
-                        const int c = counts(b);
-                        offsets(b)  = sum;
-                        fill(b)     = sum;
-                        sum += c;
-                    }
-                    offsets(nbins) = sum;
-                });
-                team.team_barrier();
-
-                // Build compact particle list per microbin.
-                Kokkos::parallel_for(Kokkos::TeamThreadRange(team, np), [&](int bi) {
-                    const int b   = bin_id(bi);
-                    const int dst = Kokkos::atomic_fetch_add(&fill(b), 1);
-                    plist(dst)    = bi;
-                });
-                team.team_barrier();
-
-                // Gather: each cell only looks at nearby microbins.
-                Kokkos::parallel_for(Kokkos::TeamThreadRange(team, htot), [&](size_t idx) {
-                    int ic[Dim];
-                    {
-                        size_t tmp = idx;
-                        for (unsigned d = 0; d < Dim; ++d) {
-                            ic[d] = static_cast<int>(tmp % static_cast<size_t>(hs[d]));
-                            tmp /= static_cast<size_t>(hs[d]);
-                        }
-                    }
-
-                    RealType acc_r = RealType(0);
-                    RealType acc_i = RealType(0);
-
-                    int lo[Dim], hi[Dim];
+                for (int bi = 0; bi < batch_size; ++bi) {
+                    Kokkos::Array<int, Dim> shift{};
+                    bool full_inside = true;
                     for (unsigned d = 0; d < Dim; ++d) {
-                        lo[d] = Kokkos::max(0, ic[d] - (W - 1));
-                        hi[d] = Kokkos::min(bs[d] - 1, ic[d]);
+                        shift[d] = shifts(static_cast<size_t>(bi) * Dim + d);
+                        if (shift[d] < 0 || shift[d] > hs[d] - W)
+                            full_inside = false;
                     }
 
-                    int cur[Dim];
-                    for (unsigned d = 0; d < Dim; ++d)
-                        cur[d] = lo[d];
+                    const RealType* kw = kerevals.data() + static_cast<size_t>(bi) * Dim * W;
+                    const RealType vr  = vals_r(bi);
+                    const RealType vi  = (needs_imag ? vals_i(bi) : RealType(0));
 
-                    while (true) {
-                        const int b = linearize(cur, bs);
-                        for (int k = offsets(b); k < offsets(b + 1); ++k) {
-                            const int bi       = plist(k);
-                            const int* sh      = shifts.data() + bi * static_cast<int>(Dim);
-                            const RealType* kw = kerevals.data() + bi * static_cast<int>(Dim) * W;
-
-                            RealType w = RealType(1);
-                            for (unsigned d = 0; d < Dim; ++d) {
-                                const int wi = ic[d] - sh[d];
-                                w *= kw[d * W + wi];  // wi is guaranteed valid by microbin range
-                            }
-
-                            acc_r += vals_r(bi) * w;
-                            if constexpr (needs_imag)
-                                acc_i += vals_i(bi) * w;
-                        }
-
-                        unsigned d = 0;
-                        for (; d < Dim; ++d) {
-                            if (cur[d] < hi[d]) {
-                                ++cur[d];
-                                for (unsigned e = 0; e < d; ++e)
-                                    cur[e] = lo[e];
-                                break;
-                            }
-                        }
-                        if (d == Dim)
-                            break;
+                    if (full_inside) {
+                        scatter_particle_fast<needs_imag>(team, shift, stride, kw, vr, vi, local_r,
+                                                          local_i);
+                    } else {
+                        scatter_particle_checked<needs_imag>(team, shift, hs, stride, kw, vr, vi,
+                                                             local_r, local_i);
                     }
-
-                    local_r(idx) += acc_r;
-                    if constexpr (needs_imag)
-                        local_i(idx) += acc_i;
-                });
-                team.team_barrier();
+                    team.team_barrier();
+                }
             }
 
-            // Flush tile-local grid to global.
-            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, htot), [&](size_t idx) {
+            Kokkos::parallel_for(Kokkos::TeamThreadRange(team, htot), [&](const size_t idx) {
                 const RealType rr = local_r(idx);
+
                 if constexpr (needs_imag) {
                     const RealType ii = local_i(idx);
                     if (rr == RealType(0) && ii == RealType(0))
@@ -1554,30 +1577,25 @@ namespace ippl::Interpolation::detail {
 
         template <bool NeedsImag>
         static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int /*team_size*/,
-                                           int chunk_np) {
-            size_t htot  = 1;
-            size_t nbins = 1;
-            for (unsigned d = 0; d < Dim; ++d) {
+                                           int z_batches) {
+            const int batch_np = z_batches > 0 ? z_batches : 1;
+
+            size_t htot = 1;
+            for (unsigned d = 0; d < Dim; ++d)
                 htot *= static_cast<size_t>(tile_size[d] + W + 1);
-                nbins *= static_cast<size_t>(tile_size[d] + 2);
-            }
 
             size_t s = 0;
             s += scratch_real_view::shmem_size(htot);
             if constexpr (NeedsImag)
                 s += scratch_real_view::shmem_size(htot);
 
-            s += scratch_real_view::shmem_size(chunk_np * static_cast<int>(Dim) * W);
-            s += scratch_real_view::shmem_size(chunk_np);
+            s +=
+                scratch_real_view::shmem_size(static_cast<size_t>(batch_np) * Dim * W);  // kerevals
+            s += scratch_real_view::shmem_size(batch_np);                                // vals_r
             if constexpr (NeedsImag)
-                s += scratch_real_view::shmem_size(chunk_np);
+                s += scratch_real_view::shmem_size(batch_np);  // vals_i
 
-            s += scratch_int_view::shmem_size(chunk_np * static_cast<int>(Dim));  // shifts
-            s += scratch_int_view::shmem_size(chunk_np);                          // bin_id
-            s += scratch_int_view::shmem_size(nbins + 1);                         // counts
-            s += scratch_int_view::shmem_size(nbins + 1);                         // offsets
-            s += scratch_int_view::shmem_size(nbins);                             // fill
-            s += scratch_int_view::shmem_size(chunk_np);                          // plist
+            s += scratch_int_view::shmem_size(static_cast<size_t>(batch_np) * Dim);  // shifts
             return s;
         }
 
@@ -1601,12 +1619,13 @@ namespace ippl::Interpolation::detail {
             sub_teams_per_tile_ =
                 std::max<size_t>(1, static_cast<size_t>(args.oversubscription_factor));
 
-            const size_t scratch = compute_scratch_size<needs_imag>(args.tile_size, 1, 1);
+            const size_t scratch =
+                compute_scratch_size<needs_imag>(args.tile_size, args.team_size, args.batch_np);
 
             auto policy = team_policy(n_tiles * sub_teams_per_tile_, args.team_size, 1)
                               .set_scratch_size(0, Kokkos::PerTeam(scratch));
 
-            Kokkos::parallel_for("GridParallelScatterDense", policy, *this);
+            Kokkos::parallel_for("GridParallelScatterOutputDrivenBatched", policy, *this);
         }
     };
 
