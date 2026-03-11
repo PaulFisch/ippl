@@ -280,6 +280,7 @@ namespace ippl::Interpolation::detail {
                     const RealType* const kw = kerevals + static_cast<size_t>(bi) * ker_stride;
                     const RealType vr        = vals_r[bi];
                     const RealType vi        = needs_imag ? vals_i[bi] : RealType(0);
+
                     scatter_particle_fast<needs_imag>(team, sx, sy, sz, pitch0, pitch1, kw, vr, vi,
                                                       local_r, local_i);
                     team.team_barrier();
@@ -366,6 +367,49 @@ namespace ippl::Interpolation::detail {
             const int hs1 = args.tile_size[1] + padded_extra;
             const int hs2 = args.tile_size[2] + padded_extra;
             total_        = static_cast<size_t>(hs0) * hs1 * hs2;
+
+#ifndef NDEBUG
+            {
+                size_t bad_particles = 0;
+                const CoordinateTransform<RealType, 3> transform{args.origin, args.invdx,
+                                                                 args.n_grid};
+
+                Kokkos::parallel_reduce(
+                    "GridParallelScatter3D::Precheck",
+                    Kokkos::RangePolicy<execution_space>(0, n_particles),
+                    KOKKOS_LAMBDA(const size_t i, size_t& bad) {
+                        // Must match whatever convention binning/scatter use.
+                        const RealType gp0 =
+                            transform.template toUnwrappedGridCoordinate<0>(args.x(i)[0]);
+                        const RealType gp1 =
+                            transform.template toUnwrappedGridCoordinate<1>(args.x(i)[1]);
+                        const RealType gp2 =
+                            transform.template toUnwrappedGridCoordinate<2>(args.x(i)[2]);
+
+                        const int c0 = transform.template getStencilCenter<W>(gp0 - RealType(0.5));
+                        const int c1 = transform.template getStencilCenter<W>(gp1 - RealType(0.5));
+                        const int c2 = transform.template getStencilCenter<W>(gp2 - RealType(0.5));
+
+                        const int lc0 = c0 - args.local_offset[0];
+                        const int lc1 = c1 - args.local_offset[1];
+                        const int lc2 = c2 - args.local_offset[2];
+
+                        if (lc0 < 0 || lc0 > args.n_grid_local[0] || lc1 < 0
+                            || lc1 > args.n_grid_local[1] || lc2 < 0
+                            || lc2 > args.n_grid_local[2]) {
+                            ++bad;
+                        }
+                    },
+                    bad_particles);
+
+                if (bad_particles > 0) {
+                    std::fprintf(stderr,
+                                 "[GridParallelScatter3D] precheck: %zu particles have stencil "
+                                 "centers outside this rank's [0,n_grid_local] range\n",
+                                 bad_particles);
+                }
+            }
+#endif
 
             size_t league_size;
             if constexpr (fixed_oversubscription) {
