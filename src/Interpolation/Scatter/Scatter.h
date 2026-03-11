@@ -371,22 +371,20 @@ namespace ippl {
                 field = 0.0;
                 // DEBUG: dump key geometry per rank — remove after diagnosis
 #ifndef NDEBUG
-               if constexpr (Impl<W, Types, Policy>::requires_binning) {
-                    int rank = 0;
-                    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-                    const auto& a = functor.args;
-                    printf(
-                        "[rank %d] W=%d nghost=%d n_grid_local=[%d,%d,%d] "
-                        "local_offset=[%d,%d,%d] tile=[%d,%d,%d] num_tiles=[%d,%d,%d] "
-                        "n_particles=%zu batch_np=%d\n",
-                        rank, W, a.nghost, a.n_grid_local[0], a.n_grid_local[1], a.n_grid_local[2],
-                        a.local_offset[0], a.local_offset[1], a.local_offset[2], a.tile_size[0],
-                        a.tile_size[1], a.tile_size[2], a.num_tiles[0], a.num_tiles[1],
-                        a.num_tiles[2], n_particles,
-                        tuned_config.z_batches > 0 ? tuned_config.z_batches : 1);
-                    fflush(stdout);
-                }
+{
+    int rank = 0;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    const auto& ldom = field.getLayout().getLocalNDIndex();
+    for (unsigned d = 0; d < Dim; ++d) {
+        const int expected = ldom[d].first();
+        const int actual   = functor.args.local_offset[d];
+        if (expected != actual) {
+            printf("[rank %d] BUG: local_offset[%u]=%d but ldom.first()=%d\n",
+                   rank, d, actual, expected);
+            fflush(stdout);
+        }
+    }
+}
 #endif
 
                 functor.run(n_particles);
