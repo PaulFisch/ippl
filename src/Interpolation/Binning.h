@@ -149,7 +149,39 @@ namespace ippl {
                     auto permute_sub =
                         Kokkos::subview(permute, std::make_pair(size_t(0), n_particles));
 
+#if defined(KOKKOS_ENABLE_CUDA)
+                    // --- reuse buffered output arrays & temp storage --------
+                    // (buffers were sized by bin_particles before calling here)
+                    auto& bufs = ippl::detail::getDefaultBinSortBuffers<
+                        typename KeyViewType::memory_space>();
+
+                    auto keys_out_sub =
+                        Kokkos::subview(bufs.keysOut(), std::make_pair(size_t(0), n_particles));
+                    auto perm_out_sub =
+                        Kokkos::subview(bufs.permOut(), std::make_pair(size_t(0), n_particles));
+
+                    // Query required temp-storage size
+                    void* d_temp      = nullptr;
+                    size_t temp_bytes = 0;
+                    cub::DeviceRadixSort::SortPairs(
+                        d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
+                        permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles));
+
+                    bufs.ensureTempStorage(temp_bytes);
+                    d_temp = bufs.tempStorage().data();
+
+                    // Sort into buffered output views
+                    cub::DeviceRadixSort::SortPairs(
+                        d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
+                        permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles));
+
+                    // Copy sorted results back into the working views
+                    Kokkos::deep_copy(keys_sub, keys_out_sub);
+                    Kokkos::deep_copy(permute_sub, perm_out_sub);
+                    Kokkos::fence();
+#else
                     Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
+#endif
                 }
                 Kokkos::fence();
                 IpplTimings::stopTimer(sortTimer);
