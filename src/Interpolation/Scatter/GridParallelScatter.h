@@ -380,11 +380,11 @@ namespace ippl::Interpolation::detail {
                     KOKKOS_LAMBDA(const size_t i, size_t& bad) {
                         // Must match whatever convention binning/scatter use.
                         const RealType gp0 =
-                            transform.template toUnwrappedGridCoordinate<0>(args.x(i)[0]);
+                            transform.template toGridCoordinate<0>(args.x(i)[0]);
                         const RealType gp1 =
-                            transform.template toUnwrappedGridCoordinate<1>(args.x(i)[1]);
+                            transform.template toGridCoordinate<1>(args.x(i)[1]);
                         const RealType gp2 =
-                            transform.template toUnwrappedGridCoordinate<2>(args.x(i)[2]);
+                            transform.template toGridCoordinate<2>(args.x(i)[2]);
 
                         const int c0 = transform.template getStencilCenter<W>(gp0 - RealType(0.5));
                         const int c1 = transform.template getStencilCenter<W>(gp1 - RealType(0.5));
