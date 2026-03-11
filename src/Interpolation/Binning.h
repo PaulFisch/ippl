@@ -154,7 +154,7 @@ namespace ippl {
                     // (buffers were sized by bin_particles before calling here)
                     auto& bufs = ippl::detail::getDefaultBinSortBuffers<
                         typename KeyViewType::memory_space>();
-
+                    bufs.ensureCapacity(n_particles, n_bins + 1);
                     auto keys_out_sub =
                         Kokkos::subview(bufs.keysOut(), std::make_pair(size_t(0), n_particles));
                     auto perm_out_sub =
