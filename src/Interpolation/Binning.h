@@ -247,13 +247,13 @@ namespace ippl {
                 const auto invdx         = 1.0 / mesh.getMeshSpacing();
                 const size_t n_particles = particles.getParticleCount();
 
-                // Get buffers from buffer manager
-                auto& buf_handler = ippl::detail::getDefaultSortBufferManager<memory_space>();
-                buf_handler.ensureCapacity(std::max(n_particles + 1, total_tiles + 1));
+                auto& bufs = ippl::detail::getDefaultBinSortBuffers<memory_space>();
+                // n_bins + 1 slots needed for bin_offsets
+                bufs.ensureCapacity(n_particles, total_tiles + 1);
 
-                auto& permute     = buf_handler.indices();
-                auto& bin_offsets = buf_handler.indicesSorted();
-                auto& bin_keys    = buf_handler.mortonKeys();
+                auto& permute     = bufs.permute();
+                auto& bin_offsets = bufs.binOffsets();
+                auto& bin_keys    = bufs.binKeys();
 
                 bin_sort<Dim, ParticleT, std::decay_t<decltype(particle_view)>, ExecSpace>(
                     particle_view, ngrid_global, ngrid_local, local_offset, tile_size, kernel_width,
