@@ -682,21 +682,39 @@ namespace ippl::Interpolation::detail {
 
             constexpr int plane = W * W;
 
+            // Iterate one z-slice at a time with a barrier between slices.
+            //
+            // With the flat loop, a single warp pass spans multiple z-planes whenever
+            // W³ > 32.  Each extra plane shifts all bank addresses by pitch1 % 32, and
+            // since the x-y footprint's difference-set covers all residues 0..31, no
+            // choice of pitch1 can avoid cross-plane aliasing.  In practice this creates
+            // 3-way (and higher) conflicts: the same bank is hit by threads from zz=0,
+            // zz=1, and zz=2 simultaneously.
+            //
+            // With z-slice serialization every warp pass touches a *single* plane.
+            // Within one plane, pitch0 coprime to 32 guarantees the W×W addresses are
+            // at most 2-way conflicted.  For W²≤32 (W≤5) a single warp pass covers the
+            // entire plane, giving zero conflicts.
+            //
+            // Cost: W barriers per particle instead of 1.  The caller must NOT issue an
+            // additional barrier after this call — the last z-slice barrier serves as
+            // the particle separator.
+            for (int zz = 0; zz < W; ++zz) {
+                const size_t base_z = static_cast<size_t>(sz + zz) * pitch1;
+                const RealType wz   = kwz[zz];
 #pragma unroll 1
-            for (int idx = team.team_rank(); idx < stencil_total; idx += team.team_size()) {
-                const int zz  = idx / plane;
-                const int rem = idx - zz * plane;
-                const int yy  = rem / W;
-                const int xx  = rem - yy * W;
-
-                const size_t hidx = static_cast<size_t>(sx + xx)
-                                    + static_cast<size_t>(sy + yy) * pitch0
-                                    + static_cast<size_t>(sz + zz) * pitch1;
-
-                const RealType w = kwx[xx] * kwy[yy] * kwz[zz];
-                local_r[hidx] += vr * w;
-                if constexpr (NeedsImag)
-                    local_i[hidx] += vi * w;
+                for (int idx = team.team_rank(); idx < plane; idx += team.team_size()) {
+                    const int yy      = idx / W;
+                    const int xx      = idx - yy * W;
+                    const size_t hidx = static_cast<size_t>(sx + xx)
+                                        + static_cast<size_t>(sy + yy) * pitch0
+                                        + base_z;
+                    const RealType w  = kwx[xx] * kwy[yy] * wz;
+                    local_r[hidx]    += vr * w;
+                    if constexpr (NeedsImag)
+                        local_i[hidx] += vi * w;
+                }
+                team.team_barrier();
             }
         }
 
@@ -860,6 +878,8 @@ namespace ippl::Interpolation::detail {
 
                 // With the current binning (center-based) and local particle ownership,
                 // shift is guaranteed to satisfy 0 <= shift <= tile_size.
+                // scatter_particle_fast ends with a team_barrier (last z-slice), so no
+                // extra barrier is needed here between particles.
                 for (int bi = 0; bi < batch_size; ++bi) {
                     const int sx             = shifts_x[bi];
                     const int sy             = shifts_y[bi];
@@ -870,7 +890,6 @@ namespace ippl::Interpolation::detail {
 
                     scatter_particle_fast<needs_imag>(team, sx, sy, sz, pitch0, pitch1, kw, vr, vi,
                                                       local_r, local_i);
-                    team.team_barrier();
                 }
             }
 
@@ -883,7 +902,8 @@ namespace ippl::Interpolation::detail {
             // row and iterates sequentially over ix.  A thread only ever accesses its
             // own row → stride-1 reads within a thread, different rows across threads
             // → zero bank conflicts regardless of pitch values.
-            for (int yz_id = team.team_rank(); yz_id < hs1 * hs2; yz_id += team.team_size()) {
+            for (int yz_id = team.team_rank(); yz_id < hs1 * hs2;
+                 yz_id += team.team_size()) {
                 const int kz = yz_id / hs1;
                 const int jy = yz_id % hs1;
 
@@ -900,7 +920,8 @@ namespace ippl::Interpolation::detail {
                 const int gz = local_z + args.nghost;
 
                 for (int ix = 0; ix < hs0; ++ix) {
-                    const size_t sidx = static_cast<size_t>(ix) + static_cast<size_t>(jy) * pitch0
+                    const size_t sidx = static_cast<size_t>(ix)
+                                        + static_cast<size_t>(jy) * pitch0
                                         + static_cast<size_t>(kz) * pitch1;
 
                     const RealType rr = local_r[sidx];
