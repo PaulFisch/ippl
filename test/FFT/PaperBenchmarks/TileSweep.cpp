@@ -475,7 +475,7 @@ public:
     // which includes overhead that does not exist in the native launch path.
     static size_t scratch_size_max_for_team(const std::string& method, int team_size) {
 #if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
-        if (method == "OutputFocused") {
+        if (false && method == "OutputFocused") {
             static size_t hw_shmem = 0;
             if (hw_shmem == 0) {
 #if defined(KOKKOS_ENABLE_CUDA)
