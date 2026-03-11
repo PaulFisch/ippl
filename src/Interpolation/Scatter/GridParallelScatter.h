@@ -544,10 +544,7 @@ namespace ippl::Interpolation::detail {
         static constexpr bool fixed_oversubscription = Policy::fixed_oversubscription;
     };
 
-    // Shared-memory padding helper.
-    // Choose the smallest padding so the physical pitch is coprime to the
-    // effective bank count for RealType.
-    //
+    // Shared-memory bank helper.
     // float  -> effective_bank_count = 32
     // double -> effective_bank_count = 16
     template <class RealType>
@@ -573,6 +570,100 @@ namespace ippl::Interpolation::detail {
             while (gcd_runtime(logical_extent + pad, effective_bank_count) != 1)
                 ++pad;
             return pad;
+        }
+    };
+
+    // Exact 3D shared-bank pad optimizer for the actual stencil traversal.
+    // This optimizes the local_subgrid write pattern for one warp chunk of
+    // consecutive stencil indices. For double, the theoretical lower bound is 2-way.
+    template <class RealType, int W>
+    struct SharedPadOptimizer3D {
+        static constexpr int ebc       = SharedBankLayout<RealType>::effective_bank_count;
+        static constexpr int warp_size = 32;
+        static constexpr int total     = W * W * W;
+        static constexpr int plane     = W * W;
+
+        struct Choice {
+            int pad0;
+            int pad1;
+        };
+
+        static void decode_idx(int idx, int& xx, int& yy, int& zz) {
+            zz            = idx / plane;
+            const int rem = idx - zz * plane;
+            yy            = rem / W;
+            xx            = rem - yy * W;
+        }
+
+        static Choice choose(int hs0, int hs1) {
+            Choice best{0, 0};
+
+            int best_max_occ    = 1 << 30;
+            int best_sum_excess = 1 << 30;
+            int best_pad_sum    = 1 << 30;
+
+            // Periodicity is modulo effective bank count.
+            for (int pad0 = 0; pad0 < ebc; ++pad0) {
+                for (int pad1 = 0; pad1 < ebc; ++pad1) {
+                    const int pitch0 = hs0 + pad0;
+                    const int phys_y = hs1 + pad1;
+                    const int pitch1 = pitch0 * phys_y;
+
+                    int worst_max_occ = 0;
+                    int sum_excess    = 0;
+
+                    for (int start = 0; start < total; start += warp_size) {
+                        int counts[ebc];
+                        for (int b = 0; b < ebc; ++b)
+                            counts[b] = 0;
+
+                        const int lanes =
+                            (start + warp_size <= total) ? warp_size : (total - start);
+                        for (int lane = 0; lane < lanes; ++lane) {
+                            const int idx = start + lane;
+                            int xx, yy, zz;
+                            decode_idx(idx, xx, yy, zz);
+
+                            // shift/base is a constant offset and does not affect conflicts
+                            const size_t addr =
+                                static_cast<size_t>(xx)
+                                + static_cast<size_t>(yy) * static_cast<size_t>(pitch0)
+                                + static_cast<size_t>(zz) * static_cast<size_t>(pitch1);
+                            const int bank = static_cast<int>(addr % static_cast<size_t>(ebc));
+                            ++counts[bank];
+                        }
+
+                        int chunk_max_occ = 0;
+                        int chunk_excess  = 0;
+                        for (int b = 0; b < ebc; ++b) {
+                            if (counts[b] > chunk_max_occ)
+                                chunk_max_occ = counts[b];
+                            if (counts[b] > 1)
+                                chunk_excess += counts[b] - 1;
+                        }
+
+                        if (chunk_max_occ > worst_max_occ)
+                            worst_max_occ = chunk_max_occ;
+                        sum_excess += chunk_excess;
+                    }
+
+                    const int pad_sum = pad0 + pad1;
+                    const bool better =
+                        (worst_max_occ < best_max_occ)
+                        || (worst_max_occ == best_max_occ && sum_excess < best_sum_excess)
+                        || (worst_max_occ == best_max_occ && sum_excess == best_sum_excess
+                            && pad_sum < best_pad_sum);
+
+                    if (better) {
+                        best_max_occ    = worst_max_occ;
+                        best_sum_excess = sum_excess;
+                        best_pad_sum    = pad_sum;
+                        best            = Choice{pad0, pad1};
+                    }
+                }
+            }
+
+            return best;
         }
     };
 
@@ -644,10 +735,12 @@ namespace ippl::Interpolation::detail {
         size_t physical_total_     = 1;
         size_t sub_teams_per_tile_ = 1;
 
-        // IMPORTANT:
+        int hs0_ = 0, hs1_ = 0, hs2_ = 0;
+        int pad0_ = 0, pad1_ = 0;
+        size_t pitch0_ = 1, phys_y_ = 1, pitch1_ = 1, plane_logical_ = 1;
+
         // binning flattens with dimension 2 fastest:
         //   bin = tx * (ny*nz) + ty * nz + tz
-        // so decoding must reverse in order z, y, x.
         KOKKOS_INLINE_FUNCTION void decode_tile_base(const size_t tile_id_in, int& tx, int& ty,
                                                      int& tz) const {
             size_t t = tile_id_in;
@@ -676,6 +769,8 @@ namespace ippl::Interpolation::detail {
             const RealType* __restrict__ kwz = kw + 2 * W;
 
             constexpr int plane = W * W;
+            const size_t base   = static_cast<size_t>(sx) + static_cast<size_t>(sy) * pitch0
+                                + static_cast<size_t>(sz) * pitch1;
 
 #pragma unroll 1
             for (int idx = team.team_rank(); idx < stencil_total; idx += team.team_size()) {
@@ -684,9 +779,9 @@ namespace ippl::Interpolation::detail {
                 const int yy  = rem / W;
                 const int xx  = rem - yy * W;
 
-                const size_t hidx = static_cast<size_t>(sx + xx)
-                                    + static_cast<size_t>(sy + yy) * pitch0
-                                    + static_cast<size_t>(sz + zz) * pitch1;
+                const size_t hidx = base + static_cast<size_t>(xx)
+                                    + static_cast<size_t>(yy) * pitch0
+                                    + static_cast<size_t>(zz) * pitch1;
 
                 const RealType w = kwx[xx] * kwy[yy] * kwz[zz];
                 local_r[hidx] += vr * w;
@@ -739,21 +834,11 @@ namespace ippl::Interpolation::detail {
                 return;
             const size_t pend = Kokkos::min(bin_end, pstart + particles_per_sub);
 
-            const int tile_x = args.tile_size[0];
-            const int tile_y = args.tile_size[1];
-            const int tile_z = args.tile_size[2];
-
-            const int hs0 = tile_x + padded_extra;
-            const int hs1 = tile_y + padded_extra;
-            const int hs2 = tile_z + padded_extra;
-
-            const int pad0 = SharedBankLayout<RealType>::minimal_coprime_pad(hs0);
-            const int pad1 = SharedBankLayout<RealType>::minimal_coprime_pad(hs1);
-
-            const size_t pitch0 = static_cast<size_t>(hs0 + pad0);
-            const size_t phys_y = static_cast<size_t>(hs1 + pad1);
-            const size_t pitch1 = pitch0 * phys_y;
-
+            const int hs0              = hs0_;
+            const int hs1              = hs1_;
+            const int hs2              = hs2_;
+            const size_t pitch0        = pitch0_;
+            const size_t pitch1        = pitch1_;
             const size_t logical_total = logical_total_;
             const size_t phys_total    = physical_total_;
             const int batch_np         = args.batch_np;
@@ -842,8 +927,6 @@ namespace ippl::Interpolation::detail {
                 });
                 team.team_barrier();
 
-                // With the current binning (center-based) and local particle ownership,
-                // shift is guaranteed to satisfy 0 <= shift <= tile_size.
                 for (int bi = 0; bi < batch_size; ++bi) {
                     const Shift3 sh          = shifts[bi];
                     const RealType* const kw = kerevals + static_cast<size_t>(bi) * 3 * W;
@@ -856,7 +939,7 @@ namespace ippl::Interpolation::detail {
                 }
             }
 
-            const size_t plane_logical = static_cast<size_t>(hs0) * static_cast<size_t>(hs1);
+            const size_t plane_logical = plane_logical_;
 
             for (size_t lid = static_cast<size_t>(team.team_rank()); lid < logical_total;
                  lid += static_cast<size_t>(team.team_size())) {
@@ -912,8 +995,9 @@ namespace ippl::Interpolation::detail {
             const int hs1 = tile_size[1] + padded_extra;
             const int hs2 = tile_size[2] + padded_extra;
 
-            const int pad0 = SharedBankLayout<RealType>::minimal_coprime_pad(hs0);
-            const int pad1 = SharedBankLayout<RealType>::minimal_coprime_pad(hs1);
+            const auto pads = SharedPadOptimizer3D<RealType, W>::choose(hs0, hs1);
+            const int pad0  = pads.pad0;
+            const int pad1  = pads.pad1;
 
             const size_t pitch0     = static_cast<size_t>(hs0 + pad0);
             const size_t phys_y     = static_cast<size_t>(hs1 + pad1);
@@ -946,17 +1030,21 @@ namespace ippl::Interpolation::detail {
             if (n_tiles == 0 || n_particles == 0)
                 return;
 
-            const int hs0 = args.tile_size[0] + padded_extra;
-            const int hs1 = args.tile_size[1] + padded_extra;
-            const int hs2 = args.tile_size[2] + padded_extra;
+            hs0_ = args.tile_size[0] + padded_extra;
+            hs1_ = args.tile_size[1] + padded_extra;
+            hs2_ = args.tile_size[2] + padded_extra;
 
-            const int pad0 = SharedBankLayout<RealType>::minimal_coprime_pad(hs0);
-            const int pad1 = SharedBankLayout<RealType>::minimal_coprime_pad(hs1);
+            const auto pads = SharedPadOptimizer3D<RealType, W>::choose(hs0_, hs1_);
+            pad0_           = pads.pad0;
+            pad1_           = pads.pad1;
 
-            logical_total_ =
-                static_cast<size_t>(hs0) * static_cast<size_t>(hs1) * static_cast<size_t>(hs2);
-            physical_total_ = static_cast<size_t>(hs0 + pad0) * static_cast<size_t>(hs1 + pad1)
-                              * static_cast<size_t>(hs2);
+            pitch0_        = static_cast<size_t>(hs0_ + pad0_);
+            phys_y_        = static_cast<size_t>(hs1_ + pad1_);
+            pitch1_        = pitch0_ * phys_y_;
+            plane_logical_ = static_cast<size_t>(hs0_) * static_cast<size_t>(hs1_);
+
+            logical_total_  = plane_logical_ * static_cast<size_t>(hs2_);
+            physical_total_ = pitch1_ * static_cast<size_t>(hs2_);
 
             size_t league_size;
             if constexpr (fixed_oversubscription) {
