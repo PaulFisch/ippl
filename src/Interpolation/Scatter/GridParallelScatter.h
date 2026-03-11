@@ -509,7 +509,7 @@
 namespace ippl::Interpolation::detail {
 
     // ─────────────────────────────────────────────────────────────────────────────
-    // Small compile-time helpers
+    // Compile-time helpers
     // ─────────────────────────────────────────────────────────────────────────────
 
     template <int Base, int Exp>
@@ -530,8 +530,9 @@ namespace ippl::Interpolation::detail {
         static constexpr int value = A;
     };
 
-    // Optional compile-time tuning hook through Policy.
-    // Default: compile out oversubscription entirely.
+    // Policy hook:
+    // - if Policy::fixed_oversubscription exists, use it
+    // - otherwise default to true
     template <class Policy, class = void>
     struct GridParallelScatterTuning {
         static constexpr bool fixed_oversubscription = true;
@@ -543,14 +544,12 @@ namespace ippl::Interpolation::detail {
         static constexpr bool fixed_oversubscription = Policy::fixed_oversubscription;
     };
 
-    // Shared-memory bank-layout helper.
-    // We analytically choose the smallest padding so that the physical pitch,
-    // measured in elements, is coprime to the effective bank count for RealType.
+    // Shared-memory padding helper.
+    // Choose the smallest padding so the physical pitch is coprime to the
+    // effective bank count for RealType.
     //
-    // For float: effective_bank_count = 32
-    // For double: effective_bank_count = 16
-    //
-    // That removes stride-induced bank aliasing for row/plane strides of local_subgrid.
+    // float  -> effective_bank_count = 32
+    // double -> effective_bank_count = 16
     template <class RealType>
     struct SharedBankLayout {
         static constexpr int bank_count      = 32;
@@ -641,21 +640,30 @@ namespace ippl::Interpolation::detail {
         };
 
         Arguments args;
-        size_t logical_total_      = 1;  // hs0 * hs1 * hs2
-        size_t physical_total_     = 1;  // pitch0 * phys_y * hs2
+        size_t logical_total_      = 1;
+        size_t physical_total_     = 1;
         size_t sub_teams_per_tile_ = 1;
 
+        // IMPORTANT:
+        // binning flattens with dimension 2 fastest:
+        //   bin = tx * (ny*nz) + ty * nz + tz
+        // so decoding must reverse in order z, y, x.
         KOKKOS_INLINE_FUNCTION void decode_tile_base(const size_t tile_id_in, int& tx, int& ty,
                                                      int& tz) const {
-            size_t t         = tile_id_in;
-            const size_t ntx = static_cast<size_t>(args.num_tiles[0]);
-            const size_t nty = static_cast<size_t>(args.num_tiles[1]);
+            size_t t = tile_id_in;
 
-            tx = static_cast<int>(t % ntx) * args.tile_size[0];
-            t /= ntx;
-            ty = static_cast<int>(t % nty) * args.tile_size[1];
-            t /= nty;
-            tz = static_cast<int>(t) * args.tile_size[2];
+            const size_t nt2 = static_cast<size_t>(args.num_tiles[2]);
+            const size_t nt1 = static_cast<size_t>(args.num_tiles[1]);
+
+            const int iz = static_cast<int>(t % nt2);
+            t /= nt2;
+            const int iy = static_cast<int>(t % nt1);
+            t /= nt1;
+            const int ix = static_cast<int>(t);
+
+            tx = ix * args.tile_size[0];
+            ty = iy * args.tile_size[1];
+            tz = iz * args.tile_size[2];
         }
 
         template <bool NeedsImag>
@@ -834,13 +842,14 @@ namespace ippl::Interpolation::detail {
                 });
                 team.team_barrier();
 
+                // With the current binning (center-based) and local particle ownership,
+                // shift is guaranteed to satisfy 0 <= shift <= tile_size.
                 for (int bi = 0; bi < batch_size; ++bi) {
                     const Shift3 sh          = shifts[bi];
                     const RealType* const kw = kerevals + static_cast<size_t>(bi) * 3 * W;
                     const RealType vr        = vals_r[bi];
                     const RealType vi        = (needs_imag ? vals_i[bi] : RealType(0));
 
-                    // Under sorted home-tile binning plus padded halo, this is guaranteed.
                     scatter_particle_fast<needs_imag>(team, sh.x, sh.y, sh.z, pitch0, pitch1, kw,
                                                       vr, vi, local_r, local_i);
                     team.team_barrier();
@@ -915,12 +924,12 @@ namespace ippl::Interpolation::detail {
             if constexpr (NeedsImag)
                 s += scratch_real_view::shmem_size(phys_total);
 
-            s += scratch_real_view::shmem_size(static_cast<size_t>(batch_np) * 3 * W);  // kerevals
-            s += scratch_real_view::shmem_size(batch_np);                               // vals_r
+            s += scratch_real_view::shmem_size(static_cast<size_t>(batch_np) * 3 * W);
+            s += scratch_real_view::shmem_size(batch_np);
             if constexpr (NeedsImag)
-                s += scratch_real_view::shmem_size(batch_np);  // vals_i
+                s += scratch_real_view::shmem_size(batch_np);
 
-            s += scratch_shift_view::shmem_size(batch_np);  // shifts
+            s += scratch_shift_view::shmem_size(batch_np);
             return s;
         }
 
@@ -1042,8 +1051,8 @@ namespace ippl::Interpolation::detail {
         KOKKOS_INLINE_FUNCTION Vector<int, Dim> decode_tile_base(size_t tile_id) const {
             Vector<int, Dim> tile_base;
             for (size_t t = tile_id, d = Dim; d-- > 0;) {
-                tile_base[d] = static_cast<int>(t % static_cast<size_t>(args.num_tiles[d]))
-                               * args.tile_size[d];
+                const int tile_coord = static_cast<int>(t % static_cast<size_t>(args.num_tiles[d]));
+                tile_base[d]         = tile_coord * args.tile_size[d];
                 t /= static_cast<size_t>(args.num_tiles[d]);
             }
             return tile_base;
@@ -1186,11 +1195,12 @@ namespace ippl::Interpolation::detail {
                 Kokkos::parallel_for(Kokkos::TeamThreadRange(team, batch_size), [&](const int bi) {
                     const size_t p = args.permute(batch_begin + static_cast<size_t>(bi));
 
+                    RealType* const kw = kerevals + static_cast<size_t>(bi) * Dim * W;
+
                     for (unsigned d = 0; d < Dim; ++d) {
                         const RealType gp = transform.toGridCoordinate(args.x(p)[d], d);
                         const int idx0    = transform.getStencilBase(gp - RealType(0.5), W);
 
-                        RealType* const kw = kerevals + static_cast<size_t>(bi) * Dim * W;
                         for (int wi = 0; wi < W; ++wi) {
                             kw[d * W + wi] = args.kernel(
                                 (gp - (RealType(idx0 + wi) + RealType(0.5))) * args.inv_hw);
