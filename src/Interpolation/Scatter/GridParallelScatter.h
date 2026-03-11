@@ -1015,7 +1015,7 @@ namespace ippl::Interpolation::detail {
             for (unsigned d = 0; d < Dim; ++d)
                 hist_total_ *= static_cast<size_t>(args.tile_size[d] + W + 1);
 
-            const size_t scratch = compute_scratch_size<cplx>(args.tile_size, args.team_size);
+            const size_t scratch = compute_scratch_size<cplx>(args.tile_size, args.team_size, 1);
 
             Kokkos::parallel_for(
                 "GridParallelScatterOutputDriven",
