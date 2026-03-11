@@ -43,9 +43,10 @@ namespace ippl {
                  */
                 KOKKOS_INLINE_FUNCTION int compute_tile_1d(RealType val, int dim) const {
                     const RealType grid_pos = transform.toGridCoordinate(val, dim);
-                    const int global_idx    = transform.getStencilCenter(grid_pos, kernel_width);
-                    const int local_idx     = global_idx - local_offset[dim];
-                    return local_idx / tile_size[dim];
+                    const int local_cell =
+                        static_cast<int>(Kokkos::floor(grid_pos)) - local_offset[dim];
+                    const int tile_d = local_cell / tile_size[dim];
+                    return Kokkos::clamp(tile_d, 0, num_tiles[dim] - 1);
                 }
 
                 /**
