@@ -302,11 +302,11 @@ namespace ippl::Interpolation::detail {
                     if (bad_shift) {
                         if (team.team_rank() == 0) {
                             const RealType gp0 =
-                                transform.template toUnwrappedGridCoordinate<0>(args.x(p)[0]);
+                                transform.template toGridCoordinate<0>(args.x(p)[0]);
                             const RealType gp1 =
-                                transform.template toUnwrappedGridCoordinate<1>(args.x(p)[1]);
+                                transform.template toGridCoordinate<1>(args.x(p)[1]);
                             const RealType gp2 =
-                                transform.template toUnwrappedGridCoordinate<2>(args.x(p)[2]);
+                                transform.template toGridCoordinate<2>(args.x(p)[2]);
 
                             const int idx0 =
                                 transform.template getStencilBase<W>(gp0 - RealType(0.5));
