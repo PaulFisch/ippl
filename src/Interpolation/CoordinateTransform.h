@@ -54,21 +54,25 @@ namespace ippl::Interpolation {
          * @return Grid coordinate in [0, ngrid)
          */
         KOKKOS_INLINE_FUNCTION T toGridCoordinate(T physical_pos, unsigned dim) const {
-            // Scale to grid: (x - origin) / dx
-            T grid_pos = (physical_pos - origin_[dim]) * invdx_[dim];
+            // // Scale to grid: (x - origin) / dx
+            // T grid_pos = (physical_pos - origin_[dim]) * invdx_[dim];
+            //
+            // T ngrid = static_cast<T>(ngrid_global_[dim]);
+            // grid_pos -= Kokkos::floor(grid_pos / ngrid) * ngrid;
+            //
+            // return grid_pos;
 
-            T ngrid = static_cast<T>(ngrid_global_[dim]);
-            grid_pos -= Kokkos::floor(grid_pos / ngrid) * ngrid;
-
-            return grid_pos;
+            return (physical_pos - origin_[dim]) * invdx_[dim];
         }
 
         template <int D>
         KOKKOS_FORCEINLINE_FUNCTION T toGridCoordinate(T physical_pos) const {
-            T gp      = (physical_pos - origin_[D]) * invdx_[D];
-            const T n = static_cast<T>(ngrid_global_[D]);
-            gp -= Kokkos::floor(gp / n) * n;
-            return gp;
+            // T gp      = (physical_pos - origin_[D]) * invdx_[D];
+            // const T n = static_cast<T>(ngrid_global_[D]);
+            // gp -= Kokkos::floor(gp / n) * n;
+            // return gp;
+
+            return (physical_pos - origin_[D]) * invdx_[D];
         }
 
         /**
