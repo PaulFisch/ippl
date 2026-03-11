@@ -753,7 +753,7 @@ namespace ippl::Interpolation::detail {
         //  for typical nv=32, eliminating the reduction pass entirely.
         // ─────────────────────────────────────────────────────────────────────
         template <bool IsComplex>
-        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int /*team_size*/) {
+        static size_t compute_scratch_size(const Vector<int, Dim>& tile_size, int /*team_size*/, int /* */) {
             size_t htot = 1;
             for (unsigned d = 0; d < Dim; ++d)
                 htot *= static_cast<size_t>(tile_size[d] + W + 1);
@@ -1019,7 +1019,7 @@ namespace ippl::Interpolation::detail {
 
             Kokkos::parallel_for(
                 "GridParallelScatterOutputDriven",
-                team_policy(n_tiles * sub_teams_per_tile_, args.team_size, vector_length)
+                team_policy(n_tiles * sub_teams_per_tile_, args.team_size / vector_length, vector_length)
                     .set_scratch_size(0, Kokkos::PerTeam(scratch)),
                 *this);
         }
