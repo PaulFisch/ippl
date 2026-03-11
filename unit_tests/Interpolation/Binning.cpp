@@ -79,8 +79,7 @@ namespace ippl {
             }
 
             // Helper to get local domain info
-            void getLocalDomainInfo(Vector<int, Dim>& ngrid_global,
-                                    Vector<int, Dim>& ngrid_local,
+            void getLocalDomainInfo(Vector<int, Dim>& ngrid_global, Vector<int, Dim>& ngrid_local,
                                     Vector<int, Dim>& local_offset) {
                 const NDIndex<Dim>& lDom = layout->getLocalNDIndex();
                 const NDIndex<Dim>& gDom = layout->getDomain();
@@ -93,8 +92,7 @@ namespace ippl {
             }
 
             // Compute expected bin for a position (host-side reference implementation)
-            int computeExpectedBin(const Vector<T, Dim>& pos,
-                                   const Vector<int, Dim>& ngrid_global,
+            int computeExpectedBin(const Vector<T, Dim>& pos, const Vector<int, Dim>& ngrid_global,
                                    const Vector<int, Dim>& local_offset,
                                    const Vector<int, Dim>& num_tiles) {
                 Interpolation::CoordinateTransform<T, Dim> transform(origin, invdx, ngrid_global);
@@ -104,10 +102,10 @@ namespace ippl {
 
                 // Row-major ordering: dimension Dim-1 varies fastest
                 for (int d = Dim - 1; d >= 0; --d) {
-                    T grid_pos     = transform.toGridCoordinate(pos[d], d);
-                    int global_idx = transform.getStencilCenter(grid_pos, kernel_width);
-                    int local_idx  = global_idx - local_offset[d];
-                    int tile_d     = local_idx / tile_size[d];
+                    T grid_pos  = transform.toGridCoordinate(pos[d], d);
+                    int center  = transform.getStencilCenter(grid_pos - T(0.5), kernel_width);
+                    int local_c = center - local_offset[d];
+                    int tile_d  = Kokkos::clamp(local_c / tile_size[d], 0, num_tiles[d] - 1);
 
                     bin_idx += tile_d * stride;
                     stride *= num_tiles[d];
@@ -146,8 +144,8 @@ namespace ippl {
 
             for (size_t i = 0; i < n_particles; ++i) {
                 for (unsigned d = 0; d < Dim; ++d) {
-                    T local_min  = this->origin[d] + local_offset[d] * this->hx[d];
-                    T local_max  = local_min + ngrid_local[d] * this->hx[d];
+                    T local_min    = this->origin[d] + local_offset[d] * this->hx[d];
+                    T local_max    = local_min + ngrid_local[d] * this->hx[d];
                     pos_host(i)[d] = local_min + dist(rng) * (local_max - local_min);
                 }
             }
@@ -231,7 +229,8 @@ namespace ippl {
                 this->kernel_width, this->origin, this->invdx, permute, bin_offsets, bin_keys,
                 n_particles, num_tiles);
 
-            auto offsets_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_offsets);
+            auto offsets_host =
+                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_offsets);
 
             // First offset should be 0
             EXPECT_EQ(offsets_host(0), 0u) << "First bin offset should be 0";
@@ -343,8 +342,9 @@ namespace ippl {
                 this->kernel_width, this->origin, this->invdx, permute, bin_offsets, bin_keys,
                 n_particles, num_tiles);
 
-            auto keys_host    = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_keys);
-            auto offsets_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_offsets);
+            auto keys_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_keys);
+            auto offsets_host =
+                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_offsets);
 
             // For each bin, verify all particles in [offset[b], offset[b+1]) have key == b
             for (size_t b = 0; b < total_tiles; ++b) {
@@ -390,7 +390,8 @@ namespace ippl {
                 this->kernel_width, this->origin, this->invdx, permute, bin_offsets, bin_keys,
                 n_particles, num_tiles);
 
-            auto offsets_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_offsets);
+            auto offsets_host =
+                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_offsets);
 
             // All offsets should be 0 (empty)
             for (size_t i = 0; i <= total_tiles; ++i) {
@@ -438,8 +439,9 @@ namespace ippl {
                 n_particles, num_tiles);
 
             auto permute_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), permute);
-            auto offsets_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_offsets);
-            auto keys_host    = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_keys);
+            auto offsets_host =
+                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_offsets);
+            auto keys_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_keys);
 
             EXPECT_EQ(permute_host(0), 0u) << "Single particle permutation should be 0";
 
@@ -500,8 +502,8 @@ namespace ippl {
             // Fill remaining with center particles
             while (idx < n_particles) {
                 for (unsigned d = 0; d < Dim; ++d) {
-                    T local_min       = this->origin[d] + local_offset[d] * this->hx[d];
-                    T local_max       = local_min + ngrid_local[d] * this->hx[d];
+                    T local_min      = this->origin[d] + local_offset[d] * this->hx[d];
+                    T local_max      = local_min + ngrid_local[d] * this->hx[d];
                     pos_host(idx)[d] = 0.5 * (local_min + local_max);
                 }
                 idx++;
@@ -537,8 +539,9 @@ namespace ippl {
             }
 
             // Verify all bins are valid
-            auto keys_host    = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_keys);
-            auto offsets_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_offsets);
+            auto keys_host = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_keys);
+            auto offsets_host =
+                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bin_offsets);
 
             for (size_t i = 0; i < n_particles; ++i) {
                 EXPECT_GE(keys_host(i), 0) << "Negative bin key for boundary particle";
@@ -595,10 +598,10 @@ namespace ippl {
 
             // Verify each particle's bin matches our reference calculation
             for (size_t i = 0; i < n_particles; ++i) {
-                size_t orig_idx     = permute_host(i);
-                int actual_bin      = keys_host(i);
-                int expected_bin    = this->computeExpectedBin(pos_host(orig_idx), ngrid_global,
-                                                               local_offset, num_tiles);
+                size_t orig_idx  = permute_host(i);
+                int actual_bin   = keys_host(i);
+                int expected_bin = this->computeExpectedBin(pos_host(orig_idx), ngrid_global,
+                                                            local_offset, num_tiles);
 
                 EXPECT_EQ(actual_bin, expected_bin)
                     << "Particle " << orig_idx << " at position " << pos_host(orig_idx)

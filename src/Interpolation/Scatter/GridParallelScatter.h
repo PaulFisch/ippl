@@ -61,16 +61,6 @@ namespace ippl::Interpolation::detail {
         using scratch_int_view =
             Kokkos::View<int*, scratch_space, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
-        // 12-byte struct (3 ints, no padding field).
-        // Inter-thread write stride = 3 words; gcd(3,32)=1 → no bank conflicts.
-        // The old Shift3 had `int pad` making it 16 bytes (stride=4, gcd=4 → 4-way conflict).
-        struct Shift3 {
-            int x, y, z;
-        };
-
-        using scratch_shift_view =
-            Kokkos::View<Shift3*, scratch_space, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
-
         struct Arguments : ScatterArgumentsBase<Arguments, Types> {
             Kokkos::View<size_t*, memory_space> permute;
             Kokkos::View<size_t*, memory_space> bin_offsets;
@@ -221,8 +211,12 @@ namespace ippl::Interpolation::detail {
                 vals_i   = vals_i_v.data();
             }
 
-            scratch_shift_view shifts_v(scratch, batch_np);
-            Shift3* const shifts = shifts_v.data();
+            scratch_int_view shifts_x_v(scratch, batch_np);
+            scratch_int_view shifts_y_v(scratch, batch_np);
+            scratch_int_view shifts_z_v(scratch, batch_np);
+            int* const shifts_x = shifts_x_v.data();
+            int* const shifts_y = shifts_y_v.data();
+            int* const shifts_z = shifts_z_v.data();
 
             for (size_t i = static_cast<size_t>(team.team_rank()); i < total;
                  i += static_cast<size_t>(team.team_size())) {
@@ -264,31 +258,6 @@ namespace ippl::Interpolation::detail {
                     const int sx = idx0 - args.local_offset[0] + half_left - tile_base_x;
                     const int sy = idx1 - args.local_offset[1] + half_left - tile_base_y;
                     const int sz = idx2 - args.local_offset[2] + half_left - tile_base_z;
-                    shifts[bi]   = {sx, sy, sz};
-
-                    // ── Particle placement check ─────────────────────────────────────────
-                    // Valid range: shift must satisfy 0 <= s <= tile_size (so s+(W-1) < hs).
-                    // Violation means the particle was binned to a tile whose stencil it
-                    // doesn't actually overlap — typically a periodic-wrap or n_grid mismatch.
-                    const int max_sx = args.tile_size[0] + half_left;  // == hs0 - W
-                    const int max_sy = args.tile_size[1] + half_left;
-                    const int max_sz = args.tile_size[2] + half_left;
-
-                    if (sx < 0 || sx > max_sx || sy < 0 || sy > max_sy || sz < 0 || sz > max_sz) {
-                        Kokkos::printf(
-                            "[BAD PARTICLE] p=%zu tile=(%d,%d,%d) "
-                            "tile_base=(%d,%d,%d) local_offset=(%d,%d,%d) "
-                            "gp=(%.4f,%.4f,%.4f) idx=(%d,%d,%d) "
-                            "shift=(%d,%d,%d) valid_x=[0,%d] valid_y=[0,%d] valid_z=[0,%d] "
-                            "pos=(%.6f,%.6f,%.6f)\n",
-                            p, (int)args.tile_size[0], (int)args.tile_size[1],
-                            (int)args.tile_size[2], tile_base_x, tile_base_y, tile_base_z,
-                            (int)args.local_offset[0], (int)args.local_offset[1],
-                            (int)args.local_offset[2], (double)gp0, (double)gp1, (double)gp2, idx0,
-                            idx1, idx2, sx, sy, sz, max_sx, max_sy, max_sz, (double)args.x(p)[0],
-                            (double)args.x(p)[1], (double)args.x(p)[2]);
-                    }
-                    // ─────────────────────────────────────────────────────────────────────
 
                     if constexpr (value_complex) {
                         const auto v = args.values(p);
@@ -302,13 +271,14 @@ namespace ippl::Interpolation::detail {
                 team.team_barrier();
 
                 for (int bi = 0; bi < batch_size; ++bi) {
-                    const Shift3 sh          = shifts[bi];
+                    const int sx             = shifts_x[bi];
+                    const int sy             = shifts_y[bi];
+                    const int sz             = shifts_z[bi];
                     const RealType* const kw = kerevals + static_cast<size_t>(bi) * ker_stride;
                     const RealType vr        = vals_r[bi];
                     const RealType vi        = needs_imag ? vals_i[bi] : RealType(0);
-
-                    scatter_particle_fast<needs_imag>(team, sh.x, sh.y, sh.z, pitch0, pitch1, kw,
-                                                      vr, vi, local_r, local_i);
+                    scatter_particle_fast<needs_imag>(team, sx, sy, sz, pitch0, pitch1, kw, vr, vi,
+                                                      local_r, local_i);
                     team.team_barrier();
                 }
             }
@@ -371,7 +341,9 @@ namespace ippl::Interpolation::detail {
             s += scratch_real_view::shmem_size(batch_np);
             if constexpr (NeedsImag)
                 s += scratch_real_view::shmem_size(batch_np);
-            s += scratch_shift_view::shmem_size(batch_np);
+            s += scratch_int_view::shmem_size(batch_np);  // shifts_x
+            s += scratch_int_view::shmem_size(batch_np);  // shifts_y
+            s += scratch_int_view::shmem_size(batch_np);  // shifts_z
             return s;
         }
 
