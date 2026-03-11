@@ -8,9 +8,6 @@
 #include "CoordinateTransform.h"
 #include "Particle/ParticleLayout.h"
 #include "Particle/SortBuffer.h"
-#if defined(KOKKOS_ENABLE_CUDA)
-#include <cub/cub.cuh>
-#endif
 
 namespace ippl {
     namespace Interpolation {
@@ -150,39 +147,8 @@ namespace ippl {
                         Kokkos::subview(bin_keys, std::make_pair(size_t(0), n_particles));
                     auto permute_sub =
                         Kokkos::subview(permute, std::make_pair(size_t(0), n_particles));
-#if defined(KOKKOS_ENABLE_CUDA)
-                    // --- reuse buffered output arrays & temp storage --------
-                    // (buffers were sized by bin_particles before calling here)
-                    auto& bufs = ippl::detail::getDefaultBinSortBuffers<
-                        typename KeyViewType::memory_space>();
 
-                    auto keys_out_sub =
-                        Kokkos::subview(bufs.keysOut(), std::make_pair(size_t(0), n_particles));
-                    auto perm_out_sub =
-                        Kokkos::subview(bufs.permOut(), std::make_pair(size_t(0), n_particles));
-
-                    // Query required temp-storage size
-                    void* d_temp      = nullptr;
-                    size_t temp_bytes = 0;
-                    cub::DeviceRadixSort::SortPairs(
-                        d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
-                        permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles));
-
-                    bufs.ensureTempStorage(temp_bytes);
-                    d_temp = bufs.tempStorage().data();
-
-                    // Sort into buffered output views
-                    cub::DeviceRadixSort::SortPairs(
-                        d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
-                        permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles));
-
-                    // Copy sorted results back into the working views
-                    Kokkos::deep_copy(keys_sub, keys_out_sub);
-                    Kokkos::deep_copy(permute_sub, perm_out_sub);
-                    Kokkos::fence();
-#else
                     Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
-#endif
                 }
                 Kokkos::fence();
                 IpplTimings::stopTimer(sortTimer);
@@ -281,13 +247,13 @@ namespace ippl {
                 const auto invdx         = 1.0 / mesh.getMeshSpacing();
                 const size_t n_particles = particles.getParticleCount();
 
-                auto& bufs = ippl::detail::getDefaultBinSortBuffers<memory_space>();
-                // n_bins + 1 slots needed for bin_offsets
-                bufs.ensureCapacity(n_particles, total_tiles + 1);
+                // Get buffers from buffer manager
+                auto& buf_handler = ippl::detail::getDefaultSortBufferManager<memory_space>();
+                buf_handler.ensureCapacity(std::max(n_particles + 1, total_tiles + 1));
 
-                auto& permute     = bufs.permute();
-                auto& bin_offsets = bufs.binOffsets();
-                auto& bin_keys    = bufs.binKeys();
+                auto& permute     = buf_handler.indices();
+                auto& bin_offsets = buf_handler.indicesSorted();
+                auto& bin_keys    = buf_handler.mortonKeys();
 
                 bin_sort<Dim, ParticleT, std::decay_t<decltype(particle_view)>, ExecSpace>(
                     particle_view, ngrid_global, ngrid_local, local_offset, tile_size, kernel_width,
