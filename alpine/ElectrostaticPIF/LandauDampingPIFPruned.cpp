@@ -293,10 +293,23 @@ int main(int argc, char* argv[]) {
         P->initNUFFT(FL, tol);
         msg << "After init NUFFT " << endl;
 
+        IpplTimings::startTimer(dumpDataTimer);
+        P->dumpBumponTail();
+        P->dumpEnergy();
+        IpplTimings::stopTimer(dumpDataTimer);
+
 	P->update();
         msg << "After update " << endl;
+        IpplTimings::startTimer(dumpDataTimer);
+        P->dumpBumponTail();
+        P->dumpEnergy();
+        IpplTimings::stopTimer(dumpDataTimer);
         P->scatter();
         msg << "After scatter " << endl;
+        IpplTimings::startTimer(dumpDataTimer);
+        P->dumpBumponTail();
+        P->dumpEnergy();
+        IpplTimings::stopTimer(dumpDataTimer);
 
         P->gather();
         msg << "After gather " << endl;
