@@ -261,9 +261,34 @@ namespace ippl::Interpolation::detail {
                                                      * args.inv_hw);
                     }
 
-                    shifts[bi] = {idx0 - args.local_offset[0] + half_left - tile_base_x,
-                                  idx1 - args.local_offset[1] + half_left - tile_base_y,
-                                  idx2 - args.local_offset[2] + half_left - tile_base_z};
+                    const int sx = idx0 - args.local_offset[0] + half_left - tile_base_x;
+                    const int sy = idx1 - args.local_offset[1] + half_left - tile_base_y;
+                    const int sz = idx2 - args.local_offset[2] + half_left - tile_base_z;
+                    shifts[bi]   = {sx, sy, sz};
+
+                    // ── Particle placement check ─────────────────────────────────────────
+                    // Valid range: shift must satisfy 0 <= s <= tile_size (so s+(W-1) < hs).
+                    // Violation means the particle was binned to a tile whose stencil it
+                    // doesn't actually overlap — typically a periodic-wrap or n_grid mismatch.
+                    const int max_sx = args.tile_size[0] + half_left;  // == hs0 - W
+                    const int max_sy = args.tile_size[1] + half_left;
+                    const int max_sz = args.tile_size[2] + half_left;
+
+                    if (sx < 0 || sx > max_sx || sy < 0 || sy > max_sy || sz < 0 || sz > max_sz) {
+                        Kokkos::printf(
+                            "[BAD PARTICLE] p=%zu tile=(%d,%d,%d) "
+                            "tile_base=(%d,%d,%d) local_offset=(%d,%d,%d) "
+                            "gp=(%.4f,%.4f,%.4f) idx=(%d,%d,%d) "
+                            "shift=(%d,%d,%d) valid_x=[0,%d] valid_y=[0,%d] valid_z=[0,%d] "
+                            "pos=(%.6f,%.6f,%.6f)\n",
+                            p, (int)args.tile_size[0], (int)args.tile_size[1],
+                            (int)args.tile_size[2], tile_base_x, tile_base_y, tile_base_z,
+                            (int)args.local_offset[0], (int)args.local_offset[1],
+                            (int)args.local_offset[2], (double)gp0, (double)gp1, (double)gp2, idx0,
+                            idx1, idx2, sx, sy, sz, max_sx, max_sy, max_sz, (double)args.x(p)[0],
+                            (double)args.x(p)[1], (double)args.x(p)[2]);
+                    }
+                    // ─────────────────────────────────────────────────────────────────────
 
                     if constexpr (value_complex) {
                         const auto v = args.values(p);
