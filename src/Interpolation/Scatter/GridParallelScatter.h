@@ -544,9 +544,15 @@ namespace ippl::Interpolation::detail {
         static constexpr bool fixed_oversubscription = Policy::fixed_oversubscription;
     };
 
-    // Shared-memory bank helper.
+    // Shared-memory pitch padding helper.
+    //
+    // Finds the smallest padding so the physical pitch is coprime to the effective
+    // bank count, eliminating bank conflicts when threads stride across rows.
+    //
     // float  -> effective_bank_count = 32
-    // double -> effective_bank_count = 16
+    // double -> effective_bank_count = 16 (two 4-byte words per element)
+    //
+    // "Coprime to 2^k" simply means "odd", so in practice pad is 0 or 1.
     template <class RealType>
     struct SharedBankLayout {
         static constexpr int bank_count      = 32;
@@ -573,100 +579,6 @@ namespace ippl::Interpolation::detail {
         }
     };
 
-    // Exact 3D shared-bank pad optimizer for the actual stencil traversal.
-    // This optimizes the local_subgrid write pattern for one warp chunk of
-    // consecutive stencil indices. For double, the theoretical lower bound is 2-way.
-    template <class RealType, int W>
-    struct SharedPadOptimizer3D {
-        static constexpr int ebc       = SharedBankLayout<RealType>::effective_bank_count;
-        static constexpr int warp_size = 32;
-        static constexpr int total     = W * W * W;
-        static constexpr int plane     = W * W;
-
-        struct Choice {
-            int pad0;
-            int pad1;
-        };
-
-        static void decode_idx(int idx, int& xx, int& yy, int& zz) {
-            zz            = idx / plane;
-            const int rem = idx - zz * plane;
-            yy            = rem / W;
-            xx            = rem - yy * W;
-        }
-
-        static Choice choose(int hs0, int hs1) {
-            Choice best{0, 0};
-
-            int best_max_occ    = 1 << 30;
-            int best_sum_excess = 1 << 30;
-            int best_pad_sum    = 1 << 30;
-
-            // Periodicity is modulo effective bank count.
-            for (int pad0 = 0; pad0 < ebc; ++pad0) {
-                for (int pad1 = 0; pad1 < ebc; ++pad1) {
-                    const int pitch0 = hs0 + pad0;
-                    const int phys_y = hs1 + pad1;
-                    const int pitch1 = pitch0 * phys_y;
-
-                    int worst_max_occ = 0;
-                    int sum_excess    = 0;
-
-                    for (int start = 0; start < total; start += warp_size) {
-                        int counts[ebc];
-                        for (int b = 0; b < ebc; ++b)
-                            counts[b] = 0;
-
-                        const int lanes =
-                            (start + warp_size <= total) ? warp_size : (total - start);
-                        for (int lane = 0; lane < lanes; ++lane) {
-                            const int idx = start + lane;
-                            int xx, yy, zz;
-                            decode_idx(idx, xx, yy, zz);
-
-                            // shift/base is a constant offset and does not affect conflicts
-                            const size_t addr =
-                                static_cast<size_t>(xx)
-                                + static_cast<size_t>(yy) * static_cast<size_t>(pitch0)
-                                + static_cast<size_t>(zz) * static_cast<size_t>(pitch1);
-                            const int bank = static_cast<int>(addr % static_cast<size_t>(ebc));
-                            ++counts[bank];
-                        }
-
-                        int chunk_max_occ = 0;
-                        int chunk_excess  = 0;
-                        for (int b = 0; b < ebc; ++b) {
-                            if (counts[b] > chunk_max_occ)
-                                chunk_max_occ = counts[b];
-                            if (counts[b] > 1)
-                                chunk_excess += counts[b] - 1;
-                        }
-
-                        if (chunk_max_occ > worst_max_occ)
-                            worst_max_occ = chunk_max_occ;
-                        sum_excess += chunk_excess;
-                    }
-
-                    const int pad_sum = pad0 + pad1;
-                    const bool better =
-                        (worst_max_occ < best_max_occ)
-                        || (worst_max_occ == best_max_occ && sum_excess < best_sum_excess)
-                        || (worst_max_occ == best_max_occ && sum_excess == best_sum_excess
-                            && pad_sum < best_pad_sum);
-
-                    if (better) {
-                        best_max_occ    = worst_max_occ;
-                        best_sum_excess = sum_excess;
-                        best_pad_sum    = pad_sum;
-                        best            = Choice{pad0, pad1};
-                    }
-                }
-            }
-
-            return best;
-        }
-    };
-
     // ─────────────────────────────────────────────────────────────────────────────
     // 3D optimized implementation
     // ─────────────────────────────────────────────────────────────────────────────
@@ -685,6 +597,14 @@ namespace ippl::Interpolation::detail {
         static constexpr bool fixed_oversubscription =
             GridParallelScatterTuning<Policy>::fixed_oversubscription;
 
+        // Per-particle kernel weight storage stride.
+        // Raw stride is 3*W floats; if that is even (gcd with 32 > 1) pad by 1
+        // so consecutive thread writes (stride = ker_stride apart) never share a bank.
+        // For float effective_bank_count=32, double=16 – both are powers of 2, so
+        // "coprime" reduces to "odd". 3*W is odd iff W is odd; pad 1 when W is even.
+        static constexpr int ker_stride_raw = 3 * W;
+        static constexpr int ker_stride     = ker_stride_raw + (ker_stride_raw % 2 == 0 ? 1 : 0);
+
         using RealType        = typename Types::RealType;
         using ValueType       = typename Types::ValueType;
         using memory_space    = typename Types::memory_space;
@@ -696,13 +616,8 @@ namespace ippl::Interpolation::detail {
 
         using scratch_real_view =
             Kokkos::View<RealType*, scratch_space, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
-
-        struct alignas(16) Shift3 {
-            int x, y, z, pad;
-        };
-
-        using scratch_shift_view =
-            Kokkos::View<Shift3*, scratch_space, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
+        using scratch_int_view =
+            Kokkos::View<int*, scratch_space, Kokkos::MemoryTraits<Kokkos::Unmanaged>>;
 
         struct Arguments : ScatterArgumentsBase<Arguments, Types> {
             Kokkos::View<size_t*, memory_space> permute;
@@ -731,16 +646,13 @@ namespace ippl::Interpolation::detail {
         };
 
         Arguments args;
-        size_t logical_total_      = 1;
         size_t physical_total_     = 1;
         size_t sub_teams_per_tile_ = 1;
 
-        int hs0_ = 0, hs1_ = 0, hs2_ = 0;
-        int pad0_ = 0, pad1_ = 0;
-        size_t pitch0_ = 1, phys_y_ = 1, pitch1_ = 1, plane_logical_ = 1;
-
+        // IMPORTANT:
         // binning flattens with dimension 2 fastest:
         //   bin = tx * (ny*nz) + ty * nz + tz
+        // so decoding must reverse in order z, y, x.
         KOKKOS_INLINE_FUNCTION void decode_tile_base(const size_t tile_id_in, int& tx, int& ty,
                                                      int& tz) const {
             size_t t = tile_id_in;
@@ -769,8 +681,6 @@ namespace ippl::Interpolation::detail {
             const RealType* __restrict__ kwz = kw + 2 * W;
 
             constexpr int plane = W * W;
-            const size_t base   = static_cast<size_t>(sx) + static_cast<size_t>(sy) * pitch0
-                                + static_cast<size_t>(sz) * pitch1;
 
 #pragma unroll 1
             for (int idx = team.team_rank(); idx < stencil_total; idx += team.team_size()) {
@@ -779,9 +689,9 @@ namespace ippl::Interpolation::detail {
                 const int yy  = rem / W;
                 const int xx  = rem - yy * W;
 
-                const size_t hidx = base + static_cast<size_t>(xx)
-                                    + static_cast<size_t>(yy) * pitch0
-                                    + static_cast<size_t>(zz) * pitch1;
+                const size_t hidx = static_cast<size_t>(sx + xx)
+                                    + static_cast<size_t>(sy + yy) * pitch0
+                                    + static_cast<size_t>(sz + zz) * pitch1;
 
                 const RealType w = kwx[xx] * kwy[yy] * kwz[zz];
                 local_r[hidx] += vr * w;
@@ -834,14 +744,23 @@ namespace ippl::Interpolation::detail {
                 return;
             const size_t pend = Kokkos::min(bin_end, pstart + particles_per_sub);
 
-            const int hs0              = hs0_;
-            const int hs1              = hs1_;
-            const int hs2              = hs2_;
-            const size_t pitch0        = pitch0_;
-            const size_t pitch1        = pitch1_;
-            const size_t logical_total = logical_total_;
-            const size_t phys_total    = physical_total_;
-            const int batch_np         = args.batch_np;
+            const int tile_x = args.tile_size[0];
+            const int tile_y = args.tile_size[1];
+            const int tile_z = args.tile_size[2];
+
+            const int hs0 = tile_x + padded_extra;
+            const int hs1 = tile_y + padded_extra;
+            const int hs2 = tile_z + padded_extra;
+
+            const int pad0 = SharedBankLayout<RealType>::minimal_coprime_pad(hs0);
+            const int pad1 = SharedBankLayout<RealType>::minimal_coprime_pad(hs1);
+
+            const size_t pitch0 = static_cast<size_t>(hs0 + pad0);
+            const size_t phys_y = static_cast<size_t>(hs1 + pad1);
+            const size_t pitch1 = pitch0 * phys_y;
+
+            const size_t phys_total = physical_total_;
+            const int batch_np      = args.batch_np;
 
             int tile_base_x, tile_base_y, tile_base_z;
             decode_tile_base(tile_id, tile_base_x, tile_base_y, tile_base_z);
@@ -858,7 +777,9 @@ namespace ippl::Interpolation::detail {
                 local_i   = local_i_v.data();
             }
 
-            scratch_real_view kerevals_v(scratch, static_cast<size_t>(batch_np) * 3 * W);
+            // kernel weights: ker_stride (not 3*W) per particle to keep per-thread
+            // write stride coprime to the bank count → zero bank conflicts on fill.
+            scratch_real_view kerevals_v(scratch, static_cast<size_t>(batch_np) * ker_stride);
             RealType* const kerevals = kerevals_v.data();
 
             scratch_real_view vals_r_v(scratch, batch_np);
@@ -871,8 +792,15 @@ namespace ippl::Interpolation::detail {
                 vals_i   = vals_i_v.data();
             }
 
-            scratch_shift_view shifts_v(scratch, batch_np);
-            Shift3* const shifts = shifts_v.data();
+            // Three separate int arrays instead of a packed Shift3 struct.
+            // A 4-int struct gives stride=4 among threads (gcd(4,32)=4 → 4-way conflict).
+            // Separate stride-1 arrays have gcd(1,32)=1 → no conflict.
+            scratch_int_view shifts_x_v(scratch, batch_np);
+            scratch_int_view shifts_y_v(scratch, batch_np);
+            scratch_int_view shifts_z_v(scratch, batch_np);
+            int* const shifts_x = shifts_x_v.data();
+            int* const shifts_y = shifts_y_v.data();
+            int* const shifts_z = shifts_z_v.data();
 
             for (size_t i = static_cast<size_t>(team.team_rank()); i < phys_total;
                  i += static_cast<size_t>(team.team_size())) {
@@ -900,7 +828,10 @@ namespace ippl::Interpolation::detail {
                     const int idx1 = transform.template getStencilBase<W>(gp1 - RealType(0.5));
                     const int idx2 = transform.template getStencilBase<W>(gp2 - RealType(0.5));
 
-                    RealType* const kw = kerevals + static_cast<size_t>(bi) * 3 * W;
+                    // kw base uses ker_stride so thread bi writes at offset bi*ker_stride,
+                    // giving a stride of ker_stride (odd) between consecutive threads → no
+                    // bank conflict on fill, while reads are broadcasts (fine on all hardware).
+                    RealType* const kw = kerevals + static_cast<size_t>(bi) * ker_stride;
 
 #pragma unroll
                     for (int wi = 0; wi < W; ++wi) {
@@ -912,9 +843,9 @@ namespace ippl::Interpolation::detail {
                                                      * args.inv_hw);
                     }
 
-                    shifts[bi] = Shift3{idx0 - args.local_offset[0] + half_left - tile_base_x,
-                                        idx1 - args.local_offset[1] + half_left - tile_base_y,
-                                        idx2 - args.local_offset[2] + half_left - tile_base_z, 0};
+                    shifts_x[bi] = idx0 - args.local_offset[0] + half_left - tile_base_x;
+                    shifts_y[bi] = idx1 - args.local_offset[1] + half_left - tile_base_y;
+                    shifts_z[bi] = idx2 - args.local_offset[2] + half_left - tile_base_z;
 
                     if constexpr (value_complex) {
                         const auto v = args.values(p);
@@ -927,61 +858,75 @@ namespace ippl::Interpolation::detail {
                 });
                 team.team_barrier();
 
+                // With the current binning (center-based) and local particle ownership,
+                // shift is guaranteed to satisfy 0 <= shift <= tile_size.
                 for (int bi = 0; bi < batch_size; ++bi) {
-                    const Shift3 sh          = shifts[bi];
-                    const RealType* const kw = kerevals + static_cast<size_t>(bi) * 3 * W;
+                    const int sx             = shifts_x[bi];
+                    const int sy             = shifts_y[bi];
+                    const int sz             = shifts_z[bi];
+                    const RealType* const kw = kerevals + static_cast<size_t>(bi) * ker_stride;
                     const RealType vr        = vals_r[bi];
                     const RealType vi        = (needs_imag ? vals_i[bi] : RealType(0));
 
-                    scatter_particle_fast<needs_imag>(team, sh.x, sh.y, sh.z, pitch0, pitch1, kw,
-                                                      vr, vi, local_r, local_i);
+                    scatter_particle_fast<needs_imag>(team, sx, sy, sz, pitch0, pitch1, kw, vr, vi,
+                                                      local_r, local_i);
                     team.team_barrier();
                 }
             }
 
-            const size_t plane_logical = plane_logical_;
+            // Flush accumulated values from shared memory to the global grid.
+            //
+            // Original approach: 1-D loop over logical_total, threads striding by
+            // team_size, caused warps to span row boundaries → bank conflicts on load.
+            //
+            // New approach: parallelize over (jy, kz) row pairs, each thread owns one
+            // row and iterates sequentially over ix.  A thread only ever accesses its
+            // own row → stride-1 reads within a thread, different rows across threads
+            // → zero bank conflicts regardless of pitch values.
+            for (int yz_id = team.team_rank(); yz_id < hs1 * hs2; yz_id += team.team_size()) {
+                const int kz = yz_id / hs1;
+                const int jy = yz_id % hs1;
 
-            for (size_t lid = static_cast<size_t>(team.team_rank()); lid < logical_total;
-                 lid += static_cast<size_t>(team.team_size())) {
-                const int kz   = static_cast<int>(lid / plane_logical);
-                const size_t r = lid - static_cast<size_t>(kz) * plane_logical;
-                const int jy   = static_cast<int>(r / static_cast<size_t>(hs0));
-                const int ix =
-                    static_cast<int>(r - static_cast<size_t>(jy) * static_cast<size_t>(hs0));
-
-                const size_t sidx = static_cast<size_t>(ix) + static_cast<size_t>(jy) * pitch0
-                                    + static_cast<size_t>(kz) * pitch1;
-
-                const RealType rr = local_r[sidx];
-                if constexpr (needs_imag) {
-                    const RealType ii = local_i[sidx];
-                    if (rr == RealType(0) && ii == RealType(0))
-                        continue;
-                } else {
-                    if (rr == RealType(0))
-                        continue;
-                }
-
-                const int local_x = tile_base_x + ix - half_left;
                 const int local_y = tile_base_y + jy - half_left;
                 const int local_z = tile_base_z + kz - half_left;
 
-                if (local_x < -args.nghost || local_x >= args.n_grid_local[0] + args.nghost
-                    || local_y < -args.nghost || local_y >= args.n_grid_local[1] + args.nghost
-                    || local_z < -args.nghost || local_z >= args.n_grid_local[2] + args.nghost)
+                // Bounds check for y and z can be hoisted outside the x-loop.
+                if (local_y < -args.nghost || local_y >= args.n_grid_local[1] + args.nghost)
+                    continue;
+                if (local_z < -args.nghost || local_z >= args.n_grid_local[2] + args.nghost)
                     continue;
 
-                const int gx = local_x + args.nghost;
                 const int gy = local_y + args.nghost;
                 const int gz = local_z + args.nghost;
 
-                if constexpr (grid_complex) {
-                    RealType* ptr = reinterpret_cast<RealType*>(&args.grid(gx, gy, gz));
-                    Kokkos::atomic_add(&ptr[0], rr);
-                    if constexpr (needs_imag)
-                        Kokkos::atomic_add(&ptr[1], local_i[sidx]);
-                } else {
-                    Kokkos::atomic_add(&args.grid(gx, gy, gz), static_cast<grid_value_t>(rr));
+                for (int ix = 0; ix < hs0; ++ix) {
+                    const size_t sidx = static_cast<size_t>(ix) + static_cast<size_t>(jy) * pitch0
+                                        + static_cast<size_t>(kz) * pitch1;
+
+                    const RealType rr = local_r[sidx];
+                    if constexpr (needs_imag) {
+                        const RealType ii = local_i[sidx];
+                        if (rr == RealType(0) && ii == RealType(0))
+                            continue;
+                    } else {
+                        if (rr == RealType(0))
+                            continue;
+                    }
+
+                    const int local_x = tile_base_x + ix - half_left;
+                    if (local_x < -args.nghost || local_x >= args.n_grid_local[0] + args.nghost)
+                        continue;
+
+                    const int gx = local_x + args.nghost;
+
+                    if constexpr (grid_complex) {
+                        RealType* ptr = reinterpret_cast<RealType*>(&args.grid(gx, gy, gz));
+                        Kokkos::atomic_add(&ptr[0], rr);
+                        if constexpr (needs_imag)
+                            Kokkos::atomic_add(&ptr[1], local_i[sidx]);
+                    } else {
+                        Kokkos::atomic_add(&args.grid(gx, gy, gz), static_cast<grid_value_t>(rr));
+                    }
                 }
             }
         }
@@ -995,9 +940,8 @@ namespace ippl::Interpolation::detail {
             const int hs1 = tile_size[1] + padded_extra;
             const int hs2 = tile_size[2] + padded_extra;
 
-            const auto pads = SharedPadOptimizer3D<RealType, W>::choose(hs0, hs1);
-            const int pad0  = pads.pad0;
-            const int pad1  = pads.pad1;
+            const int pad0 = SharedBankLayout<RealType>::minimal_coprime_pad(hs0);
+            const int pad1 = SharedBankLayout<RealType>::minimal_coprime_pad(hs1);
 
             const size_t pitch0     = static_cast<size_t>(hs0 + pad0);
             const size_t phys_y     = static_cast<size_t>(hs1 + pad1);
@@ -1008,12 +952,13 @@ namespace ippl::Interpolation::detail {
             if constexpr (NeedsImag)
                 s += scratch_real_view::shmem_size(phys_total);
 
-            s += scratch_real_view::shmem_size(static_cast<size_t>(batch_np) * 3 * W);
+            s += scratch_real_view::shmem_size(static_cast<size_t>(batch_np) * ker_stride);
             s += scratch_real_view::shmem_size(batch_np);
             if constexpr (NeedsImag)
                 s += scratch_real_view::shmem_size(batch_np);
 
-            s += scratch_shift_view::shmem_size(batch_np);
+            // Three separate int arrays (shifts_x, shifts_y, shifts_z).
+            s += 3 * scratch_int_view::shmem_size(batch_np);
             return s;
         }
 
@@ -1030,21 +975,15 @@ namespace ippl::Interpolation::detail {
             if (n_tiles == 0 || n_particles == 0)
                 return;
 
-            hs0_ = args.tile_size[0] + padded_extra;
-            hs1_ = args.tile_size[1] + padded_extra;
-            hs2_ = args.tile_size[2] + padded_extra;
+            const int hs0 = args.tile_size[0] + padded_extra;
+            const int hs1 = args.tile_size[1] + padded_extra;
+            const int hs2 = args.tile_size[2] + padded_extra;
 
-            const auto pads = SharedPadOptimizer3D<RealType, W>::choose(hs0_, hs1_);
-            pad0_           = pads.pad0;
-            pad1_           = pads.pad1;
+            const int pad0 = SharedBankLayout<RealType>::minimal_coprime_pad(hs0);
+            const int pad1 = SharedBankLayout<RealType>::minimal_coprime_pad(hs1);
 
-            pitch0_        = static_cast<size_t>(hs0_ + pad0_);
-            phys_y_        = static_cast<size_t>(hs1_ + pad1_);
-            pitch1_        = pitch0_ * phys_y_;
-            plane_logical_ = static_cast<size_t>(hs0_) * static_cast<size_t>(hs1_);
-
-            logical_total_  = plane_logical_ * static_cast<size_t>(hs2_);
-            physical_total_ = pitch1_ * static_cast<size_t>(hs2_);
+            physical_total_ = static_cast<size_t>(hs0 + pad0) * static_cast<size_t>(hs1 + pad1)
+                              * static_cast<size_t>(hs2);
 
             size_t league_size;
             if constexpr (fixed_oversubscription) {
@@ -1083,6 +1022,10 @@ namespace ippl::Interpolation::detail {
         static constexpr int stencil_total     = StaticPow<W, Dim>::value;
         static constexpr bool fixed_oversubscription =
             GridParallelScatterTuning<Policy>::fixed_oversubscription;
+
+        // Same ker_stride trick as 3D, generalised to Dim*W.
+        static constexpr int ker_stride_raw = static_cast<int>(Dim) * W;
+        static constexpr int ker_stride     = ker_stride_raw + (ker_stride_raw % 2 == 0 ? 1 : 0);
 
         using RealType        = typename Types::RealType;
         using ValueType       = typename Types::ValueType;
@@ -1248,7 +1191,7 @@ namespace ippl::Interpolation::detail {
                 local_i   = local_i_v.data();
             }
 
-            scratch_real_view kerevals_v(scratch, static_cast<size_t>(batch_np) * Dim * W);
+            scratch_real_view kerevals_v(scratch, static_cast<size_t>(batch_np) * ker_stride);
             RealType* const kerevals = kerevals_v.data();
 
             scratch_real_view vals_r_v(scratch, batch_np);
@@ -1283,7 +1226,7 @@ namespace ippl::Interpolation::detail {
                 Kokkos::parallel_for(Kokkos::TeamThreadRange(team, batch_size), [&](const int bi) {
                     const size_t p = args.permute(batch_begin + static_cast<size_t>(bi));
 
-                    RealType* const kw = kerevals + static_cast<size_t>(bi) * Dim * W;
+                    RealType* const kw = kerevals + static_cast<size_t>(bi) * ker_stride;
 
                     for (unsigned d = 0; d < Dim; ++d) {
                         const RealType gp = transform.toGridCoordinate(args.x(p)[d], d);
@@ -1314,7 +1257,7 @@ namespace ippl::Interpolation::detail {
                     for (unsigned d = 0; d < Dim; ++d)
                         shift[d] = shifts[static_cast<size_t>(bi) * Dim + d];
 
-                    const RealType* const kw = kerevals + static_cast<size_t>(bi) * Dim * W;
+                    const RealType* const kw = kerevals + static_cast<size_t>(bi) * ker_stride;
                     const RealType vr        = vals_r[bi];
                     const RealType vi        = (needs_imag ? vals_i[bi] : RealType(0));
 
@@ -1347,25 +1290,29 @@ namespace ippl::Interpolation::detail {
                 }
 
                 Kokkos::Array<int, Dim> gc{};
+                bool in_bounds = true;
                 for (unsigned d = 0; d < Dim; ++d) {
                     const int local = tile_base[d] + coord[d] - half_left;
-                    if (local < -args.nghost || local >= args.n_grid_local[d] + args.nghost)
-                        goto skip_flush_nd;
+                    if (local < -args.nghost || local >= args.n_grid_local[d] + args.nghost) {
+                        in_bounds = false;
+                        break;
+                    }
                     gc[d] = local + args.nghost;
                 }
 
-                [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-                    if constexpr (grid_complex) {
-                        RealType* ptr = reinterpret_cast<RealType*>(&args.grid(gc[Is]...));
-                        Kokkos::atomic_add(&ptr[0], rr);
-                        if constexpr (needs_imag)
-                            Kokkos::atomic_add(&ptr[1], local_i[sidx]);
-                    } else {
-                        Kokkos::atomic_add(&args.grid(gc[Is]...), static_cast<grid_value_t>(rr));
-                    }
-                }(std::make_index_sequence<Dim>{});
-
-skip_flush_nd:;
+                if (in_bounds) {
+                    [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+                        if constexpr (grid_complex) {
+                            RealType* ptr = reinterpret_cast<RealType*>(&args.grid(gc[Is]...));
+                            Kokkos::atomic_add(&ptr[0], rr);
+                            if constexpr (needs_imag)
+                                Kokkos::atomic_add(&ptr[1], local_i[sidx]);
+                        } else {
+                            Kokkos::atomic_add(&args.grid(gc[Is]...),
+                                               static_cast<grid_value_t>(rr));
+                        }
+                    }(std::make_index_sequence<Dim>{});
+                }
             }
         }
 
@@ -1394,7 +1341,7 @@ skip_flush_nd:;
             if constexpr (NeedsImag)
                 s += scratch_real_view::shmem_size(phys_total);
 
-            s += scratch_real_view::shmem_size(static_cast<size_t>(batch_np) * Dim * W);
+            s += scratch_real_view::shmem_size(static_cast<size_t>(batch_np) * ker_stride);
             s += scratch_real_view::shmem_size(batch_np);
             if constexpr (NeedsImag)
                 s += scratch_real_view::shmem_size(batch_np);
