@@ -368,7 +368,6 @@ namespace ippl::Interpolation::detail {
             const int hs2 = args.tile_size[2] + padded_extra;
             total_        = static_cast<size_t>(hs0) * hs1 * hs2;
 
-#ifndef NDEBUG
             {
                 size_t bad_particles = 0;
                 const CoordinateTransform<RealType, 3> transform{args.origin, args.invdx,
@@ -409,7 +408,6 @@ namespace ippl::Interpolation::detail {
                                  bad_particles);
                 }
             }
-#endif
 
             size_t league_size;
             if constexpr (fixed_oversubscription) {
