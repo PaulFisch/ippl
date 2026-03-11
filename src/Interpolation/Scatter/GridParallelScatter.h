@@ -258,6 +258,9 @@ namespace ippl::Interpolation::detail {
                     const int sx = idx0 - args.local_offset[0] + half_left - tile_base_x;
                     const int sy = idx1 - args.local_offset[1] + half_left - tile_base_y;
                     const int sz = idx2 - args.local_offset[2] + half_left - tile_base_z;
+                    shifts_x[bi] = sx;
+                    shifts_y[bi] = sy;
+                    shifts_z[bi] = sz;
 
                     if constexpr (value_complex) {
                         const auto v = args.values(p);
