@@ -27,9 +27,9 @@ namespace ippl::Interpolation {
         using Vector_t    = ippl::Vector<T, Dim>;
         using VectorInt_t = ippl::Vector<int, Dim>;
 
-        const Vector_t& origin_;           // Physical origin from mesh
-        const Vector_t& invdx_;            // Inverse of mesh spacing (1/dx)
-        const VectorInt_t& ngrid_global_;  // Global grid dimensions
+        const Vector_t origin_;           // Physical origin from mesh
+        const Vector_t invdx_;            // Inverse of mesh spacing (1/dx)
+        const VectorInt_t ngrid_global_;  // Global grid dimensions
 
         /**
          * @brief Construct from mesh parameters
