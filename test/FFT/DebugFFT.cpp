@@ -31,13 +31,16 @@ public:
 //=============================================================================
 template <typename ExecSpace>
 struct NUFFTEnv {
-    using Mesh_t    = ippl::UniformCartesian<T, Dim>;
-    using Layout_t  = ippl::FieldLayout<Dim>;
-    using PLayout_t = ippl::ParticleSpatialLayout<T, Dim, Mesh_t, ExecSpace>;
-    using centering_type  = typename Mesh_t::DefaultCentering;
-    using Field_t      = typename ippl::Field<Kokkos::complex<T>, Dim, Mesh_t, centering_type,
-                                                 ExecSpace>::uniform_type;
-    using Particles_t = TestParticles<PLayout_t>;
+    using Mesh_t         = ippl::UniformCartesian<T, Dim>;
+    using Layout_t       = ippl::FieldLayout<Dim>;
+    using PLayout_t      = ippl::ParticleSpatialLayout<T, Dim, Mesh_t, ExecSpace>;
+    using centering_type = typename Mesh_t::DefaultCentering;
+    using Field_t        = typename ippl::Field<Kokkos::complex<T>, Dim, Mesh_t, centering_type,
+                                                ExecSpace>::uniform_type;
+    using RealField_t        = typename ippl::Field<T, Dim, Mesh_t, centering_type,
+                                            ExecSpace>::uniform_type;
+
+    using Particles_t    = TestParticles<PLayout_t>;
 
     std::shared_ptr<Layout_t> layout;
     std::shared_ptr<Mesh_t> mesh;
@@ -371,6 +374,79 @@ TEST_F(NUFFTDivergenceTest, DistributedCPUCorrectness_Type1) {
 
     // Expect the relative error to be within tolerance * 100
     EXPECT_LT(relError, cfg.tol * 100) << "Distributed CPU NUFFT failed to match exact DFT!";
+}
+TEST_F(NUFFTDivergenceTest, Phase2_FullPipeline) {
+    // 1. Setup outputs
+    typename NUFFTEnv<HostSpace>::Field_t hostOutField;
+    hostOutField.initialize(*hostEnv.mesh, *hostEnv.layout, 1);
+    Kokkos::deep_copy(hostOutField.getView(), Kokkos::complex<T>(0.0, 0.0));
+
+    typename NUFFTEnv<DeviceSpace>::Field_t devOutField;
+    devOutField.initialize(*devEnv.mesh, *devEnv.layout, 1);
+    Kokkos::deep_copy(devOutField.getView(), Kokkos::complex<T>(0.0, 0.0));
+
+    // 2. Setup FFT Parameters
+    ippl::ParameterList params;
+    params.add("tolerance", kernel.tol());
+    params.add("use_upsampled_inputs", false);
+    params.add("use_finufft", false);
+    params.add("spread_method", "atomic");  // We know atomic scatter works now
+    params.add("sort", false);
+
+    // 3. Initialize FFT Wrappers
+    ippl::FFT<ippl::NUFFTransform, typename NUFFTEnv<HostSpace>::RealField_t::uniform_type> cpuFFT(
+        *hostEnv.layout, hostEnv.bunch->getLocalNum(), 1, params);
+
+    ippl::FFT<ippl::NUFFTransform, typename NUFFTEnv<DeviceSpace>::RealField_t::uniform_type> gpuFFT(
+        *devEnv.layout, devEnv.bunch->getLocalNum(), 1, params);
+
+    // 4. Run full transforms
+    cpuFFT.transform(hostEnv.bunch->R, hostEnv.bunch->Q, hostOutField);
+    gpuFFT.transform(devEnv.bunch->R, devEnv.bunch->Q, devOutField);
+    Kokkos::fence();
+
+    // 5. Compare the final FFT outputs
+    auto h_expected = hostOutField.getHostMirror();
+    Kokkos::deep_copy(h_expected, hostOutField.getView());
+
+    auto h_actual = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), devOutField.getView());
+
+    auto lDom  = hostOutField.getLayout().getLocalNDIndex();
+    int nghost = hostOutField.getNghost();
+    int extX   = lDom[0].length() + 2 * nghost;
+    int extY   = lDom[1].length() + 2 * nghost;
+    int extZ   = lDom[2].length() + 2 * nghost;
+
+    double maxDiff = 0.0;
+    int errCount   = 0;
+
+    for (int i = 0; i < extX; ++i) {
+        for (int j = 0; j < extY; ++j) {
+            for (int k = 0; k < extZ; ++k) {
+                auto v_exp = h_expected(i, j, k);
+                auto v_act = h_actual(i, j, k);
+
+                double diffR = std::abs(v_exp.real() - v_act.real());
+                double diffI = std::abs(v_exp.imag() - v_act.imag());
+                maxDiff      = std::max({maxDiff, diffR, diffI});
+
+                // Looser tolerance here because cuFFT and FFTW accumulate differently
+                if (diffR > 1e-8 || diffI > 1e-8) {
+                    errCount++;
+                    if (errCount <= 5 && ippl::Comm->rank() == 0) {
+                        std::cout << "[Phase2] Divergence at (" << i << "," << j << "," << k
+                                  << ") CPU: " << v_exp << " GPU: " << v_act
+                                  << " Diff: " << std::max(diffR, diffI) << "\n";
+                    }
+                }
+            }
+        }
+    }
+
+    if (ippl::Comm->rank() == 0) {
+        std::cout << "[Phase2] Max absolute difference post-FFT: " << maxDiff << "\n";
+    }
+    EXPECT_EQ(errCount, 0) << "Full pipeline failed. cuFFT or Scaling is diverging from CPU.";
 }
 
 //=============================================================================
