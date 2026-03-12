@@ -168,16 +168,21 @@ namespace ippl {
                     cub::DeviceRadixSort::SortPairs(
                         d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
                         permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles), 0,
-                        sizeof(key_type) * 8, stream);  // <-- Pass stream here
+                        sizeof(key_type) * 8, stream);
 
                     bufs.ensureTempStorage(temp_bytes);
                     d_temp = bufs.tempStorage().data();
 
                     // Sort into buffered output views
-                    cub::DeviceRadixSort::SortPairs(
+                    auto err = cub::DeviceRadixSort::SortPairs(
                         d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
                         permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles), 0,
-                        sizeof(key_type) * 8, stream);  // <-- Pass stream here
+                        sizeof(key_type) * 8, stream);
+
+                    if (err != cudaSuccess) {
+                        printf("[rank %d] CUB SortPairs failed: %s\n", myRank, cudaGetErrorString(err));
+                        Kokkos::abort("CUB Radix Sort failed.");
+                    }
 
                     // Copy sorted results back into the working views
                     Kokkos::deep_copy(keys_sub, keys_out_sub);
