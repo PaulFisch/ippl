@@ -435,26 +435,27 @@ namespace ippl::Interpolation::detail {
                 const CoordinateTransform<RealType, 3> transform{args.origin, args.invdx,
                                                                  args.n_grid};
 
+                auto args_tmp = args;
                 Kokkos::parallel_reduce(
                     "GridParallelScatter3D::Precheck",
                     Kokkos::RangePolicy<execution_space>(0, n_particles),
                     KOKKOS_LAMBDA(const size_t i, size_t& bad) {
                         // Must match whatever convention binning/scatter use.
-                        const RealType gp0 = transform.template toGridCoordinate<0>(args.x(i)[0]);
-                        const RealType gp1 = transform.template toGridCoordinate<1>(args.x(i)[1]);
-                        const RealType gp2 = transform.template toGridCoordinate<2>(args.x(i)[2]);
+                        const RealType gp0 = transform.template toGridCoordinate<0>(args_tmp.x(i)[0]);
+                        const RealType gp1 = transform.template toGridCoordinate<1>(args_tmp.x(i)[1]);
+                        const RealType gp2 = transform.template toGridCoordinate<2>(args_tmp.x(i)[2]);
 
                         const int c0 = transform.template getStencilCenter<W>(gp0 - RealType(0.5));
                         const int c1 = transform.template getStencilCenter<W>(gp1 - RealType(0.5));
                         const int c2 = transform.template getStencilCenter<W>(gp2 - RealType(0.5));
 
-                        const int lc0 = c0 - args.local_offset[0];
-                        const int lc1 = c1 - args.local_offset[1];
-                        const int lc2 = c2 - args.local_offset[2];
+                        const int lc0 = c0 - args_tmp.local_offset[0];
+                        const int lc1 = c1 - args_tmp.local_offset[1];
+                        const int lc2 = c2 - args_tmp.local_offset[2];
 
-                        if (lc0 < 0 || lc0 > args.n_grid_local[0] || lc1 < 0
-                            || lc1 > args.n_grid_local[1] || lc2 < 0
-                            || lc2 > args.n_grid_local[2]) {
+                        if (lc0 < 0 || lc0 > args_tmp.n_grid_local[0] || lc1 < 0
+                            || lc1 > args_tmp.n_grid_local[1] || lc2 < 0
+                            || lc2 > args_tmp.n_grid_local[2]) {
                             ++bad;
                         }
                     },
