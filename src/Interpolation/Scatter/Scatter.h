@@ -363,7 +363,7 @@ namespace ippl {
                     binning = performBinning<Types>(positions, field, tile_size);
                 }
 
-                {
+                if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     auto perm_h =
                         Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), binning.permute);
                     auto off_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
