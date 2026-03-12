@@ -363,6 +363,59 @@ namespace ippl {
                     binning = performBinning<Types>(positions, field, tile_size);
                 }
 
+                {
+                    auto perm_h =
+                        Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), binning.permute);
+                    auto off_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
+                                                                     binning.bin_offsets);
+                    auto pos_h = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
+                                                                     positions.getView());
+
+                    std::vector<int> assigned_bin(n_particles, -1);
+                    const size_t total_tiles_dbg = off_h.extent(0) - 1;
+
+                    for (size_t b = 0; b < total_tiles_dbg; ++b) {
+                        for (size_t i = off_h(b); i < off_h(b + 1); ++i) {
+                            assigned_bin[perm_h(i)] = static_cast<int>(b);
+                        }
+                    }
+
+                    Vector<int, Dim> ngrid_global, ngrid_local, local_offset_dbg;
+                    const auto& lDom = field.getLayout().getLocalNDIndex();
+                    const auto& gDom = field.getLayout().getDomain();
+                    for (unsigned d = 0; d < Dim; ++d) {
+                        ngrid_global[d]     = gDom[d].length();
+                        ngrid_local[d]      = lDom[d].length();
+                        local_offset_dbg[d] = lDom[d].first();
+                    }
+
+                    Interpolation::CoordinateTransform<RealType, Dim> transform(
+                        field.get_mesh().getOrigin(), 1.0 / field.get_mesh().getMeshSpacing(),
+                        ngrid_global);
+
+                    for (size_t p = 0; p < std::min<size_t>(n_particles, 8); ++p) {
+                        int expected_bin = 0;
+                        int stride       = 1;
+                        for (int d = Dim - 1; d >= 0; --d) {
+                            const RealType gp = transform.toGridCoordinate(pos_h(p)[d], d);
+                            const int center  = transform.getStencilCenter(gp - RealType(0.5), W);
+                            const int local_c = center - local_offset_dbg[d];
+                            const int tile_d =
+                                Kokkos::clamp(local_c / tile_size[d], 0, binning.num_tiles[d] - 1);
+                            expected_bin += tile_d * stride;
+                            stride *= binning.num_tiles[d];
+                        }
+
+                        if (assigned_bin[p] != expected_bin) {
+                            int rank = 0;
+                            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                            printf("[rank %d] particle %zu bin mismatch: assigned=%d expected=%d\n",
+                                   rank, p, assigned_bin[p], expected_bin);
+                            fflush(stdout);
+                        }
+                    }
+                }
+
                 // ── Step 3: Run functor ────────────────────────────────────────
                 auto args = Impl<W, Types, Policy>::Arguments::create(
                     field, positions, values, kernel_m, tuned_config, binning);
@@ -371,20 +424,20 @@ namespace ippl {
                 field = 0.0;
                 // DEBUG: dump key geometry per rank — remove after diagnosis
 #ifndef NDEBUG
-{
-    int rank = 0;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    const auto& ldom = field.getLayout().getLocalNDIndex();
-    for (unsigned d = 0; d < Dim; ++d) {
-        const int expected = ldom[d].first();
-        const int actual   = functor.args.local_offset[d];
-        if (expected != actual) {
-            printf("[rank %d] BUG: local_offset[%u]=%d but ldom.first()=%d\n",
-                   rank, d, actual, expected);
-            fflush(stdout);
-        }
-    }
-}
+                {
+                    int rank = 0;
+                    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+                    const auto& ldom = field.getLayout().getLocalNDIndex();
+                    for (unsigned d = 0; d < Dim; ++d) {
+                        const int expected = ldom[d].first();
+                        const int actual   = functor.args.local_offset[d];
+                        if (expected != actual) {
+                            printf("[rank %d] BUG: local_offset[%u]=%d but ldom.first()=%d\n", rank,
+                                   d, actual, expected);
+                            fflush(stdout);
+                        }
+                    }
+                }
 #endif
 
                 functor.run(n_particles);
@@ -434,6 +487,7 @@ namespace ippl {
             using memory_space                     = typename Types::memory_space;
             auto [permute, bin_offsets, num_tiles] = Interpolation::detail::bin_particles(
                 positions, field.getLayout(), field.get_mesh(), tile_size, kernel_m.width());
+
             return Interpolation::detail::BinningResult<Dim, memory_space>{permute, bin_offsets,
                                                                            num_tiles};
         }
