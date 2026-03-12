@@ -23,14 +23,14 @@ class NUFFT1Test;
 template <typename T, typename ExecSpace, unsigned Dim>
 class NUFFT1Test<Parameters<T, ExecSpace, Rank<Dim>>> : public ::testing::Test {
 public:
-    using value_type = T;
-    using exec_space = ExecSpace;
+    using value_type              = T;
+    using exec_space              = ExecSpace;
     constexpr static unsigned dim = Dim;
 
     using mesh_type       = ippl::UniformCartesian<T, Dim>;
     using centering_type  = typename mesh_type::DefaultCentering;
-    using field_type      = typename ippl::Field<Kokkos::complex<T>, Dim, mesh_type,
-                                             centering_type, ExecSpace>::uniform_type;
+    using field_type      = typename ippl::Field<Kokkos::complex<T>, Dim, mesh_type, centering_type,
+                                                 ExecSpace>::uniform_type;
     using real_field_type = ippl::Field<T, Dim, mesh_type, centering_type, ExecSpace>;
     using layout_type     = ippl::FieldLayout<Dim>;
 
@@ -141,7 +141,7 @@ public:
                                           const ippl::Vector<int, Dim>& kVec) {
         using namespace ippl::test;
 
-        auto globalIdx = IndexUtils<Dim>::centeredToCornerDC(kVec, nModes);
+        auto globalIdx   = IndexUtils<Dim>::centeredToCornerDC(kVec, nModes);
         const auto& lDom = layout->getLocalNDIndex();
 
         Kokkos::complex<T> result(0, 0);
@@ -198,14 +198,14 @@ public:
 
             ippl::Vector<T, Dim> hxUp, originUp;
             for (unsigned d = 0; d < Dim; ++d) {
-                domains[d] = ippl::Index(nGrid[d]);
-                hxUp[d] = (maxU[d] - minU[d]) / nGrid[d];
+                domains[d]  = ippl::Index(nGrid[d]);
+                hxUp[d]     = (maxU[d] - minU[d]) / nGrid[d];
                 originUp[d] = 0;
             }
 
             auto ownedUp = std::make_from_tuple<ippl::NDIndex<Dim>>(domains);
-            layoutUp = std::make_shared<layout_type>(MPI_COMM_WORLD, ownedUp, isParallel);
-            meshUp = std::make_shared<mesh_type>(ownedUp, hxUp, originUp);
+            layoutUp     = std::make_shared<layout_type>(MPI_COMM_WORLD, ownedUp, isParallel);
+            meshUp       = std::make_shared<mesh_type>(ownedUp, hxUp, originUp);
 
             field.initialize(*meshUp, *layoutUp, nghost);
         } else {
@@ -218,9 +218,9 @@ public:
         fft->transform(bunch->R, bunch->Q, field);
 
         // Extract result at test mode
-        auto globalIdx = useUpsampling
-            ? ippl::test::IndexUtils<Dim>::centeredToCornerDC(testMode, nModes, true)
-            : ippl::test::IndexUtils<Dim>::centeredToCornerDC(testMode, nModes);
+        auto globalIdx =
+            useUpsampling ? ippl::test::IndexUtils<Dim>::centeredToCornerDC(testMode, nModes, true)
+                          : ippl::test::IndexUtils<Dim>::centeredToCornerDC(testMode, nModes);
 
         const auto& lDom = field.getLayout().getLocalNDIndex();
         Kokkos::complex<T> nufftResult(0, 0);
@@ -271,7 +271,7 @@ public:
 };
 
 using PrecisionTypes = TestParams::Precisions;
-template<typename T>
+template <typename T>
 using DefaultSpaceParam = Parameters<T, Kokkos::DefaultExecutionSpace, Rank<3>>;
 using Tests = ::testing::Types<DefaultSpaceParam<double> /*, DefaultSpaceParam<float>*/>;
 TYPED_TEST_SUITE(NUFFT1Test, Tests);
@@ -288,7 +288,8 @@ TYPED_TEST(NUFFT1Test, BasicCorrectness_SmallGrid_NoUpsampling) {
     this->setupParticles(512);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false);
+    auto params =
+        ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false);
 
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = 3;
@@ -306,7 +307,8 @@ TYPED_TEST(NUFFT1Test, BasicCorrectness_SmallGrid_WithUpsampling) {
     this->setupParticles(512);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, true);
+    auto params =
+        ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, true);
 
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = 3;
@@ -324,7 +326,8 @@ TYPED_TEST(NUFFT1Test, BasicCorrectness_MediumGrid_NoUpsampling) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-4, false);
+    auto params =
+        ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-4, false);
 
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = (int)(0.37 * gridSize[0]);
@@ -342,7 +345,8 @@ TYPED_TEST(NUFFT1Test, BasicCorrectness_MediumGrid_WithUpsampling) {
     this->setupParticles(64);  // Smaller for upsampled test
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, true);
+    auto params =
+        ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, true);
 
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = (int)(0.37 * gridSize[0]);
@@ -360,8 +364,9 @@ TYPED_TEST(NUFFT1Test, SpreadMethod_Atomictile_x) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-4, false, "atomic");
-
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-4, false, "atomic");
+    params.update("sort", false);
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = 3;
     testMode[1] = 2;
@@ -378,7 +383,8 @@ TYPED_TEST(NUFFT1Test, SpreadMethod_Tiled) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-4, false, "tiled");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-4, false, "tiled");
 
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = 3;
@@ -396,7 +402,8 @@ TYPED_TEST(NUFFT1Test, SpreadMethod_OutputFocused) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-4, false, "output_focused");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-4, false, "output_focused");
 
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = 3;
@@ -414,7 +421,8 @@ TYPED_TEST(NUFFT1Test, Tolerance_1e4) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-4, false);
+    auto params =
+        ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-4, false);
 
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = 3;
@@ -432,7 +440,8 @@ TYPED_TEST(NUFFT1Test, Tolerance_1e7) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false);
+    auto params =
+        ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false);
 
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = 3;
@@ -450,7 +459,8 @@ TYPED_TEST(NUFFT1Test, Tolerance_1e10) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-10, false);
+    auto params =
+        ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-10, false);
 
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = 3;
@@ -469,7 +479,8 @@ TYPED_TEST(NUFFT1Test, FINUFFT_NoUpsampling) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createFinufftParams<typename TestFixture::value_type>(1e-7, false);
+    auto params =
+        ippl::test::NUFFTParams::createFinufftParams<typename TestFixture::value_type>(1e-7, false);
 
     ippl::Vector<int, TestFixture::dim> testMode;
     testMode[0] = 3;
@@ -488,7 +499,8 @@ TYPED_TEST(NUFFT1Test, FINUFFT_NoUpsampling) {
 //     this->setupParticles(8);
 //     this->generateConstantParticles(0.5, 0.5);  // Constant for predictability
 //
-//     auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-4, false);
+//     auto params = ippl::test::NUFFTParams::createNativeParams<typename
+//     TestFixture::value_type>(1e-4, false);
 //
 //     ippl::Vector<int, TestFixture::dim> testMode;
 //     testMode[0] = 3;
@@ -508,14 +520,14 @@ class NUFFT2Test;
 template <typename T, typename ExecSpace, unsigned Dim>
 class NUFFT2Test<Parameters<T, ExecSpace, Rank<Dim>>> : public ::testing::Test {
 public:
-    using value_type = T;
-    using exec_space = ExecSpace;
+    using value_type              = T;
+    using exec_space              = ExecSpace;
     constexpr static unsigned dim = Dim;
 
     using mesh_type       = ippl::UniformCartesian<T, Dim>;
     using centering_type  = typename mesh_type::DefaultCentering;
-    using field_type      = typename ippl::Field<Kokkos::complex<T>, Dim, mesh_type,
-                                             centering_type, ExecSpace>::uniform_type;
+    using field_type      = typename ippl::Field<Kokkos::complex<T>, Dim, mesh_type, centering_type,
+                                                 ExecSpace>::uniform_type;
     using real_field_type = ippl::Field<T, Dim, mesh_type, centering_type, ExecSpace>;
     using layout_type     = ippl::FieldLayout<Dim>;
 
@@ -570,7 +582,7 @@ public:
             RHost(0)[0] = 0.0;
             RHost(0)[1] = 0.0;
             RHost(0)[2] = 0.0;
-            QHost(0) = 0.0;
+            QHost(0)    = 0.0;
 
             Kokkos::deep_copy(RView, RHost);
             Kokkos::deep_copy(QView, QHost);
@@ -607,20 +619,20 @@ public:
         generator_pool randPool(seed);
 
         auto fieldView = field.getView();
-        int nghost = field.getNghost();
+        int nghost     = field.getNghost();
 
         // Get local domain dimensions
         const auto& lDom = field.getLayout().getLocalNDIndex();
-        int localNi = lDom[0].length();
-        int localNj = lDom[1].length();
-        int localNk = lDom[2].length();
+        int localNi      = lDom[0].length();
+        int localNj      = lDom[1].length();
+        int localNk      = lDom[2].length();
 
         using mdrange_type = Kokkos::MDRangePolicy<Kokkos::Rank<3>, exec_space>;
         Kokkos::parallel_for(
             "fill_random_field", mdrange_type({0, 0, 0}, {localNi, localNj, localNk}),
             KOKKOS_LAMBDA(const int i, const int j, const int k) {
                 typename generator_pool::generator_type randGen = randPool.get_state();
-                auto& v = fieldView(i + nghost, j + nghost, k + nghost);
+                auto& v  = fieldView(i + nghost, j + nghost, k + nghost);
                 v.real() = randGen.drand(0.0, 1.0);
                 v.imag() = randGen.drand(0.0, 1.0);
                 randPool.free_state(randGen);
@@ -631,7 +643,7 @@ public:
 
     void generateConstantField(field_type& field, T realVal = 1.0, T imagVal = 0.0) {
         auto field_host = field.getHostMirror();
-        int nghost = field.getNghost();
+        int nghost      = field.getNghost();
 
         nestedViewLoop(field_host, nghost, [&]<typename... Idx>(const Idx... args) {
             field_host(args...) = Kokkos::complex<T>(realVal, imagVal);
@@ -646,8 +658,8 @@ public:
         size_t nloc = bunch->getLocalNum();
 
         if (nloc > 0) {
-            auto RHost = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-                                                              bunch->R.getView());
+            auto RHost =
+                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bunch->R.getView());
             testPos[0] = RHost(0)[0];
             testPos[1] = RHost(0)[1];
             testPos[2] = RHost(0)[2];
@@ -669,8 +681,8 @@ public:
         }
 
         T posBuf[3] = {testPos[0], testPos[1], testPos[2]};
-        MPI_Bcast(posBuf, 3, std::is_same_v<T, float> ? MPI_FLOAT : MPI_DOUBLE,
-                  rankWithParticles, ippl::Comm->getCommunicator());
+        MPI_Bcast(posBuf, 3, std::is_same_v<T, float> ? MPI_FLOAT : MPI_DOUBLE, rankWithParticles,
+                  ippl::Comm->getCommunicator());
         testPos[0] = posBuf[0];
         testPos[1] = posBuf[1];
         testPos[2] = posBuf[2];
@@ -696,9 +708,9 @@ public:
         }
 
         if (ippl::Comm->rank() == rankWithParticles && nloc > 0) {
-            auto QResult = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(),
-                                                                bunch->Q.getView());
-            nufftVal     = QResult(0);
+            auto QResult =
+                Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), bunch->Q.getView());
+            nufftVal = QResult(0);
         }
 
         MPI_Bcast(&nufftVal, 1, std::is_same_v<T, float> ? MPI_FLOAT : MPI_DOUBLE,
@@ -734,14 +746,14 @@ public:
 
             ippl::Vector<T, Dim> hxUp, originUp;
             for (unsigned d = 0; d < Dim; ++d) {
-                domains[d] = ippl::Index(nGrid[d]);
-                hxUp[d] = (maxU[d] - minU[d]) / nGrid[d];
+                domains[d]  = ippl::Index(nGrid[d]);
+                hxUp[d]     = (maxU[d] - minU[d]) / nGrid[d];
                 originUp[d] = 0;
             }
 
             auto ownedUp = std::make_from_tuple<ippl::NDIndex<Dim>>(domains);
-            layoutUp = std::make_shared<layout_type>(MPI_COMM_WORLD, ownedUp, isParallel);
-            meshUp = std::make_shared<mesh_type>(ownedUp, hxUp, originUp);
+            layoutUp     = std::make_shared<layout_type>(MPI_COMM_WORLD, ownedUp, isParallel);
+            meshUp       = std::make_shared<mesh_type>(ownedUp, hxUp, originUp);
 
             field.initialize(*meshUp, *layoutUp, nghost);
         } else {
@@ -762,11 +774,11 @@ public:
         if (useUpsampling) {
             for (unsigned d = 0; d < Dim; ++d) {
                 nModesField[d] = 2 * nModes[d];
-                hxField[d] = (maxU[d] - minU[d]) / nModesField[d];
+                hxField[d]     = (maxU[d] - minU[d]) / nModesField[d];
             }
         } else {
             nModesField = nModes;
-            hxField = mesh->getMeshSpacing();
+            hxField     = mesh->getMeshSpacing();
         }
 
         auto dftResult = ippl::test::DFTReference<T, Dim>::computeType2Value(
@@ -776,9 +788,8 @@ public:
 
         // Now execute the transform (after computing DFT reference)
         auto QView = bunch->Q.getView();
-        Kokkos::parallel_for("zero_Q", bunch->getLocalNum(), KOKKOS_LAMBDA(const size_t i) {
-            QView(i) = 0.0;
-        });
+        Kokkos::parallel_for(
+            "zero_Q", bunch->getLocalNum(), KOKKOS_LAMBDA(const size_t i) { QView(i) = 0.0; });
         Kokkos::fence();
 
         fft->transform(bunch->R, bunch->Q, field);
@@ -818,8 +829,8 @@ TYPED_TEST(NUFFT2Test, BasicCorrectness_SmallGrid_NoUpsampling) {
     this->setupParticles(512);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false, "tiled",
-                                                               "atomic_sort");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-7, false, "tiled", "atomic_sort");
     this->runType2Test(params, 1e-7);
 }
 
@@ -831,8 +842,8 @@ TYPED_TEST(NUFFT2Test, BasicCorrectness_SmallGrid_WithUpsampling) {
     this->setupParticles(512);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, true, "tiled",
-                                                               "atomic_sort");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-7, true, "tiled", "atomic_sort");
     this->runType2Test(params, 1e-7);
 }
 
@@ -844,8 +855,8 @@ TYPED_TEST(NUFFT2Test, BasicCorrectness_MediumGrid_NoUpsampling) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false, "tiled",
-                                                               "atomic_sort");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-7, false, "tiled", "atomic_sort");
     this->runType2Test(params, 1e-7);
 }
 
@@ -857,8 +868,8 @@ TYPED_TEST(NUFFT2Test, BasicCorrectness_MediumGrid_WithUpsampling) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, true, "tiled",
-                                                               "atomic_sort");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-7, true, "tiled", "atomic_sort");
     this->runType2Test(params, 1e-7);
 }
 
@@ -870,8 +881,8 @@ TYPED_TEST(NUFFT2Test, BasicCorrectness_MediumGrid_WithUpsampling) {
 //     this->setupParticles(4096);
 //     this->generateRandomParticles();
 //
-//     auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false, "tiled", "native");
-//     this->runType2Test(params, 1e-7);
+//     auto params = ippl::test::NUFFTParams::createNativeParams<typename
+//     TestFixture::value_type>(1e-7, false, "tiled", "native"); this->runType2Test(params, 1e-7);
 // }
 
 TYPED_TEST(NUFFT2Test, GatherMethod_Atomic) {
@@ -882,7 +893,8 @@ TYPED_TEST(NUFFT2Test, GatherMethod_Atomic) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false, "tiled", "atomic");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-7, false, "tiled", "atomic");
     this->runType2Test(params, 1e-7);
 }
 
@@ -894,8 +906,8 @@ TYPED_TEST(NUFFT2Test, GatherMethod_AtomicSort) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false, "tiled",
-                                                               "atomic_sort");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-7, false, "tiled", "atomic_sort");
     this->runType2Test(params, 1e-7);
 }
 
@@ -907,7 +919,8 @@ TYPED_TEST(NUFFT2Test, GatherMethod_Tiled) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false, "tiled", "tiled");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-7, false, "tiled", "tiled");
     this->runType2Test(params, 1e-7);
 }
 
@@ -919,8 +932,8 @@ TYPED_TEST(NUFFT2Test, Tolerance_1e4) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-4, false, "tiled",
-                                                               "atomic_sort");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-4, false, "tiled", "atomic_sort");
     this->runType2Test(params, 1e-4);
 }
 
@@ -932,8 +945,8 @@ TYPED_TEST(NUFFT2Test, Tolerance_1e7) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-7, false, "tiled",
-                                                               "atomic_sort");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-7, false, "tiled", "atomic_sort");
     this->runType2Test(params, 1e-7);
 }
 
@@ -945,8 +958,8 @@ TYPED_TEST(NUFFT2Test, Tolerance_1e10) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(1e-10, false, "tiled",
-                                                               "atomic_sort");
+    auto params = ippl::test::NUFFTParams::createNativeParams<typename TestFixture::value_type>(
+        1e-10, false, "tiled", "atomic_sort");
     this->runType2Test(params, 1e-10);
 }
 
@@ -959,7 +972,8 @@ TYPED_TEST(NUFFT2Test, FINUFFT_NoUpsampling) {
     this->setupParticles(4096);
     this->generateRandomParticles();
 
-    auto params = ippl::test::NUFFTParams::createFinufftParams<typename TestFixture::value_type>(1e-7, false);
+    auto params =
+        ippl::test::NUFFTParams::createFinufftParams<typename TestFixture::value_type>(1e-7, false);
     this->runType2Test(params, 1e-7);
 }
 
