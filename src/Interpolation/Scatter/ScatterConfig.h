@@ -34,7 +34,7 @@ namespace ippl {
             std::array<int, Dim> tile_size;
 
             // Team size for team-based methods
-            int team_size = 16;
+            int team_size = 1;
 
             // Factor for Gridparallel
             int oversubscription_factor = 4;
