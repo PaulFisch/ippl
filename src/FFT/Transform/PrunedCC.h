@@ -816,7 +816,7 @@ namespace ippl {
 
                 Kokkos::parallel_for(
                     "strided_copy_forward",
-                    Kokkos::MDRangePolicy<DeviceExec, Kokkos::Rank<3>>(
+                    Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>(
                         exec, {0, 0, 0},
                         {long(owned[0].length()), long(owned[1].length()),
                          long(owned[2].length())}),
@@ -949,7 +949,7 @@ namespace ippl {
                 // Apply twiddle factors to input and copy to temp
                 Kokkos::parallel_for(
                     "twiddle_multiply_backward",
-                    Kokkos::MDRangePolicy<DeviceExec, Kokkos::Rank<3>>(
+                    Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>(
                         exec, {0, 0, 0},
                         {long(owned[0].length()), long(owned[1].length()),
                          long(owned[2].length())}),

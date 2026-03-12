@@ -77,6 +77,9 @@ namespace ippl {
                     default:
                         throw IpplException("FFT", "Unknown communication type");
                 }
+            } else {
+                opts.use_gpu_aware = true;
+                opts.algorithm     = heffte::reshape_algorithm::p2p_plined;
             }
             return opts;
         }
