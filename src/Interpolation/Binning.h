@@ -151,7 +151,6 @@ namespace ippl {
 
 #if defined(KOKKOS_ENABLE_CUDA)
                     // --- reuse buffered output arrays & temp storage --------
-                    // (buffers were sized by bin_particles before calling here)
                     auto& bufs = ippl::detail::getDefaultBinSortBuffers<
                         typename KeyViewType::memory_space>();
                     bufs.ensureCapacity(n_particles, n_bins + 1);
@@ -160,12 +159,16 @@ namespace ippl {
                     auto perm_out_sub =
                         Kokkos::subview(bufs.permOut(), std::make_pair(size_t(0), n_particles));
 
+                    // Grab the Kokkos CUDA stream
+                    cudaStream_t stream = ExecSpace().cuda_stream();
+
                     // Query required temp-storage size
                     void* d_temp      = nullptr;
                     size_t temp_bytes = 0;
                     cub::DeviceRadixSort::SortPairs(
                         d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
-                        permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles));
+                        permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles), 0,
+                        sizeof(key_type) * 8, stream);  // <-- Pass stream here
 
                     bufs.ensureTempStorage(temp_bytes);
                     d_temp = bufs.tempStorage().data();
@@ -173,7 +176,8 @@ namespace ippl {
                     // Sort into buffered output views
                     cub::DeviceRadixSort::SortPairs(
                         d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
-                        permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles));
+                        permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles), 0,
+                        sizeof(key_type) * 8, stream);  // <-- Pass stream here
 
                     // Copy sorted results back into the working views
                     Kokkos::deep_copy(keys_sub, keys_out_sub);
@@ -280,14 +284,14 @@ namespace ippl {
                 const auto invdx         = 1.0 / mesh.getMeshSpacing();
                 const size_t n_particles = particles.getParticleCount();
 
-
                 Kokkos::View<size_type*, memory_space> permute("bin_permute", n_particles);
                 Kokkos::View<size_type*, memory_space> bin_offsets("bin_offsets", total_tiles + 1);
                 Kokkos::View<size_type*, memory_space> bin_keys("bin_keys", n_particles);
 
                 bin_sort<Dim, ParticleT, std::decay_t<decltype(particle_view)>, ExecSpace>(
                     particle_view, ngrid_global, ngrid_local, local_offset, tile_size, kernel_width,
-                    mesh.getOrigin(), invdx, permute, bin_offsets, bin_keys, n_particles, num_tiles);
+                    mesh.getOrigin(), invdx, permute, bin_offsets, bin_keys, n_particles,
+                    num_tiles);
 
                 return std::make_tuple(permute, bin_offsets, num_tiles);
 
@@ -300,9 +304,9 @@ namespace ippl {
                 // auto& bin_keys    = bufs.binKeys();
                 //
                 // bin_sort<Dim, ParticleT, std::decay_t<decltype(particle_view)>, ExecSpace>(
-                //     particle_view, ngrid_global, ngrid_local, local_offset, tile_size, kernel_width,
-                //     mesh.getOrigin(), invdx, permute, bin_offsets, bin_keys, n_particles,
-                //     num_tiles);
+                //     particle_view, ngrid_global, ngrid_local, local_offset, tile_size,
+                //     kernel_width, mesh.getOrigin(), invdx, permute, bin_offsets, bin_keys,
+                //     n_particles, num_tiles);
                 //
                 // return std::make_tuple(permute, bin_offsets, num_tiles);
             }
