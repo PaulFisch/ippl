@@ -137,13 +137,16 @@ namespace ippl {
         auto owned           = output.getOwned();
         const int numBatches = (NumSubFFTs + numConcurrent_ - 1) / numConcurrent_;
 
-
-        constexpr bool is_cpu =
+        // Safely evaluate is_cpu even if both Serial and OpenMP are enabled
+        constexpr bool is_cpu = false
 #ifdef KOKKOS_ENABLE_SERIAL
-            std::is_same_v<ExecSpace, Kokkos::Serial>;
-#elif defined(KOKKOS_ENABLE_OPENMP)
-                std::is_same_v<ExecSpace, Kokkos::OpenMP>;
+                                || std::is_same_v<ExecSpace, Kokkos::Serial>
 #endif
+#ifdef KOKKOS_ENABLE_OPENMP
+                                || std::is_same_v<ExecSpace, Kokkos::OpenMP>
+#endif
+            ;
+
         for (int batch = 0; batch < numBatches; ++batch) {
             const int start = batch * numConcurrent_;
             const int end   = std::min(start + numConcurrent_, NumSubFFTs);
@@ -151,7 +154,7 @@ namespace ippl {
 
             IpplTimings::startTimer(subFFTTimer);
 
-#pragma omp parallel for
+#pragma omp parallel for if (!is_cpu)
             for (int local = 0; local < count; ++local) {
                 const int k = start + local;
                 auto offs   = offsets[k];
@@ -287,12 +290,14 @@ namespace ippl {
         auto owned           = input.getOwned();
         const int numBatches = (NumSubFFTs + numConcurrent_ - 1) / numConcurrent_;
 
-        constexpr bool is_cpu =
+        constexpr bool is_cpu = false
 #ifdef KOKKOS_ENABLE_SERIAL
-            std::is_same_v<ExecSpace, Kokkos::Serial>;
-#elif defined(KOKKOS_ENABLE_OPENMP)
-            std::is_same_v<ExecSpace, Kokkos::OpenMP>;
+                                || std::is_same_v<ExecSpace, Kokkos::Serial>
 #endif
+#ifdef KOKKOS_ENABLE_OPENMP
+                                || std::is_same_v<ExecSpace, Kokkos::OpenMP>
+#endif
+            ;
 
         for (int batch = 0; batch < numBatches; ++batch) {
             const int start = batch * numConcurrent_;
@@ -301,7 +306,7 @@ namespace ippl {
 
             IpplTimings::startTimer(subIFFTTimer);
 
-#pragma omp parallel for
+#pragma omp parallel for if (!is_cpu)
             for (int local = 0; local < count; ++local) {
                 const int k = start + local;
                 auto offs   = offsets[k];
