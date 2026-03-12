@@ -160,7 +160,6 @@ namespace ippl {
                         Kokkos::subview(bufs.permOut(), std::make_pair(size_t(0), n_particles));
 
                     // Grab the Kokkos CUDA stream
-                    cudaStream_t stream = ExecSpace().cuda_stream();
 
                     // Query required temp-storage size
                     void* d_temp      = nullptr;
@@ -168,7 +167,7 @@ namespace ippl {
                     cub::DeviceRadixSort::SortPairs(
                         d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
                         permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles), 0,
-                        sizeof(key_type) * 8, stream);
+                        sizeof(key_type) * 8, 0);
 
                     bufs.ensureTempStorage(temp_bytes);
                     d_temp = bufs.tempStorage().data();
@@ -177,7 +176,7 @@ namespace ippl {
                     auto err = cub::DeviceRadixSort::SortPairs(
                         d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
                         permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles), 0,
-                        sizeof(key_type) * 8, stream);
+                        sizeof(key_type) * 8, 0);
 
                     if (err != cudaSuccess) {
                         printf("CUB SortPairs failed: %s\n", cudaGetErrorString(err));
@@ -185,6 +184,7 @@ namespace ippl {
                     }
 
                     // Copy sorted results back into the working views
+                    Kokkos::fence();
                     Kokkos::deep_copy(keys_sub, keys_out_sub);
                     Kokkos::deep_copy(permute_sub, perm_out_sub);
                     Kokkos::fence();
