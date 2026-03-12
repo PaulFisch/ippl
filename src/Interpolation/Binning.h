@@ -180,7 +180,7 @@ namespace ippl {
                         sizeof(key_type) * 8, stream);
 
                     if (err != cudaSuccess) {
-                        printf("[rank %d] CUB SortPairs failed: %s\n", myRank, cudaGetErrorString(err));
+                        printf("CUB SortPairs failed: %s\n", cudaGetErrorString(err));
                         Kokkos::abort("CUB Radix Sort failed.");
                     }
 
