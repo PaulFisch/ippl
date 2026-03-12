@@ -120,10 +120,9 @@ void Timing::clearTimer(TimerRef t) {
 // Reset all timers - useful for warmup
 void Timing::resetAllTimers() {
     for (unsigned int i = 0; i < TimerList.size(); ++i) {
-        TimerList[i]->clear();
+        TimerList[i]->clearAll();
     }
 }
-
 // Get measurements for a specific timer by reference
 const std::vector<double>& Timing::getMeasurements(TimerRef t) const {
     if (t >= TimerList.size())
@@ -283,6 +282,42 @@ void Timing::print() {
 
     msg << "---------------------------------------------";
     msg << endl;
+
+    // Per-occurrence statistics
+    msg << "---------------------------------------------\n";
+    msg << "     Per-occurrence statistics:\n";
+    msg << "---------------------------------------------\n";
+    for (unsigned int i = 0; i < TimerList.size(); ++i) {
+        TimerInfo* tptr = TimerList[i].get();
+        const std::vector<double>& m = tptr->measurements;
+        size_t count = m.size();
+        if (count == 0) continue;
+
+        double sum = 0.0, minVal = m[0], maxVal = m[0];
+        for (size_t j = 0; j < count; ++j) {
+            sum += m[j];
+            if (m[j] < minVal) minVal = m[j];
+            if (m[j] > maxVal) maxVal = m[j];
+        }
+        double mean = sum / count;
+
+        double varSum = 0.0;
+        for (size_t j = 0; j < count; ++j) {
+            double diff = m[j] - mean;
+            varSum += diff * diff;
+        }
+        double stddev = (count > 1) ? std::sqrt(varSum / (count - 1)) : 0.0;
+
+        size_t lengthName = std::min(tptr->name.length(), 19lu);
+        msg << tptr->name.substr(0, lengthName) << std::string().assign(20 - lengthName, '.')
+            << " n=" << std::setw(5) << count
+            << "  mean=" << std::setw(10) << mean
+            << "  std=" << std::setw(10) << stddev
+            << "  min=" << std::setw(10) << minVal
+            << "  max=" << std::setw(10) << maxVal
+            << "\n";
+    }
+    msg << "---------------------------------------------" << endl;
 }
 
 // save the timing results into a file
