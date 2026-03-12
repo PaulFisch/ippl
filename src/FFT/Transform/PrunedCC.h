@@ -703,7 +703,7 @@ namespace ippl {
         FFT(const Layout_t& layoutIn, const Layout_t& layoutOut, const PruningParams<Dim>& pruning,
             const ParameterList& params)
             : pruning_(pruning)
-            , numConcurrent_(std::clamp(params.get<int>("num_concurrent_ffts", 4), 1, NumSubFFTs)) {
+            , numConcurrent_(1 /*std::clamp(params.get<int>("num_concurrent_ffts", 4), 1, NumSubFFTs)*/) {
             static_assert(Dim == 3, "Pruned FFT currently only supports 3D");
 
             auto& prunedLayout =
