@@ -24,6 +24,7 @@ add_ippl_integration_test(TestNUFFTPerformance LABELS integration fft benchmark)
 add_ippl_integration_test(TestNUFFTParamSweep LABELS integration fft benchmark)
 add_ippl_integration_test(TestScatterGatherKernel LABELS integration fft)
 add_ippl_integration_test(ScatterDebug LABELS integration fft)
+add_ippl_test(DebugFFT)
 
 if(TARGET finufft OR TARGET cufinufft)
     target_link_libraries(TestNUFFTPerformance PRIVATE finufft cufinufft)

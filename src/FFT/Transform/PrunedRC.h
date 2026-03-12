@@ -209,13 +209,14 @@ namespace ippl {
 
         if (direction == FORWARD) {
             // 1. Strip ghosts → tempReal_
+            auto tempreal = tempReal_;
             Kokkos::parallel_for(
                 "r2c_copy_real_fwd",
                 Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>(
                     {ngf, ngf, ngf}, {int(fview.extent(0)) - ngf, int(fview.extent(1)) - ngf,
                                       int(fview.extent(2)) - ngf}),
                 KOKKOS_LAMBDA(int i, int j, int k) {
-                    tempReal_(i - ngf, j - ngf, k - ngf) = fview(i, j, k);
+                    tempreal(i - ngf, j - ngf, k - ngf) = fview(i, j, k);
                 });
             Kokkos::fence();
 
@@ -281,13 +282,14 @@ namespace ippl {
             Kokkos::fence();
 
             // 3. Copy tempReal_ back (restore ghost padding)
+            auto tempreal = tempReal_;
             Kokkos::parallel_for(
                 "r2c_copy_real_bwd",
                 Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>(
                     {ngf, ngf, ngf}, {int(fview.extent(0)) - ngf, int(fview.extent(1)) - ngf,
                                       int(fview.extent(2)) - ngf}),
                 KOKKOS_LAMBDA(int i, int j, int k) {
-                    fview(i, j, k) = tempReal_(i - ngf, j - ngf, k - ngf);
+                    fview(i, j, k) = tempreal(i - ngf, j - ngf, k - ngf);
                 });
         }
     }

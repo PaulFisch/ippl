@@ -398,7 +398,8 @@ namespace ippl {
              */
             KOKKOS_INLINE_FUNCTION explicit ESKernel(T tol = default_tol)
                 : w_(static_cast<int>(Kokkos::ceil(Kokkos::log10(T(1.0) / tol))) + 1)
-                , beta_(beta_factor * w_) {}
+                , beta_(beta_factor * w_)
+                , tol_(tol) {}
 
             /**
              * @brief Construct kernel with explicit width and beta.
@@ -426,10 +427,12 @@ namespace ippl {
 
             KOKKOS_INLINE_FUNCTION int width() const { return w_; }
             KOKKOS_INLINE_FUNCTION T beta() const { return beta_; }
+            KOKKOS_INLINE_FUNCTION T tol() const { return tol_; }
 
         private:
             int w_;
             T beta_;
+            T tol_;
         };
 
     }  // namespace NUFFT
