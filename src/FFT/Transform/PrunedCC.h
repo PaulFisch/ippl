@@ -15,6 +15,28 @@
 
 namespace ippl {
 
+    namespace detail {
+        // Wrapper to safely evaluate OpenMP at compile-time to prevent nested
+        // parallelism errors when Kokkos is using the OpenMP execution space.
+        template <bool IsCPU, typename Func>
+        inline void runConcurrentBatch(int count, Func&& func) {
+            if constexpr (IsCPU) {
+                // Serial outer loop for CPU (Kokkos will parallelize the inner loops)
+                for (int local = 0; local < count; ++local) {
+                    func(local);
+                }
+            } else {
+                // OpenMP outer loop for GPU (to overlap asynchronous stream launches)
+#if defined(_OPENMP)
+#pragma omp parallel for
+#endif
+                for (int local = 0; local < count; ++local) {
+                    func(local);
+                }
+            }
+        }
+    }  // namespace detail
+
     //=========================================================================
     // Pruned Complex-to-Complex Transform
     //=========================================================================
@@ -137,7 +159,6 @@ namespace ippl {
         auto owned           = output.getOwned();
         const int numBatches = (NumSubFFTs + numConcurrent_ - 1) / numConcurrent_;
 
-        // Safely evaluate is_cpu even if both Serial and OpenMP are enabled
         constexpr bool is_cpu = false
 #ifdef KOKKOS_ENABLE_SERIAL
                                 || std::is_same_v<ExecSpace, Kokkos::Serial>
@@ -154,8 +175,8 @@ namespace ippl {
 
             IpplTimings::startTimer(subFFTTimer);
 
-#pragma omp parallel for if (!is_cpu)
-            for (int local = 0; local < count; ++local) {
+            // Using the wrapper to evaluate thread parallelism safely
+            detail::runConcurrentBatch<is_cpu>(count, [&](int local) {
                 const int k = start + local;
                 auto offs   = offsets[k];
                 auto& temp  = temps_[local];
@@ -168,7 +189,7 @@ namespace ippl {
                 };
 
                 if constexpr (is_cpu) {
-                    // CPU execution: Dispatch cleanly to OpenMP threads without stream instances
+                    // CPU execution: Dispatch cleanly without stream instances
                     Kokkos::parallel_for(
                         "strided_copy_forward",
                         Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>(
@@ -192,7 +213,7 @@ namespace ippl {
                 } else {
                     backends_[local]->backward(temp.data(), temp.data());
                 }
-            }
+            });
 
             Kokkos::fence();
             IpplTimings::stopTimer(subFFTTimer);
@@ -306,8 +327,8 @@ namespace ippl {
 
             IpplTimings::startTimer(subIFFTTimer);
 
-#pragma omp parallel for if (!is_cpu)
-            for (int local = 0; local < count; ++local) {
+            // Using the wrapper to evaluate thread parallelism safely
+            detail::runConcurrentBatch<is_cpu>(count, [&](int local) {
                 const int k = start + local;
                 auto offs   = offsets[k];
                 auto& temp  = temps_[local];
@@ -367,7 +388,7 @@ namespace ippl {
                 } else {
                     backends_[local]->backward(temp.data(), temp.data());
                 }
-            }
+            });
 
             Kokkos::fence();
             IpplTimings::stopTimer(subIFFTTimer);
