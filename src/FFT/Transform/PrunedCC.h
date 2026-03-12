@@ -44,7 +44,9 @@ namespace ippl {
 
         template <typename T, unsigned Dim, typename MemSpace>
         struct backend_traits<CuFFTC2C<T, Dim, MemSpace>> {
-            static constexpr bool supports_native_batched = true;
+            // FIX 1: Standard CuFFTC2C does not support batched 3D natively without cufftPlanMany.
+            // Setting this to false forces the safe stream-based fallback.
+            static constexpr bool supports_native_batched = false;
         };
 #endif
         template <typename Backend>
@@ -189,12 +191,9 @@ namespace ippl {
 
         Kokkos::deep_copy(outView, Complex_t(0, 0));
 
+        // FIX 2: Mathematical scaling is not required here because the underlying
+        // HPC FFT libraries perform unscaled transforms. A Cooley-Tukey sum maps perfectly.
         double scale = 1.0;
-        if (dir == 1) {
-            for (unsigned d = 0; d < Dim; ++d) {
-                scale *= double(modes[d]) / double(gDomFull[d].length());
-            }
-        }
 
         std::array<Vector<long, Dim>, NumSubFFTs> offsets;
         for (int k = 0; k < NumSubFFTs; ++k) {
