@@ -289,31 +289,31 @@ namespace ippl {
                 const auto invdx         = 1.0 / mesh.getMeshSpacing();
                 const size_t n_particles = particles.getParticleCount();
 
-                Kokkos::View<size_type*, memory_space> permute("bin_permute", n_particles);
-                Kokkos::View<size_type*, memory_space> bin_offsets("bin_offsets", total_tiles + 1);
-                Kokkos::View<size_type*, memory_space> bin_keys("bin_keys", n_particles);
-
-                bin_sort<Dim, ParticleT, std::decay_t<decltype(particle_view)>, ExecSpace>(
-                    particle_view, ngrid_global, ngrid_local, local_offset, tile_size, kernel_width,
-                    mesh.getOrigin(), invdx, permute, bin_offsets, bin_keys, n_particles,
-                    num_tiles);
-
-                return std::make_tuple(permute, bin_offsets, num_tiles);
-
-                // auto& bufs = ippl::detail::getDefaultBinSortBuffers<memory_space>();
-                // // n_bins + 1 slots needed for bin_offsets
-                // bufs.ensureCapacity(n_particles, total_tiles + 1);
-                //
-                // auto& permute     = bufs.permute();
-                // auto& bin_offsets = bufs.binOffsets();
-                // auto& bin_keys    = bufs.binKeys();
+                // Kokkos::View<size_type*, memory_space> permute("bin_permute", n_particles);
+                // Kokkos::View<size_type*, memory_space> bin_offsets("bin_offsets", total_tiles + 1);
+                // Kokkos::View<size_type*, memory_space> bin_keys("bin_keys", n_particles);
                 //
                 // bin_sort<Dim, ParticleT, std::decay_t<decltype(particle_view)>, ExecSpace>(
-                //     particle_view, ngrid_global, ngrid_local, local_offset, tile_size,
-                //     kernel_width, mesh.getOrigin(), invdx, permute, bin_offsets, bin_keys,
-                //     n_particles, num_tiles);
+                //     particle_view, ngrid_global, ngrid_local, local_offset, tile_size, kernel_width,
+                //     mesh.getOrigin(), invdx, permute, bin_offsets, bin_keys, n_particles,
+                //     num_tiles);
                 //
                 // return std::make_tuple(permute, bin_offsets, num_tiles);
+
+                auto& bufs = ippl::detail::getDefaultBinSortBuffers<memory_space>();
+                // n_bins + 1 slots needed for bin_offsets
+                bufs.ensureCapacity(n_particles, total_tiles + 1);
+
+                auto& permute     = bufs.permute();
+                auto& bin_offsets = bufs.binOffsets();
+                auto& bin_keys    = bufs.binKeys();
+
+                bin_sort<Dim, ParticleT, std::decay_t<decltype(particle_view)>, ExecSpace>(
+                    particle_view, ngrid_global, ngrid_local, local_offset, tile_size,
+                    kernel_width, mesh.getOrigin(), invdx, permute, bin_offsets, bin_keys,
+                    n_particles, num_tiles);
+
+                return std::make_tuple(permute, bin_offsets, num_tiles);
             }
 
         }  // namespace detail

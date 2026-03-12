@@ -250,12 +250,6 @@ namespace ippl {
                 Kokkos::fence();
                 IpplTimings::stopTimer(scatterTimer);
 
-                // static IpplTimings::TimerRef accumulateHaloTimer = IpplTimings::getTimer("accumulateHaloNUFFT1");
-                // IpplTimings::startTimer(accumulateHaloTimer);
-                // // Step 1.5: Accumulate ghost cells from scatter
-                // grid_field_->accumulateHalo();
-                // IpplTimings::stopTimer(accumulateHaloTimer);
-
                 static IpplTimings::TimerRef fftTimer = IpplTimings::getTimer("FFTNUFFT1");
                 IpplTimings::startTimer(fftTimer);
                 // Step 2: Inverse FFT

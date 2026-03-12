@@ -171,9 +171,6 @@ namespace ippl::Interpolation::detail {
                 return;
             const size_t pend = Kokkos::min(bin_end, pstart + particles_per_sub);
 
-            // No pitch padding on the subgrid — matches the reference kernel layout.
-            // For typical hs0 ≈ 12–16 the raw extents are already odd or have gcd(hs0,32) ≤ 2;
-            // adding padding would cost shmem and reduce block occupancy.
             const int hs0    = args.tile_size[0] + padded_extra;
             const int hs1    = args.tile_size[1] + padded_extra;
             const int hs2    = args.tile_size[2] + padded_extra;
@@ -273,22 +270,7 @@ namespace ippl::Interpolation::detail {
                 });
                 team.team_barrier();
 
-                // for (int bi = 0; bi < batch_size; ++bi) {
-                //     const int sx             = shifts_x[bi];
-                //     const int sy             = shifts_y[bi];
-                //     const int sz             = shifts_z[bi];
-                //     const RealType* const kw = kerevals + static_cast<size_t>(bi) * ker_stride;
-                //     const RealType vr        = vals_r[bi];
-                //     const RealType vi        = needs_imag ? vals_i[bi] : RealType(0);
-                //
-                //     scatter_particle_fast<needs_imag>(team, sx, sy, sz, pitch0, pitch1, kw, vr,
-                //     vi,
-                //                                       local_r, local_i);
-                //     team.team_barrier();
-                // }
-
                 for (int bi = 0; bi < batch_size; ++bi) {
-                    const size_t p           = args.permute(batch_begin + static_cast<size_t>(bi));
                     const int sx             = shifts_x[bi];
                     const int sy             = shifts_y[bi];
                     const int sz             = shifts_z[bi];
@@ -296,60 +278,13 @@ namespace ippl::Interpolation::detail {
                     const RealType vr        = vals_r[bi];
                     const RealType vi        = needs_imag ? vals_i[bi] : RealType(0);
 
-                    const bool bad_shift = (sx < 0 || sx + W > hs0 || sy < 0 || sy + W > hs1
-                                            || sz < 0 || sz + W > hs2);
-
-                    if (bad_shift) {
-                        if (team.team_rank() == 0) {
-                            const RealType gp0 =
-                                transform.template toGridCoordinate<0>(args.x(p)[0]);
-                            const RealType gp1 =
-                                transform.template toGridCoordinate<1>(args.x(p)[1]);
-                            const RealType gp2 =
-                                transform.template toGridCoordinate<2>(args.x(p)[2]);
-
-                            const int idx0 =
-                                transform.template getStencilBase<W>(gp0 - RealType(0.5));
-                            const int idx1 =
-                                transform.template getStencilBase<W>(gp1 - RealType(0.5));
-                            const int idx2 =
-                                transform.template getStencilBase<W>(gp2 - RealType(0.5));
-
-                            const int c0 = idx0 + (W - 1) / 2;
-                            const int c1 = idx1 + (W - 1) / 2;
-                            const int c2 = idx2 + (W - 1) / 2;
-
-                            const int lc0 = c0 - args.local_offset[0];
-                            const int lc1 = c1 - args.local_offset[1];
-                            const int lc2 = c2 - args.local_offset[2];
-
-                            std::printf(
-                                "BAD scatter: tile=%llu p=%llu "
-                                "pos=(%.17g, %.17g, %.17g) "
-                                "gp=(%.17g, %.17g, %.17g) "
-                                "idx=(%d,%d,%d) center=(%d,%d,%d) "
-                                "local_offset=(%d,%d,%d) local_c=(%d,%d,%d) "
-                                "tile_base=(%d,%d,%d) shift=(%d,%d,%d) "
-                                "hs=(%d,%d,%d) n_local=(%d,%d,%d)\n",
-                                (unsigned long long)tile_id, (unsigned long long)p,
-                                (double)args.x(p)[0], (double)args.x(p)[1], (double)args.x(p)[2],
-                                (double)gp0, (double)gp1, (double)gp2, idx0, idx1, idx2, c0, c1, c2,
-                                args.local_offset[0], args.local_offset[1], args.local_offset[2],
-                                lc0, lc1, lc2, tile_base_x, tile_base_y, tile_base_z, sx, sy, sz,
-                                hs0, hs1, hs2, args.n_grid_local[0], args.n_grid_local[1],
-                                args.n_grid_local[2]);
-                        }
-                        team.team_barrier();
-                        return;
-                    }
-
-                    scatter_particle_fast<needs_imag>(team, sx, sy, sz, pitch0, pitch1, kw, vr, vi,
+                    scatter_particle_fast<needs_imag>(team, sx, sy, sz, pitch0, pitch1, kw, vr,
+                    vi,
                                                       local_r, local_i);
                     team.team_barrier();
                 }
             }
 
-            // Flat strided flush — identical in structure to the reference kernel's writeback.
             for (size_t lid = static_cast<size_t>(team.team_rank()); lid < total;
                  lid += static_cast<size_t>(team.team_size())) {
                 const int kz  = static_cast<int>(lid / static_cast<size_t>(pitch1));
@@ -429,45 +364,6 @@ namespace ippl::Interpolation::detail {
             const int hs1 = args.tile_size[1] + padded_extra;
             const int hs2 = args.tile_size[2] + padded_extra;
             total_        = static_cast<size_t>(hs0) * hs1 * hs2;
-
-            {
-                size_t bad_particles = 0;
-                const CoordinateTransform<RealType, 3> transform{args.origin, args.invdx,
-                                                                 args.n_grid};
-
-                auto args_tmp = args;
-                Kokkos::parallel_reduce(
-                    "GridParallelScatter3D::Precheck",
-                    Kokkos::RangePolicy<execution_space>(0, n_particles),
-                    KOKKOS_LAMBDA(const size_t i, size_t& bad) {
-                        // Must match whatever convention binning/scatter use.
-                        const RealType gp0 = transform.template toGridCoordinate<0>(args_tmp.x(i)[0]);
-                        const RealType gp1 = transform.template toGridCoordinate<1>(args_tmp.x(i)[1]);
-                        const RealType gp2 = transform.template toGridCoordinate<2>(args_tmp.x(i)[2]);
-
-                        const int c0 = transform.template getStencilCenter<W>(gp0 - RealType(0.5));
-                        const int c1 = transform.template getStencilCenter<W>(gp1 - RealType(0.5));
-                        const int c2 = transform.template getStencilCenter<W>(gp2 - RealType(0.5));
-
-                        const int lc0 = c0 - args_tmp.local_offset[0];
-                        const int lc1 = c1 - args_tmp.local_offset[1];
-                        const int lc2 = c2 - args_tmp.local_offset[2];
-
-                        if (lc0 < 0 || lc0 > args_tmp.n_grid_local[0] || lc1 < 0
-                            || lc1 > args_tmp.n_grid_local[1] || lc2 < 0
-                            || lc2 > args_tmp.n_grid_local[2]) {
-                            ++bad;
-                        }
-                    },
-                    bad_particles);
-
-                if (bad_particles > 0) {
-                    std::fprintf(stderr,
-                                 "[GridParallelScatter3D] precheck: %zu particles have stencil "
-                                 "centers outside this rank's [0,n_grid_local] range\n",
-                                 bad_particles);
-                }
-            }
 
             size_t league_size;
             if constexpr (fixed_oversubscription) {
