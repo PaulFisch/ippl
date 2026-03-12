@@ -400,7 +400,7 @@ namespace ippl {
 
         // Scale positions to [0, 2π)
         using ScaleFunctor = detail::ScalePositionsFunctor<T, Dim, decltype(Rview)>;
-        Kokkos::parallel_for("NUFFT_scale_to_2pi", localNp, ScaleFunctor(Rview, scaleToTwoPi));
+        Kokkos::parallel_for("NUFFT_scale_to_2pi", Kokkos::RangePolicy<ExecSpace>(0, localNp), ScaleFunctor(Rview, scaleToTwoPi));
 
         // Execute transform
         if (type_m == 1) {
@@ -412,7 +412,7 @@ namespace ippl {
         }
 
         // Scale positions back
-        Kokkos::parallel_for("NUFFT_scale_back", localNp, ScaleFunctor(Rview, scaleBack));
+        Kokkos::parallel_for("NUFFT_scale_back", Kokkos::RangePolicy<ExecSpace>(0, localNp), ScaleFunctor(Rview, scaleBack));
     }
 
     //=========================================================================
