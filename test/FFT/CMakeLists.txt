@@ -35,6 +35,8 @@ if(TARGET finufft OR TARGET cufinufft)
     target_link_libraries(TestNUFFT2 PRIVATE finufft cufinufft)
     target_link_libraries(TestNUFFTParamSweep PRIVATE finufft cufinufft)
     target_link_libraries(TestNUFFT1 PRIVATE finufft cufinufft)
+    target_link_libraries(DebugFFT PRIVATE finufft cufinufft)
+
 endif()
 
 
