@@ -4,7 +4,10 @@
  *
  * Usage: ./BenchmarkTileSweep [options]
  *   --grid N              Grid size per dimension (default: 128)
- *   --rho R               Particles per grid point (default: 1.0)
+ *   --rho R               Particles per grid point (nominal, default: 1.0)
+ *                         The scatter grid is always set to bit_ceil(2*N)^3 (sigma=2,
+ *                         matching NativeNUFFT).  The stored rho = rho_nominal/8,
+ *                         matching Scatter::estimate_rho() in the real NUFFT.
  *   --warmup N            Number of warmup runs (default: 3)
  *   --runs N              Number of benchmark runs (default: 5)
  *   --output FILE         Output CSV file prefix (default: tile_sweep)
@@ -145,7 +148,26 @@ struct BenchParams {
 
     bool complementary_bo_pass = false;
 
+    // NUFFT oversampling factor.  NativeNUFFT always uses sigma=2, so TileSweep
+    // mirrors this: the scatter grid is bit_ceil(sigma * n_grid)^3 while the particle
+    // count is rho * n_grid^3 (nominal).  The effective density stored in the CSV is
+    // then rho / sigma^3, matching the value Scatter::estimate_rho() returns during a
+    // real NUFFT run so the TileSizeCache lookup finds the correct config.
+    double sigma = 2.0;
+
     size_t n_particles() const { return static_cast<size_t>(rho * n_grid * n_grid * n_grid); }
+
+    // Oversampled grid size per dimension (matches NativeNUFFT::n_grid_ computation).
+    size_t n_grid_oversampled() const {
+        if (sigma <= 1.0 + 1e-9) return static_cast<size_t>(n_grid);
+        return std::bit_ceil<size_t>(static_cast<size_t>(std::ceil(sigma * n_grid)));
+    }
+
+    // Effective rho as seen by the scatter kernel when operating on the oversampled grid.
+    double effective_rho() const {
+        size_t ng = n_grid_oversampled();
+        return static_cast<double>(n_particles()) / static_cast<double>(ng * ng * ng);
+    }
 };
 
 static std::vector<int> parse_int_list(const std::string& s) {
@@ -735,7 +757,7 @@ public:
         r.kernel_width            = kernel.width();
         r.n_particles             = n_particles;
         r.n_grid                  = params_.n_grid;
-        r.rho                     = params_.rho;
+        r.rho                     = params_.effective_rho();
         r.from_optimizer          = from_optimizer;
         try {
             ManualTimer timer;
@@ -1171,7 +1193,7 @@ public:
         bo.method               = method;
         bo.value_type           = value_type_str();
         bo.kernel_width         = kernel.width();
-        bo.rho                  = params_.rho;
+        bo.rho                  = params_.effective_rho();
         bo.evaluations          = 0;
         bo.preflight_rejections = 0;
 
@@ -1200,7 +1222,8 @@ public:
     // Domain setup / teardown
     // ──────────────────────────────────────────────────────────────────────
     void setup_domain(int /*nghost*/) {
-        for (unsigned d = 0; d < Dim; ++d) n_grid_[d] = params_.n_grid;
+        const size_t ng = params_.n_grid_oversampled();
+        for (unsigned d = 0; d < Dim; ++d) n_grid_[d] = ng;
         ippl::NDIndex<Dim> domain;
         for (unsigned d = 0; d < Dim; ++d) domain[d] = ippl::Index(n_grid_[d]);
         std::array<bool, Dim> isParallel; isParallel.fill(true);

@@ -292,8 +292,6 @@ namespace ippl {
     void ParticleBase<PLayout, IP...>::sendToRank(int rank, int tag,
                                                   std::vector<MPI_Request>& requests,
                                                   const HashType& hash) {
-        requests.resize(requests.size() + 1);
-
         auto hashes = hash_container_type(hash, [&]<typename MemorySpace>() {
             return attributes_m.template get<MemorySpace>().size() > 0;
         });
