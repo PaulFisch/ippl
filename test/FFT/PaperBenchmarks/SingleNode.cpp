@@ -5,22 +5,28 @@
  *   1. Kernel throughput vs tolerance for all spreading/interpolation methods
  *      (including cuFINUFFT comparison) — sweeps over rho and tolerance
  *   2. Full NUFFT timing breakdown by component — sweeps over grid sizes
+ *   3. Density sweep: throughput vs particle density at fixed tolerance
  *
  * Usage:
- *   ./SingleNodeBenchmark --mode <kernels|breakdown|all>
- *                         [--grid <N>]           # for kernel mode (default: 128)
+ *   ./SingleNodeBenchmark --mode <kernels|breakdown|density|all>
+ *                         [--grid <N>]           # for kernel/density mode (default: 128)
  *                         [--grids <N1,N2,...>]   # for breakdown mode (default: 64,128,192,256)
- *                         [--rhos <r1,r2,...>]    # particle densities, float (default: 10,100)
+ *                         [--rhos <r1,r2,...>]    # particle densities for kernels (default: 10)
  *                         [--tols <t1,t2,...>]    # tolerances (default: 1e-2,...,1e-8)
  *                         [--warmup <N>]          # warmup iterations (default: 5)
  *                         [--runs <N>]            # timed iterations (default: 20)
  *                         [--breakdown-tol <t>]   # tolerance for breakdown (default: 1e-4)
  *                         [--breakdown-rho <r>]   # rho for breakdown, float (default: 10)
+ *                         [--density-rhos <...>]  # rhos for density mode
+ *                                                 # (default: 0.1,0.5,1,2,5,10,20,50)
+ *                         [--density-tol <t>]     # tolerance for density mode (default: 1e-4)
+ *                         [--max-mem-gb <G>]      # estimated GPU memory limit (default: 40)
  *                         [--output-prefix <s>]   # CSV prefix (default: "bench")
  *
  * Output CSVs:
- *   <prefix>_kernels.csv   — columns: grid,rho,tolerance,method,type,time_ms,throughput_mpts
- *   <prefix>_breakdown.csv — columns: grid,rho,tolerance,type,component,time_ms,fraction
+ *   <prefix>_kernels.csv    — columns: grid,rho,tolerance,method,type,time_ms,throughput_mpts
+ *   <prefix>_breakdown.csv  — columns: grid,rho,tolerance,type,component,time_ms,fraction
+ *   <prefix>_density.csv    — columns: grid,rho,tolerance,method,type,time_ms,throughput_mpts
  */
 
 #include "Ippl.h"
@@ -145,6 +151,21 @@ struct BreakdownResult {
     double time_ms;
     double fraction;
 };
+
+// ============================================================
+// Memory estimation: returns estimated GPU memory in GB
+// Accounts for particles, oversampled field, and NUFFT workspace
+// ============================================================
+static double estimateMemoryGB(int grid_size, double rho, int nranks) {
+    using size_type = ippl::detail::size_type;
+    size_type Np   = static_cast<size_type>(double(grid_size) * grid_size * grid_size * rho);
+    size_type nloc = Np / nranks;
+    size_t oversampled = std::bit_ceil<size_t>(static_cast<size_t>(std::ceil(2.0 * grid_size)));
+
+    double mem_particles_gb = double(nloc) * 32.0 / 1e9;  // 3 doubles pos + 1 double Q
+    double mem_field_gb     = double(oversampled * oversampled * oversampled) * 16.0 / 1e9;
+    return mem_particles_gb + mem_field_gb;
+}
 
 // ============================================================
 // Type 1 benchmark: measure only spreading+FFT+deconv (full NUFFT)
@@ -353,42 +374,56 @@ int main(int argc, char* argv[]) {
         typedef ippl::Field<double, dim, Mesh_t, Centering_t>::uniform_type real_field_type;
         typedef ippl::FFT<ippl::NUFFTransform, real_field_type> FFT_type;
 
+        // Prevent TileSizeCache from overriding the NUFFT's internal scatter
+        // configs.  Without this, a CSV from a previous TileSweep run silently
+        // replaces tile/team/osub/z_batches, corrupting benchmark results.
+        ippl::Interpolation::TileSizeCache::instance().clear();
+
         // ============================================================
         // Parse command-line arguments
         // ============================================================
         std::string mode          = "all";
-        int kernel_grid           = 256;
+        int kernel_grid           = 128;
         std::string grids_str     = "64,128,192,256";
-        std::string rhos_str      = "10,100";
+        std::string rhos_str      = "10";
         std::string tols_str      = "1e-2,1e-3,1e-4,1e-5,1e-6,1e-7,1e-8";
         int warmup_runs           = 5;
         int benchmark_runs        = 20;
         double breakdown_tol      = 1e-4;
         double breakdown_rho      = 10;
+        std::string density_rhos_str = "0.1,0.5,1,2,5,10,20,50";
+        double density_tol        = 1e-4;
+        double max_mem_gb         = 40.0;
         std::string output_prefix = "bench";
 
         for (int i = 1; i < argc; ++i) {
             std::string arg = argv[i];
-            if (arg == "--mode" && i + 1 < argc)          mode = argv[++i];
-            else if (arg == "--grid" && i + 1 < argc)     kernel_grid = std::atoi(argv[++i]);
-            else if (arg == "--grids" && i + 1 < argc)    grids_str = argv[++i];
-            else if (arg == "--rhos" && i + 1 < argc)     rhos_str = argv[++i];
-            else if (arg == "--tols" && i + 1 < argc)     tols_str = argv[++i];
-            else if (arg == "--warmup" && i + 1 < argc)   warmup_runs = std::atoi(argv[++i]);
-            else if (arg == "--runs" && i + 1 < argc)     benchmark_runs = std::atoi(argv[++i]);
+            if (arg == "--mode" && i + 1 < argc)            mode = argv[++i];
+            else if (arg == "--grid" && i + 1 < argc)       kernel_grid = std::atoi(argv[++i]);
+            else if (arg == "--grids" && i + 1 < argc)      grids_str = argv[++i];
+            else if (arg == "--rhos" && i + 1 < argc)       rhos_str = argv[++i];
+            else if (arg == "--tols" && i + 1 < argc)       tols_str = argv[++i];
+            else if (arg == "--warmup" && i + 1 < argc)     warmup_runs = std::atoi(argv[++i]);
+            else if (arg == "--runs" && i + 1 < argc)       benchmark_runs = std::atoi(argv[++i]);
             else if (arg == "--breakdown-tol" && i + 1 < argc) breakdown_tol = std::stod(argv[++i]);
             else if (arg == "--breakdown-rho" && i + 1 < argc) breakdown_rho = std::stod(argv[++i]);
+            else if (arg == "--density-rhos" && i + 1 < argc)  density_rhos_str = argv[++i];
+            else if (arg == "--density-tol" && i + 1 < argc)   density_tol = std::stod(argv[++i]);
+            else if (arg == "--max-mem-gb" && i + 1 < argc)    max_mem_gb = std::stod(argv[++i]);
             else if (arg == "--output-prefix" && i + 1 < argc) output_prefix = argv[++i];
         }
 
         auto rhos = parseList<double>(rhos_str);
         auto tols = parseList<double>(tols_str);
         auto breakdown_grids = parseList<int>(grids_str);
+        auto density_rhos = parseList<double>(density_rhos_str);
 
         bool do_kernels   = (mode == "kernels" || mode == "all");
         bool do_breakdown = (mode == "breakdown" || mode == "all");
+        bool do_density   = (mode == "density");
 
         const int rank = ippl::Comm->rank();
+        const int nranks = ippl::Comm->size();
 
         if (rank == 0) {
             std::cout << "========================================\n";
@@ -397,10 +432,16 @@ int main(int argc, char* argv[]) {
             std::cout << "Mode:            " << mode << "\n";
             std::cout << "Kernel grid:     " << kernel_grid << "^3\n";
             std::cout << "Breakdown grids: " << grids_str << "\n";
-            std::cout << "Rhos:            " << rhos_str << "\n";
+            std::cout << "Rhos (kernels):  " << rhos_str << "\n";
             std::cout << "Tolerances:      " << tols_str << "\n";
             std::cout << "Warmup:          " << warmup_runs << "\n";
             std::cout << "Runs:            " << benchmark_runs << "\n";
+            if (do_density) {
+                std::cout << "Density rhos:    " << density_rhos_str << "\n";
+                std::cout << "Density tol:     " << std::scientific << density_tol << "\n";
+            }
+            std::cout << "Max GPU memory:  " << std::fixed << std::setprecision(0)
+                      << max_mem_gb << " GB\n";
             std::cout << "========================================\n\n";
         }
 
@@ -430,6 +471,7 @@ int main(int argc, char* argv[]) {
         // Collect results
         std::vector<KernelResult> kernel_results;
         std::vector<BreakdownResult> breakdown_results;
+        std::vector<KernelResult> density_results;
 
         // ============================================================
         // Part 1: Kernel throughput vs tolerance
@@ -444,23 +486,27 @@ int main(int argc, char* argv[]) {
             const int gs = kernel_grid;
 
             for (double rho : rhos) {
-                if (rank == 0) {
-                    std::cout << "--- rho = " << rho << " ---\n";
+                // Memory estimation: skip if estimated base memory exceeds 40%
+                // of max GPU memory (leaving headroom for NUFFT workspace/FFT plans)
+                double mem_est_gb = estimateMemoryGB(gs, rho, nranks);
+                if (mem_est_gb > max_mem_gb * 0.4) {
+                    if (rank == 0) {
+                        std::cout << "--- rho = " << rho << " ---\n";
+                        std::cout << "  [SKIP] Estimated memory " << std::fixed
+                                  << std::setprecision(1) << mem_est_gb
+                                  << " GB exceeds limit (" << max_mem_gb * 0.4
+                                  << " GB = 40% of " << max_mem_gb << " GB)\n\n";
+                    }
+                    continue;
                 }
 
                 size_type Np   = static_cast<size_type>(double(gs) * gs * gs * rho);
-                size_type nloc = Np / ippl::Comm->size();
-
-                // Rough memory estimate: particles + oversampled field + headroom
-                size_t oversampled = std::bit_ceil<size_t>(static_cast<size_t>(std::ceil(2.0 * gs)));
-                double mem_particles_gb = double(nloc) * 32.0 / 1e9;  // 3 doubles pos + 1 double Q
-                double mem_field_gb     = double(oversampled * oversampled * oversampled) * 16.0 / 1e9;
-                double mem_est_gb       = mem_particles_gb + mem_field_gb;
+                size_type nloc = Np / nranks;
 
                 if (rank == 0) {
+                    std::cout << "--- rho = " << rho << " ---\n";
                     std::cout << "  Np=" << Np << "  est. memory: " << std::fixed
-                              << std::setprecision(1) << mem_est_gb << " GB (particles "
-                              << mem_particles_gb << " + field " << mem_field_gb << ")\n";
+                              << std::setprecision(1) << mem_est_gb << " GB\n";
                 }
 
                 try {
@@ -525,7 +571,6 @@ int main(int argc, char* argv[]) {
                             fftParams.add("use_kokkos_nufft", false);
                             fftParams.add("spread_method", sc.spread_method);
                             fftParams.add("lock_method", true);
-                            // Let the framework pick tile sizes (Bayesian or default)
 
                             auto fft = std::make_unique<FFT_type>(layout, nloc, 1, fftParams);
                             double t = benchmarkType1(*fft, field, bunch,
@@ -658,11 +703,24 @@ int main(int argc, char* argv[]) {
             if (rank == 0) {
                 std::cout << "============================================================\n";
                 std::cout << "NUFFT TIMING BREAKDOWN (rho=" << breakdown_rho
-                          << ", tol=" << breakdown_tol << ")\n";
+                          << ", tol=" << std::scientific << std::setprecision(0)
+                          << breakdown_tol << std::fixed << ")\n";
                 std::cout << "============================================================\n\n";
             }
 
             for (int gs : breakdown_grids) {
+                // Memory check for breakdown
+                double mem_est_gb = estimateMemoryGB(gs, breakdown_rho, nranks);
+                if (mem_est_gb > max_mem_gb * 0.4) {
+                    if (rank == 0) {
+                        std::cout << "--- grid = " << gs << "^3 ---\n";
+                        std::cout << "  [SKIP] Estimated memory " << std::fixed
+                                  << std::setprecision(1) << mem_est_gb
+                                  << " GB exceeds limit\n\n";
+                    }
+                    continue;
+                }
+
                 if (rank == 0) {
                     std::cout << "--- grid = " << gs << "^3 ---\n";
                 }
@@ -689,7 +747,7 @@ int main(int argc, char* argv[]) {
                 playout_type pl(layout, mesh);
 
                 size_type Np   = static_cast<size_type>(double(gs) * gs * gs * breakdown_rho);
-                size_type nloc = Np / ippl::Comm->size();
+                size_type nloc = Np / nranks;
 
                 bunch_type bunch(pl);
                 bunch.setParticleBC(ippl::BC::PERIODIC);
@@ -724,6 +782,7 @@ int main(int argc, char* argv[]) {
                 fftParams.add("use_kokkos_nufft", false);
                 fftParams.add("spread_method", "output_focused");
                 fftParams.add("gather_method", "atomic_sort");
+                fftParams.add("lock_method", true);
 
                 auto fft_type1 = std::make_unique<FFT_type>(layout, nloc, 1, fftParams);
                 auto fft_type2 = std::make_unique<FFT_type>(layout, nloc, 2, fftParams);
@@ -806,6 +865,223 @@ int main(int argc, char* argv[]) {
         }  // do_breakdown
 
         // ============================================================
+        // Part 3: Density sweep (throughput vs rho at fixed tolerance)
+        // ============================================================
+        if (do_density) {
+            if (rank == 0) {
+                std::cout << "============================================================\n";
+                std::cout << "DENSITY SWEEP (grid=" << kernel_grid
+                          << "^3, tol=" << std::scientific << std::setprecision(0)
+                          << density_tol << std::fixed << ")\n";
+                std::cout << "============================================================\n\n";
+            }
+
+            const int gs = kernel_grid;
+
+            for (double rho : density_rhos) {
+                // Memory check
+                double mem_est_gb = estimateMemoryGB(gs, rho, nranks);
+                if (mem_est_gb > max_mem_gb * 0.4) {
+                    if (rank == 0) {
+                        std::cout << "--- rho = " << rho << " ---\n";
+                        std::cout << "  [SKIP] Estimated memory " << std::fixed
+                                  << std::setprecision(1) << mem_est_gb
+                                  << " GB exceeds limit (" << max_mem_gb * 0.4
+                                  << " GB)\n\n";
+                    }
+                    continue;
+                }
+
+                size_type Np   = static_cast<size_type>(double(gs) * gs * gs * rho);
+                size_type nloc = Np / nranks;
+
+                if (rank == 0) {
+                    std::cout << "--- rho = " << rho << " ---\n";
+                    std::cout << "  Np=" << Np << "  est. memory: " << std::fixed
+                              << std::setprecision(1) << mem_est_gb << " GB\n";
+                }
+
+                try {
+
+                // Setup mesh & layout
+                ippl::Vector<int, dim> pt = {gs, gs, gs};
+                auto owned = ippl::NDIndex<dim>(ippl::Index(pt[0]), ippl::Index(pt[1]),
+                                         ippl::Index(pt[2]));
+
+                std::array<bool, dim> isParallel;
+                isParallel.fill(false);
+                ippl::FieldLayout<dim> layout(MPI_COMM_WORLD, owned, isParallel);
+
+                Vector_t minU = {0, 0, 0};
+                Vector_t maxU = {2*pi, 2*pi, 2*pi};
+                std::array<double, dim> dx = {
+                    (maxU[0] - minU[0]) / double(pt[0]),
+                    (maxU[1] - minU[1]) / double(pt[1]),
+                    (maxU[2] - minU[2]) / double(pt[2]),
+                };
+                Vector_t hx     = {dx[0], dx[1], dx[2]};
+                Vector_t origin = {minU[0], minU[1], minU[2]};
+                Mesh_t mesh(owned, hx, origin);
+
+                playout_type pl(layout, mesh);
+
+                bunch_type bunch(pl);
+                bunch.setParticleBC(ippl::BC::PERIODIC);
+                bunch.create(nloc);
+
+                field_type field(mesh, layout);
+
+                Kokkos::Random_XorShift64_Pool<> rand_pool64(size_type(42 + int(rho * 1000)));
+                Kokkos::parallel_for(
+                    nloc,
+                    generate_random_particles_with_charges<Vector_t,
+                                                          Kokkos::Random_XorShift64_Pool<>, dim>(
+                        bunch.R.getView(), bunch.Q.getView(), rand_pool64, minU, maxU));
+                Kokkos::fence();
+
+                // Fill field for Type 2
+                const int nghost = field.getNghost();
+                using mdrange_type = Kokkos::MDRangePolicy<Kokkos::Rank<3>>;
+                auto fview = field.getView();
+                Kokkos::parallel_for(
+                    mdrange_type({nghost, nghost, nghost},
+                                 {fview.extent(0) - nghost, fview.extent(1) - nghost,
+                                  fview.extent(2) - nghost}),
+                    generate_random_field<Kokkos::complex<double>,
+                                         Kokkos::Random_XorShift64_Pool<>, dim>(
+                        field.getView(), rand_pool64));
+                Kokkos::fence();
+
+                // ---- Type 1: Spreading methods ----
+                for (const auto& sc : spread_methods) {
+                    try {
+                        ippl::ParameterList fftParams;
+                        fftParams.add("tolerance", density_tol);
+                        fftParams.add("use_finufft_defaults", false);
+                        fftParams.add("use_kokkos_nufft", false);
+                        fftParams.add("spread_method", sc.spread_method);
+                        fftParams.add("lock_method", true);
+
+                        auto fft = std::make_unique<FFT_type>(layout, nloc, 1, fftParams);
+                        double t = benchmarkType1(*fft, field, bunch,
+                                                  warmup_runs, benchmark_runs);
+                        double throughput = Np / t * 1000.0 / 1e6;
+
+                        density_results.push_back(
+                            {gs, rho, density_tol, sc.name, "1", t, throughput});
+
+                        if (rank == 0) {
+                            std::cout << "  Type1 " << std::setw(15) << sc.name
+                                      << "  " << std::fixed << std::setprecision(1)
+                                      << throughput << " Mpts/s  (" << std::setprecision(3)
+                                      << t << " ms)\n";
+                        }
+                    } catch (const std::exception& e) {
+                        if (rank == 0)
+                            std::cerr << "  FAILED: Type1 " << sc.name
+                                      << ": " << e.what() << "\n";
+                    }
+                }
+
+                // ---- Type 2: Interpolation methods ----
+                for (const auto& gc : gather_methods) {
+                    try {
+                        ippl::ParameterList fftParams;
+                        fftParams.add("tolerance", density_tol);
+                        fftParams.add("use_finufft_defaults", false);
+                        fftParams.add("use_kokkos_nufft", false);
+                        fftParams.add("gather_method", gc.gather_method);
+
+                        auto fft = std::make_unique<FFT_type>(layout, nloc, 2, fftParams);
+                        double t = benchmarkType2(*fft, field, bunch,
+                                                  warmup_runs, benchmark_runs);
+                        double throughput = Np / t * 1000.0 / 1e6;
+
+                        density_results.push_back(
+                            {gs, rho, density_tol, gc.name, "2", t, throughput});
+
+                        if (rank == 0) {
+                            std::cout << "  Type2 " << std::setw(15) << gc.name
+                                      << "  " << std::fixed << std::setprecision(1)
+                                      << throughput << " Mpts/s  (" << std::setprecision(3)
+                                      << t << " ms)\n";
+                        }
+                    } catch (const std::exception& e) {
+                        if (rank == 0)
+                            std::cerr << "  FAILED: Type2 " << gc.name
+                                      << ": " << e.what() << "\n";
+                    }
+                }
+
+                // ---- cuFINUFFT / FINUFFT comparison ----
+#ifdef ENABLE_FINUFFT
+                {
+                    auto Rview = bunch.R.getView();
+                    auto Qview = bunch.Q.getView();
+                    auto fview_local = field.getView();
+
+#ifdef ENABLE_GPU_NUFFT
+                    std::string finufft_label = "cuFINUFFT";
+#else
+                    std::string finufft_label = "FINUFFT";
+#endif
+                    // Type 1
+                    try {
+                        double t = benchmarkType1FINUFFT(
+                            Rview, Qview, fview_local, gs, nloc, density_tol, nghost,
+                            warmup_runs, benchmark_runs);
+                        double throughput = Np / t * 1000.0 / 1e6;
+
+                        density_results.push_back(
+                            {gs, rho, density_tol, finufft_label, "1", t, throughput});
+
+                        if (rank == 0) {
+                            std::cout << "  Type1 " << std::setw(15) << finufft_label
+                                      << "  " << std::fixed << std::setprecision(1)
+                                      << throughput << " Mpts/s  (" << std::setprecision(3)
+                                      << t << " ms)\n";
+                        }
+                    } catch (const std::exception& e) {
+                        if (rank == 0)
+                            std::cerr << "  FAILED: " << finufft_label
+                                      << " Type1: " << e.what() << "\n";
+                    }
+
+                    // Type 2
+                    try {
+                        double t = benchmarkType2FINUFFT(
+                            Rview, Qview, fview_local, gs, nloc, density_tol, nghost,
+                            warmup_runs, benchmark_runs);
+                        double throughput = Np / t * 1000.0 / 1e6;
+
+                        density_results.push_back(
+                            {gs, rho, density_tol, finufft_label, "2", t, throughput});
+
+                        if (rank == 0) {
+                            std::cout << "  Type2 " << std::setw(15) << finufft_label
+                                      << "  " << std::fixed << std::setprecision(1)
+                                      << throughput << " Mpts/s  (" << std::setprecision(3)
+                                      << t << " ms)\n";
+                        }
+                    } catch (const std::exception& e) {
+                        if (rank == 0)
+                            std::cerr << "  FAILED: " << finufft_label
+                                      << " Type2: " << e.what() << "\n";
+                    }
+                }
+#endif  // ENABLE_FINUFFT
+
+                if (rank == 0) std::cout << "\n";
+
+                } catch (const std::exception& e) {
+                    if (rank == 0)
+                        std::cerr << "  [OOM] Skipping rho=" << rho
+                                  << " grid=" << gs << ": " << e.what() << "\n\n";
+                }
+            }  // rho loop
+        }  // do_density
+
+        // ============================================================
         // Write CSV outputs
         // ============================================================
         if (rank == 0) {
@@ -839,6 +1115,22 @@ int main(int argc, char* argv[]) {
                 }
                 ofs.close();
                 std::cout << "Breakdown results written to: " << fname << "\n";
+            }
+
+            // Density sweep results CSV
+            if (!density_results.empty()) {
+                std::string fname = output_prefix + "_density.csv";
+                std::ofstream ofs(fname);
+                ofs << "grid,rho,tolerance,method,type,time_ms,throughput_mpts\n";
+                for (const auto& r : density_results) {
+                    ofs << r.grid << "," << r.rho << ","
+                        << std::scientific << std::setprecision(1) << r.tolerance << ","
+                        << r.method << "," << r.type << ","
+                        << std::fixed << std::setprecision(4) << r.time_ms << ","
+                        << std::setprecision(2) << r.throughput_mpts << "\n";
+                }
+                ofs.close();
+                std::cout << "Density results written to: " << fname << "\n";
             }
         }
     }
