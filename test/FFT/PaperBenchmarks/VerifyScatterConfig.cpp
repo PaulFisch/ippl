@@ -40,6 +40,8 @@
 #include <string>
 #include <vector>
 
+#include <Kokkos_Random.hpp>
+
 #include "FFT/NUFFT/ESKernel.h"
 #include "Interpolation/Scatter/ScatterConfig.h"
 
