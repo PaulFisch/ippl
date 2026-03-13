@@ -39,7 +39,7 @@
 #include <vector>
 
 #ifdef ENABLE_FINUFFT
-#include "PaperBenchmarks/finufft_wrapper.h"
+#include "finufft_wrapper.h"
 #endif
 
 // ============================================================
