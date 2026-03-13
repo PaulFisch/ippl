@@ -356,9 +356,9 @@ int main(int argc, char* argv[]) {
         // Parse command-line arguments
         // ============================================================
         std::string mode          = "all";
-        int kernel_grid           = 128;
+        int kernel_grid           = 256;
         std::string grids_str     = "64,128,192,256";
-        std::string rhos_str      = "1,10";
+        std::string rhos_str      = "10,100";
         std::string tols_str      = "1e-2,1e-3,1e-4,1e-5,1e-6,1e-7,1e-8";
         int warmup_runs           = 5;
         int benchmark_runs        = 20;
