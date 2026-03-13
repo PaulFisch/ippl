@@ -91,14 +91,18 @@ namespace ippl {
                 auto& cache = Interpolation::TileSizeCache::instance();
                 if (cache.loaded()) {
                     if (auto best = cache.get_best(kernel_m.width(), is_complex_field, rho_est)) {
-                        if (best->method != config_m.method && !method_logged_) {
-                            method_logged_ = true;
-                            std::cout << "[Scatter] Auto-select: " << method_name(best->method)
-                                      << " (tp=" << std::fixed << std::setprecision(1)
-                                      << best->entry.throughput_Mpts_s
-                                      << " Mpts/s) for w=" << kernel_m.width()
-                                      << " rho=" << std::setprecision(2) << rho_est << " (was "
-                                      << method_name(config_m.method) << ")\n";
+                        if (best->method != config_m.method) {
+                            static bool logged = false;
+                            if (!logged && ippl::Comm->rank() == 0) {
+                                logged = true;
+                                std::cout
+                                    << "[Scatter] Auto-select: " << method_name(best->method)
+                                    << " (tp=" << std::fixed << std::setprecision(1)
+                                    << best->entry.throughput_Mpts_s
+                                    << " Mpts/s) for w=" << kernel_m.width()
+                                    << " rho=" << std::setprecision(2) << rho_est << " (was "
+                                    << method_name(config_m.method) << ")\n";
+                            }
                         }
                         config_m.method = best->method;
                     }
@@ -195,22 +199,28 @@ namespace ippl {
 
             const auto& e = cached.value();
 
-            if (cache.loaded() && !config_logged_) {
-                config_logged_ = true;
-                std::cout << "[Scatter] Cache hit: method=" << method_name(config_m.method)
-                          << " w=" << W << " cx=" << IsComplex << " rho=" << std::fixed
-                          << std::setprecision(2) << rho_est << " -> tile=(" << e.tile[0];
-                for (unsigned d = 1; d < Dim; ++d)
-                    std::cout << "," << e.tile[d < 3 ? d : 2];
-                std::cout << ")";
-                if (e.team_size > 0)
-                    std::cout << " team=" << e.team_size;
-                if (e.oversubscription_factor > 0)
-                    std::cout << " osub=" << e.oversubscription_factor;
-                if (e.z_batches > 0)
-                    std::cout << " zb=" << e.z_batches;
-                std::cout << " tp=" << std::setprecision(1) << e.throughput_Mpts_s
-                          << " Mpts/s (rho_csv=" << std::setprecision(2) << e.rho << ")\n";
+            // Log once per (W, IsComplex, method) combination.  Use a static flag so
+            // the message is suppressed even when Scatter is recreated per call (the
+            // common case when calling scatter_kernel() in a hot loop).
+            if (cache.loaded() && ippl::Comm->rank() == 0) {
+                static bool logged = false;
+                if (!logged) {
+                    logged = true;
+                    std::cout << "[Scatter] Cache hit: method=" << method_name(config_m.method)
+                              << " w=" << W << " cx=" << IsComplex << " rho=" << std::fixed
+                              << std::setprecision(2) << rho_est << " -> tile=(" << e.tile[0];
+                    for (unsigned d = 1; d < Dim; ++d)
+                        std::cout << "," << e.tile[d < 3 ? d : 2];
+                    std::cout << ")";
+                    if (e.team_size > 0)
+                        std::cout << " team=" << e.team_size;
+                    if (e.oversubscription_factor > 0)
+                        std::cout << " osub=" << e.oversubscription_factor;
+                    if (e.z_batches > 0)
+                        std::cout << " zb=" << e.z_batches;
+                    std::cout << " tp=" << std::setprecision(1) << e.throughput_Mpts_s
+                              << " Mpts/s (rho_csv=" << std::setprecision(2) << e.rho << ")\n";
+                }
             }
 
             auto resolved = config_m;
@@ -384,8 +394,6 @@ namespace ippl {
 
         Kernel kernel_m;
         Interpolation::ScatterConfig<Dim> config_m;
-        mutable bool method_logged_ = false;  // one-shot: method auto-switch
-        mutable bool config_logged_ = false;  // one-shot: config application
     };
 
 }  // namespace ippl
