@@ -374,11 +374,6 @@ int main(int argc, char* argv[]) {
         typedef ippl::Field<double, dim, Mesh_t, Centering_t>::uniform_type real_field_type;
         typedef ippl::FFT<ippl::NUFFTransform, real_field_type> FFT_type;
 
-        // Prevent TileSizeCache from overriding the NUFFT's internal scatter
-        // configs.  Without this, a CSV from a previous TileSweep run silently
-        // replaces tile/team/osub/z_batches, corrupting benchmark results.
-        ippl::Interpolation::TileSizeCache::instance().clear();
-
         // ============================================================
         // Parse command-line arguments
         // ============================================================
