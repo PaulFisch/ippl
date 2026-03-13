@@ -238,9 +238,9 @@ namespace ippl {
         cfg.tol   = tol_m;
         cfg.sigma = params.get<T>("sigma", T(2.0));
 
-        // Pass the R2C settings from the parameters down to the implementation layer
-        cfg.use_r2c       = params.get<bool>("use_r2c", false);
-        cfg.r2c_direction = params.get<int>("r2c_direction", 0);
+        // // Pass the R2C settings from the parameters down to the implementation layer
+        // cfg.use_r2c       = params.get<bool>("use_r2c", false);
+        // cfg.r2c_direction = params.get<int>("r2c_direction", 0);
 
         cfg.scatter_config = Interpolation::ScatterConfig<Dim>::template get_default<ExecSpace>();
         cfg.gather_config  = Interpolation::GatherConfig<Dim>::template get_default<ExecSpace>();
