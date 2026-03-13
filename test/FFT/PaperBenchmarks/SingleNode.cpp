@@ -456,8 +456,8 @@ int main(int argc, char* argv[]) {
                 isParallel.fill(false);
                 ippl::FieldLayout<dim> layout(MPI_COMM_WORLD, owned, isParallel);
 
-                Vector_t minU = {-pi, -pi, -pi};
-                Vector_t maxU = {pi, pi, pi};
+                Vector_t minU = {0, 0, 0};
+                Vector_t maxU = {2*pi, 2*pi, 2*pi};
                 std::array<double, dim> dx = {
                     (maxU[0] - minU[0]) / double(pt[0]),
                     (maxU[1] - minU[1]) / double(pt[1]),
@@ -654,8 +654,8 @@ int main(int argc, char* argv[]) {
                 isParallel.fill(false);
                 ippl::FieldLayout<dim> layout(MPI_COMM_WORLD, owned, isParallel);
 
-                Vector_t minU = {-pi, -pi, -pi};
-                Vector_t maxU = {pi, pi, pi};
+                Vector_t minU = {0, 0, 0};
+                Vector_t maxU = {2*pi, 2*pi, 2*pi};
                 std::array<double, dim> dx = {
                     (maxU[0] - minU[0]) / double(pt[0]),
                     (maxU[1] - minU[1]) / double(pt[1]),
