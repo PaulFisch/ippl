@@ -187,6 +187,9 @@ namespace ippl {
         T tol_m;
         bool useFinufft_m;
         bool useUpsampledInputs_m;
+        bool useR2C_m;
+        int r2cDir_m;
+        bool lockMethod_m;
 
         std::array<int64_t, 3> nModes_m{1, 1, 1};
 

@@ -32,9 +32,6 @@ namespace ippl {
 
         /**
          * @brief Functor to copy field data to FINUFFT temp buffer with optional ifftshift
-         *
-         * For Type 2, input is in corner-DC format but FINUFFT expects centered format.
-         * This functor applies ifftshift: dst_idx = (src_idx + N/2) % N
          */
         template <typename FieldView, typename TempFieldView>
         struct CopyFieldToTempFunctor {
@@ -61,7 +58,6 @@ namespace ippl {
 
                 int di = li, dj = lj, dk = lk;
                 if (applyShift_m) {
-                    // Apply ifftshift: convert from corner-DC to centered format
                     di = (li + nx_m / 2) % nx_m;
                     dj = (lj + ny_m / 2) % ny_m;
                     dk = (lk + nz_m / 2) % nz_m;
@@ -81,9 +77,6 @@ namespace ippl {
 
         /**
          * @brief Functor to copy field data from FINUFFT temp buffer with fftshift
-         *
-         * FINUFFT outputs in centered format (DC at N/2), but we need corner-DC format (DC at 0).
-         * This functor applies fftshift: src_idx = (dst_idx + N/2) % N
          */
         template <typename FieldView, typename TempFieldView>
         struct CopyFieldFromTempFunctor {
@@ -102,15 +95,10 @@ namespace ippl {
                 , nz_m(nz) {}
 
             KOKKOS_INLINE_FUNCTION void operator()(int i, int j, int k) const {
-                // Local indices (without ghost)
                 int li = i - nghost_m;
                 int lj = j - nghost_m;
                 int lk = k - nghost_m;
 
-                // Apply fftshift: map from centered (FINUFFT) to corner-DC format
-                // In centered format, DC is at N/2. In corner-DC, DC is at 0.
-                // To read the value that should go to corner index (li, lj, lk),
-                // we read from centered index ((li + N/2) % N, ...)
                 int si = (li + nx_m / 2) % nx_m;
                 int sj = (lj + ny_m / 2) % ny_m;
                 int sk = (lk + nz_m / 2) % nz_m;
@@ -198,8 +186,10 @@ namespace ippl {
         : type_m(type)
         , tol_m(params.get<T>("tolerance", T(1e-6)))
         , useFinufft_m(params.get<bool>("use_finufft", false))
-        , useUpsampledInputs_m(params.get<bool>("use_upsampled_inputs", false)) {
-        // Store grid dimensions
+        , useR2C_m(params.get<bool>("use_r2c", false))
+        , r2cDir_m(params.get<int>("r2c_direction", 0))
+        , useUpsampledInputs_m(params.get<bool>("use_upsampled_inputs", false))
+        , lockMethod_m(params.get<bool>("lock_method", false)) {
         const auto& domain = layout.getDomain();
         for (unsigned d = 0; d < Dim; ++d) {
             nModes_m[d] = domain[d].length();
@@ -248,8 +238,15 @@ namespace ippl {
         cfg.tol   = tol_m;
         cfg.sigma = params.get<T>("sigma", T(2.0));
 
+        // Pass the R2C settings from the parameters down to the implementation layer
+        cfg.use_r2c       = params.get<bool>("use_r2c", false);
+        cfg.r2c_direction = params.get<int>("r2c_direction", 0);
+
         cfg.scatter_config = Interpolation::ScatterConfig<Dim>::template get_default<ExecSpace>();
         cfg.gather_config  = Interpolation::GatherConfig<Dim>::template get_default<ExecSpace>();
+
+        bool lock_method               = params.get<bool>("lock_method", false);
+        cfg.scatter_config.lock_method = lock_method_m || lock_method;
 
         std::string spreadMethod = params.get<std::string>("spread_method", "none");
         if (spreadMethod == "atomic") {
@@ -385,24 +382,26 @@ namespace ippl {
 
         Vector<T, Dim> Len;
         for (unsigned d = 0; d < Dim; ++d) {
-            Len[d] = dx[d] * domain[d].length();
+            int fullLength = domain[d].length();
+            if (useR2C_m && static_cast<int>(d) == r2cDir_m) {
+                fullLength = 2 * (fullLength - 1);
+            }
+            Len[d] = dx[d] * fullLength;
         }
 
         constexpr T twoPi = T(2.0 * M_PI);
         auto Rview        = R.getView();
 
-        // Compute scaling factors
         Vector<T, Dim> scaleToTwoPi, scaleBack;
         for (unsigned d = 0; d < Dim; ++d) {
             scaleToTwoPi[d] = twoPi / Len[d];
             scaleBack[d]    = Len[d] / twoPi;
         }
 
-        // Scale positions to [0, 2π)
         using ScaleFunctor = detail::ScalePositionsFunctor<T, Dim, decltype(Rview)>;
-        Kokkos::parallel_for("NUFFT_scale_to_2pi", Kokkos::RangePolicy<ExecSpace>(0, localNp), ScaleFunctor(Rview, scaleToTwoPi));
+        Kokkos::parallel_for("NUFFT_scale_to_2pi", Kokkos::RangePolicy<ExecSpace>(0, localNp),
+                             ScaleFunctor(Rview, scaleToTwoPi));
 
-        // Execute transform
         if (type_m == 1) {
             nativeNufft_m->type1(R, Q, f, useUpsampledInputs_m);
         } else if (type_m == 2) {
@@ -411,8 +410,8 @@ namespace ippl {
             throw IpplException("FFT<NUFFTransform>", "Only type 1 and type 2 NUFFT supported");
         }
 
-        // Scale positions back
-        Kokkos::parallel_for("NUFFT_scale_back", Kokkos::RangePolicy<ExecSpace>(0, localNp), ScaleFunctor(Rview, scaleBack));
+        Kokkos::parallel_for("NUFFT_scale_back", Kokkos::RangePolicy<ExecSpace>(0, localNp),
+                             ScaleFunctor(Rview, scaleBack));
     }
 
     //=========================================================================
@@ -442,7 +441,6 @@ namespace ippl {
         auto Rview = R.getView();
         auto Qview = Q.getView();
 
-        // Ensure temp buffers are large enough
         const auto& lDom = layout.getLocalNDIndex();
         if (tempField_m.extent(0) != static_cast<std::size_t>(lDom[0].length())
             || tempField_m.extent(1) != static_cast<std::size_t>(lDom[1].length())
@@ -466,21 +464,18 @@ namespace ippl {
         auto tempRy    = tempR_m[1];
         auto tempRz    = tempR_m[2];
 
-        // Compute scale factors
         Vector<T, Dim> scale;
         for (unsigned d = 0; d < Dim; ++d) {
             scale[d] = twoPi / Len[d];
         }
 
-        // Copy field data to FINUFFT buffer
-        // For Type 2, apply ifftshift (corner-DC to centered format)
         using mdrange_type = Kokkos::MDRangePolicy<ExecSpace, Kokkos::Rank<3>>;
         using CopyToTemp   = detail::CopyFieldToTempFunctor<decltype(fview), decltype(tempField)>;
 
         int nx         = lDom[0].length();
         int ny         = lDom[1].length();
         int nz         = lDom[2].length();
-        bool needShift = (type_m == 2);  // Type 2 needs ifftshift on input
+        bool needShift = (type_m == 2);
 
         Kokkos::parallel_for(
             "FINUFFT_copy_field_to_temp",
@@ -489,7 +484,6 @@ namespace ippl {
                                                     static_cast<int>(fview.extent(2)) - nghost}),
             CopyToTemp(fview, tempField, nghost, nx, ny, nz, needShift));
 
-        // Copy particle data to FINUFFT buffers
         using CopyParticles =
             detail::CopyParticlesToTempFunctor<T, Dim, decltype(Rview), decltype(Qview),
                                                decltype(tempRx), decltype(tempQ)>;
@@ -499,7 +493,6 @@ namespace ippl {
 
         Kokkos::fence();
 
-        // Set points
         int err = Traits_t::setpts(finufftPlan_m, static_cast<FinufftCount_t>(localNp),
                                    tempRx.data(), tempRy.data(), tempRz.data(), FinufftCount_t{0},
                                    nullptr, nullptr, nullptr);
@@ -508,7 +501,6 @@ namespace ippl {
             throw IpplException("FFT<NUFFTransform>", "FINUFFT setpts failed");
         }
 
-        // Execute transform
         err = Traits_t::execute(finufftPlan_m, tempQ.data(), tempField.data());
 
         if (err != 0) {
@@ -517,7 +509,6 @@ namespace ippl {
 
         Kokkos::fence();
 
-        // Copy results back
         if (type_m == 1) {
             using CopyFromTemp =
                 detail::CopyFieldFromTempFunctor<decltype(fview), decltype(tempField)>;
