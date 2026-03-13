@@ -246,7 +246,7 @@ namespace ippl {
         cfg.gather_config  = Interpolation::GatherConfig<Dim>::template get_default<ExecSpace>();
 
         bool lock_method               = params.get<bool>("lock_method", false);
-        cfg.scatter_config.lock_method = lock_method_m || lock_method;
+        cfg.scatter_config.lock_method = lockMethod_m || lock_method;
 
         std::string spreadMethod = params.get<std::string>("spread_method", "none");
         if (spreadMethod == "atomic") {
