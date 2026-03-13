@@ -292,12 +292,6 @@ int main(int argc, char* argv[]) {
         double tol = std::atof(argv[9]);
         P->initNUFFT(FL, tol);
         msg << "After init NUFFT " << endl;
-
-        IpplTimings::startTimer(dumpDataTimer);
-        P->dumpBumponTail();
-        P->dumpEnergy();
-        IpplTimings::stopTimer(dumpDataTimer);
-
 	P->update();
         msg << "After update " << endl;
         IpplTimings::startTimer(dumpDataTimer);
