@@ -52,6 +52,14 @@ namespace ippl {
         template <class... Properties>
         void Archive<Properties...>::gpuAlloc(size_type size) {
             if (size == 0) return;
+#if defined(KOKKOS_ENABLE_HIP)
+            // HSA IPC (used by Cray MPICH for large-message GPU transfers)
+            // requires allocation sizes to be multiples of the GPU page
+            // granularity (64 KB on MI250X / MI300X).  Without this,
+            // hsa_amd_ipc_memory_attach fails with INVALID_ARGUMENT.
+            static constexpr size_type kGranularity = 65536;
+            size = ((size + kGranularity - 1) / kGranularity) * kGranularity;
+#endif
             void* ptr = nullptr;
 #if defined(KOKKOS_ENABLE_CUDA)
             cudaMalloc(&ptr, size);
@@ -91,6 +99,10 @@ namespace ippl {
         void Archive<Properties...>::resizeBuffer(size_type size) {
             if (size <= buffer_size_m) return;
 
+#if defined(KOKKOS_ENABLE_HIP)
+            static constexpr size_type kGranularity = 65536;
+            size = ((size + kGranularity - 1) / kGranularity) * kGranularity;
+#endif
             pointer_type new_ptr = nullptr;
             void* vptr           = nullptr;
 #if defined(KOKKOS_ENABLE_CUDA)
