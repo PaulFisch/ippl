@@ -71,7 +71,7 @@ namespace ippl {
 
         // constructor: this one also takes a Mesh
         ParticleSpatialLayout(FieldLayout<Dim>&, Mesh&, bool fem = false,
-                              CountExchange mode = CountExchange::Alltoall_GPU);
+                              CountExchange mode = CountExchange::RMA);
 
         ParticleSpatialLayout()
             : detail::ParticleLayout<T, Dim, PositionProperties...>() {}
