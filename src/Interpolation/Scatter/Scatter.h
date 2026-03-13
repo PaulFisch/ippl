@@ -81,18 +81,44 @@ namespace ippl {
             constexpr bool is_complex_field = ippl::detail::is_kokkos_complex<FieldT>::value;
 
             // ── Estimate particle density (rho = particles per grid point) ───
-            // This is purely arithmetic — the domain sizes are already in memory.
+            // Uses LOCAL domain and LOCAL particle count so the ratio is
+            // correct regardless of the number of MPI ranks.
             const size_t n_particles = positions.getParticleCount();
             const double rho_est     = estimate_rho(field, n_particles);
 
-            // ── Auto-select best method from benchmark cache ──────────────────
-            // Queries the cache for the method with the highest recorded throughput
-            // at the closest density to rho_est.  Runs only when enable_tuning is
-            // false and a cache has been loaded.
+            // ── Cache-driven method / config selection ─────────────────────────
+            // When enable_tuning is false and a cache has been loaded:
+            //   lock_method=false → pick the method with the highest throughput
+            //                       at the closest density (get_best).
+            //   lock_method=true  → keep the current method, but still look up
+            //                       the best config for it (get).
             {
                 auto& cache = Interpolation::TileSizeCache::instance();
-                if (!config_m.enable_tuning && !config_m.lock_method && cache.loaded()) {
-                    if (auto best = cache.get_best(kernel_m.width(), is_complex_field, rho_est)) {
+                if (!config_m.enable_tuning && cache.loaded()) {
+                    if (config_m.lock_method) {
+                        // Method is locked: look up best config for the current method.
+                        if (auto cached = cache.get(config_m.method, kernel_m.width(),
+                                                    is_complex_field, rho_est)) {
+                            static std::unordered_set<std::size_t> reported;
+                            const std::size_t rkey =
+                                static_cast<std::size_t>(config_m.method) * 10000
+                                + static_cast<std::size_t>(kernel_m.width()) * 2
+                                + static_cast<std::size_t>(is_complex_field);
+                            if (reported.find(rkey) == reported.end()) {
+                                reported.insert(rkey);
+                                std::cout
+                                    << "[Scatter] Locked method " << method_name(config_m.method)
+                                    << ": cached config (tp=" << std::fixed << std::setprecision(1)
+                                    << cached->throughput_Mpts_s << " Mpts/s, rho~"
+                                    << std::setprecision(2) << cached->rho
+                                    << ") for w=" << kernel_m.width()
+                                    << " is_complex=" << is_complex_field << " rho_est=" << rho_est
+                                    << "\n";
+                            }
+                        }
+                    } else if (auto best =
+                                   cache.get_best(kernel_m.width(), is_complex_field, rho_est)) {
+                        // Method is not locked: auto-select the best method.
                         static std::unordered_set<std::size_t> reported;
                         const std::size_t rkey = (static_cast<std::size_t>(config_m.method) * 3
                                                   + static_cast<std::size_t>(best->method))
@@ -164,15 +190,15 @@ namespace ippl {
 
         // ------------------------------------------------------------------
         // estimate_rho: particles per grid point (cheap, no kernel launch).
-        // Uses the field's domain extents from FieldLayout::getDomain().
+        // Uses the LOCAL domain extents so the ratio is correct per-rank.
         // ------------------------------------------------------------------
         template <typename FieldT, class Mesh, class Centering, class... ViewArgs>
         static double estimate_rho(const Field<FieldT, Dim, Mesh, Centering, ViewArgs...>& field,
                                    size_t n_particles) {
-            const auto& domain = field.getLayout().getDomain();
-            size_t n_grid      = 1;
+            const auto& local_domain = field.getLayout().getLocalNDIndex();
+            size_t n_grid            = 1;
             for (unsigned d = 0; d < Dim; ++d)
-                n_grid *= static_cast<size_t>(domain[d].length());
+                n_grid *= static_cast<size_t>(local_domain[d].length());
             return (n_grid > 0) ? static_cast<double>(n_particles) / static_cast<double>(n_grid)
                                 : 1.0;
         }
