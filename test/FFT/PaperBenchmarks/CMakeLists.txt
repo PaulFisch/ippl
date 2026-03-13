@@ -61,3 +61,7 @@ add_paper_benchmark(TestPrunedFFTPerformance LABELS paper benchmark fft)
 # ── Scatter / gather micro-benchmarks ─────────────────────────────────────────
 add_paper_benchmark(BenchmarkScatter LABELS paper benchmark fft)
 add_paper_benchmark(BenchmarkGather  LABELS paper benchmark fft)
+add_paper_benchmark(SingleNode  LABELS paper benchmark fft)
+if(TARGET finufft OR TARGET cufinufft)
+    target_link_libraries(SingleNode PRIVATE finufft cufinufft)
+endif()
