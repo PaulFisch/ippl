@@ -413,8 +413,8 @@ int main(int argc, char* argv[]) {
         };
         std::vector<SpreadConfig> spread_methods = {
             {"Atomic",        "atomic",          true },
-            {"Tiled",         "tiled",           false},
-            {"Grid-Parallel", "output_focused",  false},
+            {"Tiled",         "tiled",           true},
+            {"Grid-Parallel", "output_focused",  true},
         };
 
         struct GatherConfig {
@@ -509,7 +509,7 @@ int main(int argc, char* argv[]) {
                             fftParams.add("use_finufft_defaults", false);
                             fftParams.add("use_kokkos_nufft", false);
                             fftParams.add("spread_method", sc.spread_method);
-                            fftParams.add("lock_method", sc.lock_method);
+                            fftParams.add("lock_method", true);
                             // Let the framework pick tile sizes (Bayesian or default)
 
                             auto fft = std::make_unique<FFT_type>(layout, nloc, 1, fftParams);
