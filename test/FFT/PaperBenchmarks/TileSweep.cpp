@@ -581,6 +581,12 @@ public:
     // run()
     // ──────────────────────────────────────────────────────────────────────
     void run() {
+        // Prevent TileSizeCache from overriding the explicit configs we
+        // benchmark.  Without this, a CSV produced by a previous TileSweep
+        // run (possibly at a different --rho) is loaded and resolve_config()
+        // silently replaces the tile/team/osub/z_batches we set.
+        ippl::Interpolation::TileSizeCache::instance().clear();
+
         print_header();
         std::vector<BenchmarkResult> results;
         std::vector<BOResult>        bo_results;
@@ -618,6 +624,7 @@ public:
                     auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                     cfg.method = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
                                                      : ippl::Interpolation::ScatterMethod::OutputFocused;
+                    cfg.lock_method = true;
                     cfg.set_tile_size(t);
 
                     // Fix 6: get_default() gives a Tiled-oriented team_size (may be
@@ -645,8 +652,9 @@ public:
                     std::cout << "\r[sweep " << current_config << "/" << total_configs << "] "
                               << "width=" << actual_width << " Atomic               " << std::flush;
                 auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-                cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
-                cfg.sort   = true;
+                cfg.method      = ippl::Interpolation::ScatterMethod::Atomic;
+                cfg.lock_method = true;
+                cfg.sort        = true;
                 results.push_back(benchmark_scatter("Atomic", cfg, kernel, n_particles,
                                                     {1, 1, 1}, false));
             }
@@ -666,6 +674,7 @@ public:
                         auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                         cfg.method = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
                                                          : ippl::Interpolation::ScatterMethod::OutputFocused;
+                        cfg.lock_method             = true;
                         cfg.tile_size               = {bt[0], bt[1], bt[2]};
                         cfg.team_size               = bo.best_team_size;
                         cfg.oversubscription_factor = bo.best_oversubscription_factor;
@@ -694,8 +703,9 @@ public:
 
                     {
                         auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
-                        cfg.method = ippl::Interpolation::ScatterMethod::Atomic;
-                        cfg.sort   = true;
+                        cfg.method      = ippl::Interpolation::ScatterMethod::Atomic;
+                        cfg.lock_method = true;
+                        cfg.sort        = true;
                         results.push_back(other.benchmark_scatter("Atomic", cfg, kernel,
                                                                    other_np, {1, 1, 1}, false));
                     }
@@ -710,6 +720,7 @@ public:
                             auto cfg = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
                             cfg.method = (method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
                                                              : ippl::Interpolation::ScatterMethod::OutputFocused;
+                            cfg.lock_method             = true;
                             cfg.tile_size               = {bt[0], bt[1], bt[2]};
                             cfg.team_size               = bo.best_team_size;
                             cfg.oversubscription_factor = bo.best_oversubscription_factor;
@@ -931,6 +942,7 @@ private:
             auto cfg   = ippl::Interpolation::ScatterConfig<Dim>::get_default<ExecSpace>();
             cfg.method = (ctx.method == "Tiled") ? ippl::Interpolation::ScatterMethod::Tiled
                                                  : ippl::Interpolation::ScatterMethod::OutputFocused;
+            cfg.lock_method             = true;
             cfg.tile_size               = {pt.tile_x(), pt.tile_y(), pt.tile_z()};
             cfg.team_size               = ts_of(ctx.ts_candidates, pt.ts_idx());
             cfg.oversubscription_factor = pt.osub();

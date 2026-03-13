@@ -10,12 +10,12 @@
  *   ./SingleNodeBenchmark --mode <kernels|breakdown|all>
  *                         [--grid <N>]           # for kernel mode (default: 128)
  *                         [--grids <N1,N2,...>]   # for breakdown mode (default: 64,128,192,256)
- *                         [--rhos <r1,r2,...>]    # particle densities (default: 1,10)
+ *                         [--rhos <r1,r2,...>]    # particle densities, float (default: 10,100)
  *                         [--tols <t1,t2,...>]    # tolerances (default: 1e-2,...,1e-8)
  *                         [--warmup <N>]          # warmup iterations (default: 5)
  *                         [--runs <N>]            # timed iterations (default: 20)
  *                         [--breakdown-tol <t>]   # tolerance for breakdown (default: 1e-4)
- *                         [--breakdown-rho <r>]   # rho for breakdown (default: 10)
+ *                         [--breakdown-rho <r>]   # rho for breakdown, float (default: 10)
  *                         [--output-prefix <s>]   # CSV prefix (default: "bench")
  *
  * Output CSVs:
@@ -29,6 +29,7 @@
 
 #include <Kokkos_Random.hpp>
 #include <array>
+#include <bit>
 #include <chrono>
 #include <cmath>
 #include <fstream>
@@ -124,7 +125,7 @@ std::vector<T> parseList(const std::string& s) {
 // ============================================================
 struct KernelResult {
     int grid;
-    int rho;
+    double rho;
     double tolerance;
     std::string method;
     std::string type;  // "1" or "2"
@@ -137,7 +138,7 @@ struct KernelResult {
 // ============================================================
 struct BreakdownResult {
     int grid;
-    int rho;
+    double rho;
     double tolerance;
     std::string type;       // "1" or "2"
     std::string component;  // "Spreading", "FFT", "Deconvolution", "Halo", etc.
@@ -363,7 +364,7 @@ int main(int argc, char* argv[]) {
         int warmup_runs           = 5;
         int benchmark_runs        = 20;
         double breakdown_tol      = 1e-4;
-        int breakdown_rho         = 10;
+        double breakdown_rho      = 10;
         std::string output_prefix = "bench";
 
         for (int i = 1; i < argc; ++i) {
@@ -376,11 +377,11 @@ int main(int argc, char* argv[]) {
             else if (arg == "--warmup" && i + 1 < argc)   warmup_runs = std::atoi(argv[++i]);
             else if (arg == "--runs" && i + 1 < argc)     benchmark_runs = std::atoi(argv[++i]);
             else if (arg == "--breakdown-tol" && i + 1 < argc) breakdown_tol = std::stod(argv[++i]);
-            else if (arg == "--breakdown-rho" && i + 1 < argc) breakdown_rho = std::atoi(argv[++i]);
+            else if (arg == "--breakdown-rho" && i + 1 < argc) breakdown_rho = std::stod(argv[++i]);
             else if (arg == "--output-prefix" && i + 1 < argc) output_prefix = argv[++i];
         }
 
-        auto rhos = parseList<int>(rhos_str);
+        auto rhos = parseList<double>(rhos_str);
         auto tols = parseList<double>(tols_str);
         auto breakdown_grids = parseList<int>(grids_str);
 
@@ -442,10 +443,27 @@ int main(int argc, char* argv[]) {
 
             const int gs = kernel_grid;
 
-            for (int rho : rhos) {
+            for (double rho : rhos) {
                 if (rank == 0) {
                     std::cout << "--- rho = " << rho << " ---\n";
                 }
+
+                size_type Np   = static_cast<size_type>(double(gs) * gs * gs * rho);
+                size_type nloc = Np / ippl::Comm->size();
+
+                // Rough memory estimate: particles + oversampled field + headroom
+                size_t oversampled = std::bit_ceil<size_t>(static_cast<size_t>(std::ceil(2.0 * gs)));
+                double mem_particles_gb = double(nloc) * 32.0 / 1e9;  // 3 doubles pos + 1 double Q
+                double mem_field_gb     = double(oversampled * oversampled * oversampled) * 16.0 / 1e9;
+                double mem_est_gb       = mem_particles_gb + mem_field_gb;
+
+                if (rank == 0) {
+                    std::cout << "  Np=" << Np << "  est. memory: " << std::fixed
+                              << std::setprecision(1) << mem_est_gb << " GB (particles "
+                              << mem_particles_gb << " + field " << mem_field_gb << ")\n";
+                }
+
+                try {
 
                 // Setup mesh & layout (single-rank, no domain decomposition)
                 ippl::Vector<int, dim> pt = {gs, gs, gs};
@@ -469,9 +487,6 @@ int main(int argc, char* argv[]) {
 
                 playout_type pl(layout, mesh);
 
-                size_type Np   = static_cast<size_type>(std::pow(gs, 3)) * rho;
-                size_type nloc = Np / ippl::Comm->size();
-
                 // Create particles
                 bunch_type bunch(pl);
                 bunch.setParticleBC(ippl::BC::PERIODIC);
@@ -479,7 +494,7 @@ int main(int argc, char* argv[]) {
 
                 field_type field(mesh, layout);
 
-                Kokkos::Random_XorShift64_Pool<> rand_pool64(size_type(42 + rho));
+                Kokkos::Random_XorShift64_Pool<> rand_pool64(size_type(42 + int(rho * 1000)));
                 Kokkos::parallel_for(
                     nloc,
                     generate_random_particles_with_charges<Vector_t,
@@ -627,6 +642,12 @@ int main(int argc, char* argv[]) {
 
                 }  // tol loop
                 if (rank == 0) std::cout << "\n";
+
+                } catch (const std::exception& e) {
+                    if (rank == 0)
+                        std::cerr << "  [OOM] Skipping rho=" << rho
+                                  << " grid=" << gs << ": " << e.what() << "\n\n";
+                }
             }  // rho loop
         }  // do_kernels
 
@@ -667,7 +688,7 @@ int main(int argc, char* argv[]) {
 
                 playout_type pl(layout, mesh);
 
-                size_type Np   = static_cast<size_type>(std::pow(gs, 3)) * breakdown_rho;
+                size_type Np   = static_cast<size_type>(double(gs) * gs * gs * breakdown_rho);
                 size_type nloc = Np / ippl::Comm->size();
 
                 bunch_type bunch(pl);

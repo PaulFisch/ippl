@@ -161,6 +161,14 @@ public:
     bool loaded() const noexcept { return loaded_; }
     const std::string& source() const noexcept { return source_path_; }
 
+    /// Drop all cached entries.  Useful for benchmarks (e.g. TileSweep) that
+    /// must run scatter with explicit configs, not cached ones.
+    void clear() {
+        entries_.clear();
+        loaded_      = false;
+        source_path_ = "";
+    }
+
     void reload(const std::string& path = "") {
         entries_.clear();
         loaded_      = false;
