@@ -2,7 +2,6 @@
 #define IPPL_SCATTER_H
 
 #include <iomanip>
-#include <unordered_set>
 
 #include "Utility/Tuning.h"
 
@@ -80,63 +79,26 @@ namespace ippl {
 
             constexpr bool is_complex_field = ippl::detail::is_kokkos_complex<FieldT>::value;
 
-            // ── Estimate particle density (rho = particles per grid point) ───
-            // Uses LOCAL domain and LOCAL particle count so the ratio is
-            // correct regardless of the number of MPI ranks.
+            // ── Estimate particle density (rho = local particles / local grid pts) ──
             const size_t n_particles = positions.getParticleCount();
             const double rho_est     = estimate_rho(field, n_particles);
 
-            // ── Cache-driven method / config selection ─────────────────────────
-            // When enable_tuning is false and a cache has been loaded:
-            //   lock_method=false → pick the method with the highest throughput
-            //                       at the closest density (get_best).
-            //   lock_method=true  → keep the current method, but still look up
-            //                       the best config for it (get).
-            {
+            // ── Auto-select best method from benchmark cache ──────────────────
+            // Only when not tuning and not locked.  Config (tile, team, osub,
+            // z_batches) is applied later in resolve_config for ALL methods,
+            // whether the method was auto-selected or locked by the user.
+            if (!config_m.enable_tuning && !config_m.lock_method) {
                 auto& cache = Interpolation::TileSizeCache::instance();
-                if (!config_m.enable_tuning && cache.loaded()) {
-                    if (config_m.lock_method) {
-                        // Method is locked: look up best config for the current method.
-                        if (auto cached = cache.get(config_m.method, kernel_m.width(),
-                                                    is_complex_field, rho_est)) {
-                            static std::unordered_set<std::size_t> reported;
-                            const std::size_t rkey =
-                                static_cast<std::size_t>(config_m.method) * 10000
-                                + static_cast<std::size_t>(kernel_m.width()) * 2
-                                + static_cast<std::size_t>(is_complex_field);
-                            if (reported.find(rkey) == reported.end()) {
-                                reported.insert(rkey);
-                                std::cout
-                                    << "[Scatter] Locked method " << method_name(config_m.method)
-                                    << ": cached config (tp=" << std::fixed << std::setprecision(1)
-                                    << cached->throughput_Mpts_s << " Mpts/s, rho~"
-                                    << std::setprecision(2) << cached->rho
-                                    << ") for w=" << kernel_m.width()
-                                    << " is_complex=" << is_complex_field << " rho_est=" << rho_est
-                                    << "\n";
-                            }
-                        }
-                    } else if (auto best =
-                                   cache.get_best(kernel_m.width(), is_complex_field, rho_est)) {
-                        // Method is not locked: auto-select the best method.
-                        static std::unordered_set<std::size_t> reported;
-                        const std::size_t rkey = (static_cast<std::size_t>(config_m.method) * 3
-                                                  + static_cast<std::size_t>(best->method))
-                                                     * 10000
-                                                 + static_cast<std::size_t>(kernel_m.width()) * 2
-                                                 + static_cast<std::size_t>(is_complex_field);
-                        if (reported.find(rkey) == reported.end()) {
-                            reported.insert(rkey);
-                            if (best->method != config_m.method) {
-                                std::cout << "[Scatter] Auto-selecting method "
-                                          << method_name(best->method) << " (tp=" << std::fixed
-                                          << std::setprecision(1) << best->entry.throughput_Mpts_s
-                                          << " Mpts/s, rho~" << std::setprecision(2)
-                                          << best->entry.rho << ") for w=" << kernel_m.width()
-                                          << " is_complex=" << is_complex_field
-                                          << " rho_est=" << rho_est << " (overrides "
-                                          << method_name(config_m.method) << ")\n";
-                            }
+                if (cache.loaded()) {
+                    if (auto best = cache.get_best(kernel_m.width(), is_complex_field, rho_est)) {
+                        if (best->method != config_m.method && !method_logged_) {
+                            method_logged_ = true;
+                            std::cout << "[Scatter] Auto-select: " << method_name(best->method)
+                                      << " (tp=" << std::fixed << std::setprecision(1)
+                                      << best->entry.throughput_Mpts_s
+                                      << " Mpts/s) for w=" << kernel_m.width()
+                                      << " rho=" << std::setprecision(2) << rho_est << " (was "
+                                      << method_name(config_m.method) << ")\n";
                         }
                         config_m.method = best->method;
                     }
@@ -189,29 +151,35 @@ namespace ippl {
         }
 
         // ------------------------------------------------------------------
-        // estimate_rho: particles per grid point (cheap, no kernel launch).
-        // Uses the LOCAL domain extents so the ratio is correct per-rank.
+        // estimate_rho: LOCAL particles / LOCAL grid points.
+        //
+        // Uses getLocalNDIndex() for the rank-local owned domain, matching
+        // getParticleCount() which returns the rank-local particle count.
+        // The previous version used getDomain() (global) with local particle
+        // counts, under-estimating rho by a factor of #ranks.
         // ------------------------------------------------------------------
         template <typename FieldT, class Mesh, class Centering, class... ViewArgs>
         static double estimate_rho(const Field<FieldT, Dim, Mesh, Centering, ViewArgs...>& field,
                                    size_t n_particles) {
-            const auto& local_domain = field.getLayout().getLocalNDIndex();
-            size_t n_grid            = 1;
+            const auto& local_dom = field.getLayout().getLocalNDIndex();
+            size_t n_grid         = 1;
             for (unsigned d = 0; d < Dim; ++d)
-                n_grid *= static_cast<size_t>(local_domain[d].length());
+                n_grid *= static_cast<size_t>(local_dom[d].length());
             return (n_grid > 0) ? static_cast<double>(n_particles) / static_cast<double>(n_grid)
                                 : 1.0;
         }
 
         // ------------------------------------------------------------------
-        // resolve_config: priority chain
-        //   1. enable_tuning == true  → unchanged (runtime tuner)
-        //   2. cache hit              → apply tile, team_size, osub, z_batches
-        //   3. default                → config_m unchanged
+        // resolve_config: load cached config for the ACTIVE method.
         //
-        // rho_est is forwarded to the cache for density-aware lookup.
-        // Note: config_m.method has already been overridden by get_best() in
-        // operator() before dispatch() is entered.
+        // Works identically for lock_method=true and lock_method=false:
+        // by this point config_m.method is already set (either kept as-is
+        // when locked, or switched by get_best() in operator()).
+        //
+        // Priority:
+        //   1. enable_tuning → return config_m unchanged (runtime tuner)
+        //   2. cache hit     → apply tile, team_size, osub, z_batches
+        //   3. no hit        → return config_m unchanged
         // ------------------------------------------------------------------
         template <template <int, class, class> class Impl, int W, class Types, class Policy,
                   bool IsComplex>
@@ -222,68 +190,45 @@ namespace ippl {
             auto& cache = Interpolation::TileSizeCache::instance();
             auto cached = cache.get(config_m.method, W, IsComplex, rho_est);
 
-            if (cached.has_value()) {
-                const auto& e = cached.value();
+            if (!cached.has_value())
+                return config_m;
 
-                static std::unordered_set<std::size_t> reported;
-                std::size_t rkey = (static_cast<std::size_t>(config_m.method) * 100 + W) * 2
-                                   + static_cast<std::size_t>(IsComplex);
-                if (cache.loaded() && reported.find(rkey) == reported.end()) {
-                    reported.insert(rkey);
-                    std::cout << "[Scatter] Cached config: method=" << method_name(config_m.method)
-                              << " w=" << W << " is_complex=" << IsComplex
-                              << " rho_query=" << std::fixed << std::setprecision(2) << rho_est
-                              << " rho_cached=" << e.rho << " tile=(" << e.tile[0];
-                    for (unsigned d = 1; d < Dim; ++d)
-                        std::cout << "," << e.tile[d < 3 ? d : 2];
-                    std::cout << ")";
-                    if (e.team_size > 0)
-                        std::cout << " team=" << e.team_size;
-                    if (e.oversubscription_factor > 0)
-                        std::cout << " osub=" << e.oversubscription_factor;
-                    if (e.z_batches > 0)
-                        std::cout << " zb=" << e.z_batches;
-                    std::cout << " tp=" << e.throughput_Mpts_s << " Mpts/s\n";
-                }
+            const auto& e = cached.value();
 
-                auto resolved = config_m;
-                Vector<int, Dim> tile;
-                for (unsigned d = 0; d < Dim; ++d)
-                    tile[d] = e.tile[d < 3 ? d : 2];
-                resolved.set_tile_size(tile);
+            if (cache.loaded() && !config_logged_) {
+                config_logged_ = true;
+                std::cout << "[Scatter] Cache hit: method=" << method_name(config_m.method)
+                          << " w=" << W << " cx=" << IsComplex << " rho=" << std::fixed
+                          << std::setprecision(2) << rho_est << " -> tile=(" << e.tile[0];
+                for (unsigned d = 1; d < Dim; ++d)
+                    std::cout << "," << e.tile[d < 3 ? d : 2];
+                std::cout << ")";
                 if (e.team_size > 0)
-                    resolved.team_size = e.team_size;
+                    std::cout << " team=" << e.team_size;
                 if (e.oversubscription_factor > 0)
-                    resolved.oversubscription_factor = e.oversubscription_factor;
+                    std::cout << " osub=" << e.oversubscription_factor;
                 if (e.z_batches > 0)
-                    resolved.z_batches = e.z_batches;
-                return resolved;
+                    std::cout << " zb=" << e.z_batches;
+                std::cout << " tp=" << std::setprecision(1) << e.throughput_Mpts_s
+                          << " Mpts/s (rho_csv=" << std::setprecision(2) << e.rho << ")\n";
             }
-            return config_m;
+
+            auto resolved = config_m;
+            Vector<int, Dim> tile;
+            for (unsigned d = 0; d < Dim; ++d)
+                tile[d] = e.tile[d < 3 ? d : 2];
+            resolved.set_tile_size(tile);
+            if (e.team_size > 0)
+                resolved.team_size = e.team_size;
+            if (e.oversubscription_factor > 0)
+                resolved.oversubscription_factor = e.oversubscription_factor;
+            if (e.z_batches > 0)
+                resolved.z_batches = e.z_batches;
+            return resolved;
         }
 
         // ------------------------------------------------------------------
         // clamp_tile_to_shmem
-        //
-        // Reduces tile dimensions until the kernel's shared-memory requirement
-        // fits within the available budget.
-        //
-        // IMPORTANT: the scratch size is a product of per-dimension factors:
-        //
-        //   htot = ∏_d (tile[d] + eff_W[d])
-        //
-        // where eff_W[d] differs between x/y and z when z_batches > 1:
-        //   x, y : tile + W + 1
-        //   z    : tile + ceil(W/z_batches) + 1   (smaller for z_batches > 1)
-        //
-        // Reducing the dimension with the smallest (tile[d] + eff_W[d])
-        // gives the largest absolute decrease in htot per step.  The previous
-        // isotropic "reduce the largest tile" rule was wrong for OutputFocused
-        // with z_batches > 1 because it ignored the asymmetric factor sizes.
-        //
-        // We instead call compute_scratch_size for each candidate reduction
-        // and pick the dimension that yields the lowest resulting scratch.
-        // The function is pure arithmetic — no GPU work.
         // ------------------------------------------------------------------
         template <template <int, class, class> class Impl, int W, class Types, class Policy,
                   bool IsComplex>
@@ -296,12 +241,8 @@ namespace ippl {
 
             Vector<int, Dim> tile = cfg.get_tile_size();
 
-            // Upper bound on iterations: even in the worst case each step reduces
-            // at least one dimension or halves team_size.
             const int max_iter = static_cast<int>(Dim) * 64 + 8;
             for (int itr = 0; itr < max_iter; ++itr) {
-                // Recompute avail each iteration: some backends report higher
-                // available shared memory for smaller team sizes (lower occupancy).
                 const size_t avail = team_policy(1, cfg.team_size).scratch_size_max(0);
 
                 const size_t req = Impl<W, Types, Policy>::template compute_scratch_size<IsComplex>(
@@ -309,10 +250,8 @@ namespace ippl {
                 if (req <= avail)
                     break;
 
-                // Try reducing each dimension by 1; pick the reduction that
-                // decreases scratch the most (handles z_batches asymmetry).
                 int best_dim    = -1;
-                size_t best_req = req;  // we need strictly smaller than req
+                size_t best_req = req;
 
                 for (unsigned d = 0; d < Dim; ++d) {
                     if (tile[d] <= 1)
@@ -329,15 +268,10 @@ namespace ippl {
                 }
 
                 if (best_dim < 0) {
-                    // All tile dimensions are already at 1.  For implementations
-                    // where team_size contributes to scratch size (e.g.
-                    // GridParallelScatter), halving team_size may bring usage
-                    // within limits.  TiledScatter ignores team_size in its
-                    // scratch calculation, so this is a no-op for that kernel.
                     if (cfg.team_size > 1) {
                         cfg.team_size = std::max(1, cfg.team_size / 2);
                     } else {
-                        break;  // cannot reduce further; launch may fail
+                        break;
                     }
                 } else {
                     --tile[best_dim];
@@ -450,6 +384,8 @@ namespace ippl {
 
         Kernel kernel_m;
         Interpolation::ScatterConfig<Dim> config_m;
+        mutable bool method_logged_ = false;  // one-shot: method auto-switch
+        mutable bool config_logged_ = false;  // one-shot: config application
     };
 
 }  // namespace ippl

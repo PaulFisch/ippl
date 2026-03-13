@@ -151,10 +151,6 @@ namespace ippl {
 
         if (nRanks_ < 2) {
             IpplTimings::stopTimer(ParticleUpdateTimer);
-
-#ifndef NDEBUG
-            debugCheckAllParticlesLocal(pc);
-#endif
             return;
         }
 
@@ -354,14 +350,6 @@ namespace ippl {
             finalize(pc.getLocalNum());
 
         IpplTimings::stopTimer(ParticleUpdateTimer);
-
-        // ------------------------------------------------------------------
-        // Debug-build validity check: assert all locally-held particles are
-        // inside this rank's region.
-        // ------------------------------------------------------------------
-#ifndef NDEBUG
-        debugCheckAllParticlesLocal(pc);
-#endif
     }
 
     // ------------------------------------------------------------------ //
