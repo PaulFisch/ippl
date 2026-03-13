@@ -226,7 +226,7 @@ double benchmarkType1FINUFFT(PosView& positions, StrengthView& strengths, FieldV
     config.tolerance = tol;
     config.type      = 1;
 #ifdef ENABLE_GPU_NUFFT
-    config.gpu_method     = 1;  // 1=non-uniform pts driven, 2=subproblem (3 is invalid)
+    config.gpu_method     = 3;
     config.gpu_sort       = 1;
     config.gpu_kerevalmeth = 1;
 #else
