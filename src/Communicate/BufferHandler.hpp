@@ -129,19 +129,20 @@ namespace ippl {
     template <typename MemorySpace>
     typename DefaultBufferHandler<MemorySpace>::buffer_type
     DefaultBufferHandler<MemorySpace>::reallocateLargestFreeBuffer(size_type requiredSize) {
-        auto largest_it    = std::prev(free_buffers.end());
-        buffer_type buffer = *largest_it;
-
-        freeSize_m -= buffer->getBufferSize();
-        free_buffers.erase(buffer);
-
-        buffer->reallocBuffer(requiredSize);
-
-        // Must use the actual buffer size, not requiredSize, in case the allocator padded it.
-        usedSize_m += buffer->getBufferSize();
-
-        used_buffers.insert(buffer);
-        return buffer;
+        // Allocate a fresh buffer instead of reallocating the old one.
+        //
+        // The previous implementation called reallocBuffer() on the largest
+        // free buffer, which does hipFree + hipMalloc (or cudaFree + cudaMalloc).
+        // On multi-node AMD (LUMI), this invalidates RDMA memory registrations
+        // cached by Cray MPICH / libfabric.  If hipMalloc returns the same
+        // virtual address, the MPI library finds a stale IPC handle in its
+        // registration cache, causing "Memory access fault" on the next
+        // GPU-aware MPI transfer.
+        //
+        // By allocating a fresh buffer at a new address and keeping the old
+        // buffers in the free pool (available for future smaller requests),
+        // we avoid the hipFree that triggers the stale-registration bug.
+        return allocateNewBuffer(requiredSize);
     }
 
     template <typename MemorySpace>
