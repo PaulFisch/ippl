@@ -1,6 +1,4 @@
 #include "Ippl.h"
-#include "Utility/IpplTimings.h"
-#include "Utility/ParameterList.h"
 
 #include <Kokkos_Random.hpp>
 #include <array>
@@ -10,6 +8,9 @@
 #include <iomanip>
 #include <iostream>
 #include <vector>
+
+#include "Utility/IpplTimings.h"
+#include "Utility/ParameterList.h"
 
 #ifdef KOKKOS_ENABLE_CUDA
 #include <cuda_runtime.h>
@@ -69,16 +70,15 @@ struct GenerateRandomParticlesWithCharges {
     GeneratorPool rand_pool;
     T minU, maxU;
 
-    GenerateRandomParticlesWithCharges(view_type x_, view_type_scalar Q_,
-                                       GeneratorPool rand_pool_, T& minU_, T& maxU_)
+    GenerateRandomParticlesWithCharges(view_type x_, view_type_scalar Q_, GeneratorPool rand_pool_,
+                                       T& minU_, T& maxU_)
         : x(x_)
         , Q(Q_)
         , rand_pool(rand_pool_)
         , minU(minU_)
         , maxU(maxU_) {}
 
-    KOKKOS_INLINE_FUNCTION
-    void operator()(const size_t i) const {
+    KOKKOS_INLINE_FUNCTION void operator()(const size_t i) const {
         typename GeneratorPool::generator_type rand_gen = rand_pool.get_state();
 
         for (unsigned d = 0; d < Dim; ++d) {
@@ -100,8 +100,7 @@ struct GenerateRandomField {
         : f(f_)
         , rand_pool(rand_pool_) {}
 
-    KOKKOS_INLINE_FUNCTION
-    void operator()(const size_t i, const size_t j, const size_t k) const {
+    KOKKOS_INLINE_FUNCTION void operator()(const size_t i, const size_t j, const size_t k) const {
         typename GeneratorPool::generator_type rand_gen = rand_pool.get_state();
 
         f(i, j, k).real() = rand_gen.drand(0.0, 1.0);
@@ -198,25 +197,18 @@ void writeComponentTimingsCSV(const std::string& filename, int num_ranks, int gr
     file << "num_ranks,grid_size,num_particles,timer,run,time_s\n";
 
     // List of timers to export
-    std::vector<std::string> timers = {
-        "scatterTimerNUFFT1",
-        "accumulateHaloNUFFT1",
-        "FFTNUFFT1",
-        "deconvolutionNUFFT1",
-        "PrecorrectionNUFFT2",
-        "FFTNUFFT2",
-        "FillHaloNUFFT2",
-        "GatherNUFFT2",
-        "NativeNUFFT1",
-        "NativeNUFFT2"
-    };
+    std::vector<std::string> timers = {"scatterTimerNUFFT1",  "accumulateHaloNUFFT1",
+                                       "FFTNUFFT1",           "deconvolutionNUFFT1",
+                                       "PrecorrectionNUFFT2", "FFTNUFFT2",
+                                       "FillHaloNUFFT2",      "GatherNUFFT2",
+                                       "NativeNUFFT1",        "NativeNUFFT2"};
 
     for (const auto& timer_name : timers) {
         const auto& measurements = IpplTimings::getMeasurements(timer_name);
         for (size_t i = 0; i < measurements.size(); ++i) {
-            file << num_ranks << "," << grid_size << "," << num_particles << ","
-                 << timer_name << "," << i << ","
-                 << std::fixed << std::setprecision(9) << measurements[i] << "\n";
+            file << num_ranks << "," << grid_size << "," << num_particles << "," << timer_name
+                 << "," << i << "," << std::fixed << std::setprecision(9) << measurements[i]
+                 << "\n";
         }
     }
 
@@ -232,11 +224,11 @@ void printComponentTimings() {
         const auto& measurements = IpplTimings::getMeasurements(name);
         if (!measurements.empty()) {
             double sum = 0.0;
-            for (double m : measurements) sum += m;
+            for (double m : measurements)
+                sum += m;
             double mean_ms = (sum / measurements.size()) * 1000.0;
-            std::cout << std::setw(25) << std::left << label
-                      << std::right << std::setw(10) << std::fixed
-                      << std::setprecision(2) << mean_ms << " ms\n";
+            std::cout << std::setw(25) << std::left << label << std::right << std::setw(10)
+                      << std::fixed << std::setprecision(2) << mean_ms << " ms\n";
         }
     };
 
@@ -287,7 +279,8 @@ void printResult(const std::string& label, const BenchmarkResult& result) {
 
 BenchmarkResult benchmarkNUFFTType1(int grid_size, double particles_per_point, double tolerance,
                                     const std::string& spread_method, int warmup_runs,
-                                    int benchmark_runs) {
+                                    int benchmark_runs, bool use_upsampled = false,
+                                    double sigma = 2.0) {
     constexpr unsigned int dim = 3;
     using Mesh_t               = ippl::UniformCartesian<double, dim>;
     using Centering_t          = Mesh_t::DefaultCentering;
@@ -295,14 +288,20 @@ BenchmarkResult benchmarkNUFFTType1(int grid_size, double particles_per_point, d
     using Vector_t             = ippl::Vector<double, dim>;
     using playout_type         = ippl::ParticleSpatialLayout<double, dim>;
     using bunch_type           = Bunch<playout_type>;
-    using field_type = typename ippl::Field<Kokkos::complex<double>, dim, Mesh_t, Centering_t>::uniform_type;
+    using field_type =
+        typename ippl::Field<Kokkos::complex<double>, dim, Mesh_t, Centering_t>::uniform_type;
     using real_field_type = typename ippl::Field<double, dim, Mesh_t, Centering_t>::uniform_type;
     using FFT_type        = ippl::FFT<ippl::NUFFTransform, real_field_type>;
 
     const double pi = std::acos(-1.0);
 
-    // Setup domain
-    ippl::Vector<int, dim> pt = {grid_size, grid_size, grid_size};
+    // When use_upsampled is true, grid_size is the number of modes.
+    // The field lives on the upsampled grid (sigma * grid_size),
+    // while particles are distributed on the original (modes) grid.
+    int upsampled_size = use_upsampled ? static_cast<int>(sigma * grid_size) : grid_size;
+
+    // Setup upsampled domain (field lives here)
+    ippl::Vector<int, dim> pt = {upsampled_size, upsampled_size, upsampled_size};
     ippl::Index I(pt[0]);
     ippl::Index J(pt[1]);
     ippl::Index K(pt[2]);
@@ -326,14 +325,29 @@ BenchmarkResult benchmarkNUFFTType1(int grid_size, double particles_per_point, d
     Vector_t origin = {minU[0], minU[1], minU[2]};
     Mesh_t mesh(owned, hx, origin);
 
-    playout_type pl(layout, mesh);
+    // Particle layout uses original (modes) grid when upsampled
+    ippl::Vector<int, dim> ptOrig = {grid_size, grid_size, grid_size};
+    auto ownedOrig =
+        ippl::NDIndex<dim>(ippl::Index(ptOrig[0]), ippl::Index(ptOrig[1]), ippl::Index(ptOrig[2]));
+    Vector_t hxOrig = {(maxU[0] - minU[0]) / double(ptOrig[0]),
+                       (maxU[1] - minU[1]) / double(ptOrig[1]),
+                       (maxU[2] - minU[2]) / double(ptOrig[2])};
+    Mesh_t meshOrig(ownedOrig, hxOrig, origin);
+    ippl::FieldLayout<dim> layoutOrig(MPI_COMM_WORLD, ownedOrig, isParallel);
 
+    playout_type pl(use_upsampled ? layoutOrig : layout, use_upsampled ? meshOrig : mesh);
+
+    // Particle count is always based on the modes grid
     size_type Np   = static_cast<size_type>(std::pow(grid_size, 3)) * particles_per_point;
     size_type nloc = Np / ippl::Comm->size();
 
     if (ippl::Comm->rank() == 0) {
         std::cout << "\n=== Benchmarking NUFFT Type 1 ===" << std::endl;
         std::cout << "Grid size:       " << grid_size << "^3" << std::endl;
+        if (use_upsampled) {
+            std::cout << "Upsampled grid:  " << upsampled_size << "^3 (sigma=" << sigma << ")"
+                      << std::endl;
+        }
         std::cout << "Total particles: " << Np << std::endl;
         std::cout << "Local particles: " << nloc << std::endl;
         std::cout << "Spread method:   " << spread_method << std::endl;
@@ -346,7 +360,7 @@ BenchmarkResult benchmarkNUFFTType1(int grid_size, double particles_per_point, d
     MPI_Barrier(ippl::Comm->getCommunicator());
     printMemoryUsage("Before allocation");
 
-    // Create bunch and field
+    // Create bunch and field (field on upsampled grid, particles on original)
     bunch_type bunch(pl);
     bunch.setParticleBC(ippl::BC::PERIODIC);
     bunch.create(nloc);
@@ -374,8 +388,15 @@ BenchmarkResult benchmarkNUFFTType1(int grid_size, double particles_per_point, d
     fftParams.add("z_tiles", 1);
     fftParams.add("team_size", 2);
     fftParams.add("sort", true);
+    if (use_upsampled) {
+        fftParams.add("use_upsampled_inputs", true);
+        fftParams.add("sigma", sigma);
+    }
 
-    auto fft = std::make_unique<FFT_type>(layout, nloc, 1, fftParams);
+    // When upsampled: pass the original (modes) layout, not the upsampled layout.
+    // The NUFFT internally creates its own upsampled grid (n_grid = sigma * n_modes).
+    // This matches what LandauDampingPIF does: initNUFFT(FLOrig, tol).
+    auto fft = std::make_unique<FFT_type>(use_upsampled ? layoutOrig : layout, nloc, 1, fftParams);
     bunch.update();
 
     Kokkos::fence();
@@ -413,7 +434,7 @@ BenchmarkResult benchmarkNUFFTType1(int grid_size, double particles_per_point, d
         Kokkos::fence();
         MPI_Barrier(ippl::Comm->getCommunicator());
 
-        auto end    = std::chrono::high_resolution_clock::now();
+        auto end   = std::chrono::high_resolution_clock::now();
         times[run] = std::chrono::duration<double, std::milli>(end - start).count();
     }
 
@@ -430,22 +451,23 @@ BenchmarkResult benchmarkNUFFTType1(int grid_size, double particles_per_point, d
     double throughput = (Np / global_mean * 1000.0) / 1e6;  // Mpts/s
 
     BenchmarkResult result;
-    result.num_ranks      = ippl::Comm->size();
-    result.num_particles  = Np;
-    result.grid_size      = grid_size;
-    result.mean_time      = global_mean;
-    result.min_time       = global_min;
-    result.max_time       = global_max;
-    result.stddev         = stddev;
+    result.num_ranks       = ippl::Comm->size();
+    result.num_particles   = Np;
+    result.grid_size       = grid_size;
+    result.mean_time       = global_mean;
+    result.min_time        = global_min;
+    result.max_time        = global_max;
+    result.stddev          = stddev;
     result.throughput_mpts = throughput;
-    result.all_times      = global_times;
+    result.all_times       = global_times;
 
     return result;
 }
 
 BenchmarkResult benchmarkNUFFTType2(int grid_size, double particles_per_point, double tolerance,
                                     const std::string& gather_method, int warmup_runs,
-                                    int benchmark_runs) {
+                                    int benchmark_runs, bool use_upsampled = false,
+                                    double sigma = 2.0) {
     constexpr unsigned int dim = 3;
     using Mesh_t               = ippl::UniformCartesian<double, dim>;
     using Centering_t          = Mesh_t::DefaultCentering;
@@ -453,14 +475,20 @@ BenchmarkResult benchmarkNUFFTType2(int grid_size, double particles_per_point, d
     using Vector_t             = ippl::Vector<double, dim>;
     using playout_type         = ippl::ParticleSpatialLayout<double, dim>;
     using bunch_type           = Bunch<playout_type>;
-    using field_type = typename ippl::Field<Kokkos::complex<double>, dim, Mesh_t, Centering_t>::uniform_type;
+    using field_type =
+        typename ippl::Field<Kokkos::complex<double>, dim, Mesh_t, Centering_t>::uniform_type;
     using real_field_type = typename ippl::Field<double, dim, Mesh_t, Centering_t>::uniform_type;
     using FFT_type        = ippl::FFT<ippl::NUFFTransform, real_field_type>;
 
     const double pi = std::acos(-1.0);
 
-    // Setup domain
-    ippl::Vector<int, dim> pt = {grid_size, grid_size, grid_size};
+    // When use_upsampled is true, grid_size is the number of modes.
+    // The field lives on the upsampled grid (sigma * grid_size),
+    // while particles are distributed on the original (modes) grid.
+    int upsampled_size = use_upsampled ? static_cast<int>(sigma * grid_size) : grid_size;
+
+    // Setup upsampled domain (field lives here)
+    ippl::Vector<int, dim> pt = {upsampled_size, upsampled_size, upsampled_size};
     ippl::Index I(pt[0]);
     ippl::Index J(pt[1]);
     ippl::Index K(pt[2]);
@@ -472,7 +500,7 @@ BenchmarkResult benchmarkNUFFTType2(int grid_size, double particles_per_point, d
     ippl::FieldLayout<dim> layout(MPI_COMM_WORLD, owned, isParallel);
 
     Vector_t minU = {0, 0, 0};
-    Vector_t maxU = {2 * pi,2 * pi,2 * pi};
+    Vector_t maxU = {2 * pi, 2 * pi, 2 * pi};
 
     std::array<double, dim> dx = {
         (maxU[0] - minU[0]) / double(pt[0]),
@@ -484,14 +512,29 @@ BenchmarkResult benchmarkNUFFTType2(int grid_size, double particles_per_point, d
     Vector_t origin = {minU[0], minU[1], minU[2]};
     Mesh_t mesh(owned, hx, origin);
 
-    playout_type pl(layout, mesh);
+    // Particle layout uses original (modes) grid when upsampled
+    ippl::Vector<int, dim> ptOrig = {grid_size, grid_size, grid_size};
+    auto ownedOrig =
+        ippl::NDIndex<dim>(ippl::Index(ptOrig[0]), ippl::Index(ptOrig[1]), ippl::Index(ptOrig[2]));
+    Vector_t hxOrig = {(maxU[0] - minU[0]) / double(ptOrig[0]),
+                       (maxU[1] - minU[1]) / double(ptOrig[1]),
+                       (maxU[2] - minU[2]) / double(ptOrig[2])};
+    Mesh_t meshOrig(ownedOrig, hxOrig, origin);
+    ippl::FieldLayout<dim> layoutOrig(MPI_COMM_WORLD, ownedOrig, isParallel);
 
+    playout_type pl(use_upsampled ? layoutOrig : layout, use_upsampled ? meshOrig : mesh);
+
+    // Particle count is always based on the modes grid
     size_type Np   = static_cast<size_type>(std::pow(grid_size, 3)) * particles_per_point;
     size_type nloc = Np / ippl::Comm->size();
 
     if (ippl::Comm->rank() == 0) {
         std::cout << "\n=== Benchmarking NUFFT Type 2 ===" << std::endl;
         std::cout << "Grid size:       " << grid_size << "^3" << std::endl;
+        if (use_upsampled) {
+            std::cout << "Upsampled grid:  " << upsampled_size << "^3 (sigma=" << sigma << ")"
+                      << std::endl;
+        }
         std::cout << "Total particles: " << Np << std::endl;
         std::cout << "Local particles: " << nloc << std::endl;
         std::cout << "Gather method:   " << gather_method << std::endl;
@@ -504,7 +547,7 @@ BenchmarkResult benchmarkNUFFTType2(int grid_size, double particles_per_point, d
     MPI_Barrier(ippl::Comm->getCommunicator());
     printMemoryUsage("Before allocation");
 
-    // Create bunch and field
+    // Create bunch and field (field on upsampled grid, particles on original)
     bunch_type bunch(pl);
     bunch.setParticleBC(ippl::BC::PERIODIC);
     bunch.create(nloc);
@@ -528,13 +571,13 @@ BenchmarkResult benchmarkNUFFTType2(int grid_size, double particles_per_point, d
     bunch.update();
 
     // Generate random field
-    const int nghost = field.getNghost();
-    auto fview       = field.getView();
+    const int nghost   = field.getNghost();
+    auto fview         = field.getView();
     using mdrange_type = Kokkos::MDRangePolicy<Kokkos::Rank<3>>;
     Kokkos::parallel_for(
         "GenerateRandomField",
-        mdrange_type({nghost, nghost, nghost},
-                     {fview.extent(0) - nghost, fview.extent(1) - nghost, fview.extent(2) - nghost}),
+        mdrange_type({nghost, nghost, nghost}, {fview.extent(0) - nghost, fview.extent(1) - nghost,
+                                                fview.extent(2) - nghost}),
         GenerateRandomField<Kokkos::complex<double>, Kokkos::Random_XorShift64_Pool<>, dim>(
             fview, rand_pool64));
     Kokkos::fence();
@@ -550,8 +593,14 @@ BenchmarkResult benchmarkNUFFTType2(int grid_size, double particles_per_point, d
     fftParams.add("use_kokkos_nufft", false);
     fftParams.add("gather_method", gather_method);
     fftParams.add("sort", true);
+    if (use_upsampled) {
+        fftParams.add("use_upsampled_inputs", true);
+        fftParams.add("sigma", sigma);
+    }
 
-    auto fft = std::make_unique<FFT_type>(layout, nloc, 2, fftParams);
+    // When upsampled: pass the original (modes) layout, not the upsampled layout.
+    // The NUFFT internally creates its own upsampled grid (n_grid = sigma * n_modes).
+    auto fft = std::make_unique<FFT_type>(use_upsampled ? layoutOrig : layout, nloc, 2, fftParams);
 
     Kokkos::fence();
     MPI_Barrier(ippl::Comm->getCommunicator());
@@ -589,7 +638,7 @@ BenchmarkResult benchmarkNUFFTType2(int grid_size, double particles_per_point, d
         Kokkos::fence();
         MPI_Barrier(ippl::Comm->getCommunicator());
 
-        auto end    = std::chrono::high_resolution_clock::now();
+        auto end   = std::chrono::high_resolution_clock::now();
         times[run] = std::chrono::duration<double, std::milli>(end - start).count();
     }
 
@@ -606,15 +655,15 @@ BenchmarkResult benchmarkNUFFTType2(int grid_size, double particles_per_point, d
     double throughput = (Np / global_mean * 1000.0) / 1e6;  // Mpts/s
 
     BenchmarkResult result;
-    result.num_ranks      = ippl::Comm->size();
-    result.num_particles  = Np;
-    result.grid_size      = grid_size;
-    result.mean_time      = global_mean;
-    result.min_time       = global_min;
-    result.max_time       = global_max;
-    result.stddev         = stddev;
+    result.num_ranks       = ippl::Comm->size();
+    result.num_particles   = Np;
+    result.grid_size       = grid_size;
+    result.mean_time       = global_mean;
+    result.min_time        = global_min;
+    result.max_time        = global_max;
+    result.stddev          = stddev;
     result.throughput_mpts = throughput;
-    result.all_times      = global_times;
+    result.all_times       = global_times;
 
     return result;
 }
@@ -627,22 +676,24 @@ int main(int argc, char* argv[]) {
     ippl::initialize(argc, argv);
     {
         // Default parameters
-        int grid_size           = 8;
+        int grid_size              = 8;
         double particles_per_point = 1.0;
-        double tolerance        = 1e-4;
-        int warmup_runs         = 3;
-        int benchmark_runs      = 10;
-        std::string spread_method = "output_focused";
-        std::string gather_method = "atomic_sort";
-        std::string csv_filename  = "nufft_scaling_";
+        double tolerance           = 1e-4;
+        int warmup_runs            = 3;
+        int benchmark_runs         = 10;
+        std::string spread_method  = "output_focused";
+        std::string gather_method  = "atomic_sort";
+        std::string csv_filename   = "nufft_scaling_";
         csv_filename += std::to_string(ippl::Comm->size());
         csv_filename += ".csv";
         std::string component_csv = "nufft_components_";
         component_csv += std::to_string(ippl::Comm->size());
         component_csv += ".csv";
-        bool run_type1            = true;
-        bool run_type2            = true;
-        bool dump_components      = true;
+        bool run_type1       = true;
+        bool run_type2       = true;
+        bool dump_components = true;
+        bool use_upsampled   = false;
+        double sigma         = 2.0;
 
         // Parse command line arguments
         for (int i = 1; i < argc; ++i) {
@@ -673,31 +724,43 @@ int main(int argc, char* argv[]) {
                 run_type2 = true;
             } else if (arg == "--no-components") {
                 dump_components = false;
+            } else if (arg == "--upsampled") {
+                use_upsampled = true;
+            } else if (arg == "--sigma" && i + 1 < argc) {
+                sigma = std::atof(argv[++i]);
             } else if (arg == "--help") {
                 if (ippl::Comm->rank() == 0) {
-                    std::cout << "NUFFT Scaling Benchmark\n"
-                              << "Usage: " << argv[0] << " [options]\n\n"
-                              << "Options:\n"
-                              << "  --grid N          Grid size (default: 256)\n"
-                              << "  --ppp N           Particles per grid point (default: 10)\n"
-                              << "  --tol T           Tolerance (default: 1e-4)\n"
-                              << "  --warmup N        Warmup runs (default: 3)\n"
-                              << "  --runs N          Benchmark runs (default: 10)\n"
-                              << "  --spread S        Spread method: output_focused, tiled, atomic (default: output_focused)\n"
-                              << "  --gather S        Gather method: tiled, atomic, atomic_sort, native (default: atomic_sort)\n"
-                              << "  --csv FILE        Output CSV filename (default: nufft_scaling.csv)\n"
-                              << "  --component-csv F Component timings CSV (default: nufft_components.csv)\n"
-                              << "  --type1-only      Run only Type 1 benchmark\n"
-                              << "  --type2-only      Run only Type 2 benchmark\n"
-                              << "  --no-components   Don't dump component timings\n"
-                              << "  --help            Show this help message\n";
+                    std::cout
+                        << "NUFFT Scaling Benchmark\n"
+                        << "Usage: " << argv[0] << " [options]\n\n"
+                        << "Options:\n"
+                        << "  --grid N          Grid size (default: 256)\n"
+                        << "  --ppp N           Particles per grid point (default: 10)\n"
+                        << "  --tol T           Tolerance (default: 1e-4)\n"
+                        << "  --warmup N        Warmup runs (default: 3)\n"
+                        << "  --runs N          Benchmark runs (default: 10)\n"
+                        << "  --spread S        Spread method: output_focused, tiled, atomic "
+                           "(default: output_focused)\n"
+                        << "  --gather S        Gather method: tiled, atomic, atomic_sort, native "
+                           "(default: atomic_sort)\n"
+                        << "  --csv FILE        Output CSV filename (default: nufft_scaling.csv)\n"
+                        << "  --component-csv F Component timings CSV (default: "
+                           "nufft_components.csv)\n"
+                        << "  --type1-only      Run only Type 1 benchmark\n"
+                        << "  --type2-only      Run only Type 2 benchmark\n"
+                        << "  --no-components   Don't dump component timings\n"
+                        << "  --upsampled       Use upsampled grid (field on sigma*grid, particles "
+                           "on grid)\n"
+                        << "  --sigma S         Upsampling factor (default: 2.0, requires "
+                           "--upsampled)\n"
+                        << "  --help            Show this help message\n";
                 }
                 ippl::finalize();
                 return 0;
             }
         }
 
-        int num_ranks = ippl::Comm->size();
+        int num_ranks        = ippl::Comm->size();
         size_t num_particles = static_cast<size_t>(std::pow(grid_size, 3)) * particles_per_point;
 
         if (ippl::Comm->rank() == 0) {
@@ -706,7 +769,12 @@ int main(int argc, char* argv[]) {
             std::cout << std::string(80, '=') << std::endl;
             std::cout << "Number of ranks: " << num_ranks << std::endl;
             std::cout << "Grid size:       " << grid_size << "^3" << std::endl;
-            std::cout << "Particles:       " << num_particles << " (" << particles_per_point << " per point)" << std::endl;
+            if (use_upsampled) {
+                std::cout << "Upsampled grid:  " << static_cast<int>(sigma * grid_size)
+                          << "^3 (sigma=" << sigma << ")" << std::endl;
+            }
+            std::cout << "Particles:       " << num_particles << " (" << particles_per_point
+                      << " per point)" << std::endl;
             std::cout << "Tolerance:       " << tolerance << std::endl;
             std::cout << "CSV output:      " << csv_filename << std::endl;
             std::cout << "Component CSV:   " << component_csv << std::endl;
@@ -717,22 +785,24 @@ int main(int argc, char* argv[]) {
 
         // Run Type 1 benchmark
         if (run_type1) {
-            type1_result = benchmarkNUFFTType1(grid_size, particles_per_point, tolerance,
-                                               spread_method, warmup_runs, benchmark_runs);
+            type1_result =
+                benchmarkNUFFTType1(grid_size, particles_per_point, tolerance, spread_method,
+                                    warmup_runs, benchmark_runs, use_upsampled, sigma);
             printResult("NUFFT Type 1 Results", type1_result);
         }
 
         // Run Type 2 benchmark
         if (run_type2) {
-            type2_result = benchmarkNUFFTType2(grid_size, particles_per_point, tolerance,
-                                               gather_method, warmup_runs, benchmark_runs);
+            type2_result =
+                benchmarkNUFFTType2(grid_size, particles_per_point, tolerance, gather_method,
+                                    warmup_runs, benchmark_runs, use_upsampled, sigma);
             printResult("NUFFT Type 2 Results", type2_result);
         }
 
         // Write results to CSV
         if (run_type1 && run_type2) {
-            writeTimingsCSV(csv_filename, num_ranks, grid_size, num_particles,
-                            type1_result, type2_result);
+            writeTimingsCSV(csv_filename, num_ranks, grid_size, num_particles, type1_result,
+                            type2_result);
         }
 
         // Print and dump component timings
@@ -749,12 +819,12 @@ int main(int argc, char* argv[]) {
             std::cout << std::fixed << std::setprecision(3);
 
             if (run_type1) {
-                std::cout << "Type 1: " << type1_result.mean_time << " ms ("
-                          << std::setprecision(2) << type1_result.throughput_mpts << " Mpts/s)" << std::endl;
+                std::cout << "Type 1: " << type1_result.mean_time << " ms (" << std::setprecision(2)
+                          << type1_result.throughput_mpts << " Mpts/s)" << std::endl;
             }
             if (run_type2) {
-                std::cout << "Type 2: " << type2_result.mean_time << " ms ("
-                          << std::setprecision(2) << type2_result.throughput_mpts << " Mpts/s)" << std::endl;
+                std::cout << "Type 2: " << type2_result.mean_time << " ms (" << std::setprecision(2)
+                          << type2_result.throughput_mpts << " Mpts/s)" << std::endl;
             }
             std::cout << std::string(80, '=') << std::endl;
         }
