@@ -101,6 +101,7 @@ namespace ippl {
 
     void finalize() {
         Comm->deleteAllBuffers();
+        ippl::detail::finalizeBinSortBuffers();
         Kokkos::finalize();
         // we must first delete the communicator and
         // afterwards the MPI environment

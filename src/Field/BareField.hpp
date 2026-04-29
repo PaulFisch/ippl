@@ -14,6 +14,7 @@
 
 #include "Utility/Inform.h"
 #include "Utility/IpplInfo.h"
+#include "Types/IpplTypes.h"
 namespace Kokkos {
     template <typename T, unsigned Dim>
     struct reduction_identity<ippl::Vector<T, Dim>> {
@@ -24,10 +25,10 @@ namespace Kokkos {
             return ippl::Vector<T, Dim>(1);
         }
         KOKKOS_FORCEINLINE_FUNCTION static ippl::Vector<T, Dim> min() {
-            return ippl::Vector<T, Dim>(std::numeric_limits<T>::infinity());
+            return ippl::Vector<T, Dim>(ippl::detail::infinity<T>());
         }
         KOKKOS_FORCEINLINE_FUNCTION static ippl::Vector<T, Dim> max() {
-            return ippl::Vector<T, Dim>(-std::numeric_limits<T>::infinity());
+            return ippl::Vector<T, Dim>(-ippl::detail::infinity<T>());
         }
     };
 }  // namespace Kokkos
@@ -142,7 +143,7 @@ namespace ippl {
     template <typename T, unsigned Dim, class... ViewArgs>
     void BareField<T, Dim, ViewArgs...>::fillHalo() {
         if (layout_m->comm.size() > 1) {
-            halo_m.fillHalo(dview_m, layout_m);
+            halo_m.fillHalo(dview_m, layout_m, nghost_m);
         }
         if (layout_m->isAllPeriodic_m) {
             using Op = typename detail::HaloCells<T, Dim, ViewArgs...>::assign;
@@ -153,7 +154,7 @@ namespace ippl {
     template <typename T, unsigned Dim, class... ViewArgs>
     void BareField<T, Dim, ViewArgs...>::accumulateHalo() {
         if (layout_m->comm.size() > 1) {
-            halo_m.accumulateHalo(dview_m, layout_m);
+            halo_m.accumulateHalo(dview_m, layout_m, nghost_m);
         }
         if (layout_m->isAllPeriodic_m) {
             using Op = typename detail::HaloCells<T, Dim, ViewArgs...>::rhs_plus_assign;
