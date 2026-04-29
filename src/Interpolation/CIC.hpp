@@ -5,6 +5,8 @@
 //   these should be moved into structs.
 //
 
+#include <Kokkos_Core.hpp>
+
 namespace ippl {
     namespace detail {
         template <unsigned long Point, unsigned long Index, typename Weights>
