@@ -23,17 +23,27 @@
 #ifndef IPPL_PARTICLE_SPATIAL_LAYOUT_H
 #define IPPL_PARTICLE_SPATIAL_LAYOUT_H
 
+#include <vector>
+
 #include "Types/IpplTypes.h"
 
+#include "Communicate/Window.h"
 #include "FieldLayout/FieldLayout.h"
 #include "Particle/ParticleBase.h"
 #include "Particle/ParticleLayout.h"
 #include "Region/RegionLayout.h"
 
-#include "Communicate/Window.h"
-#include <vector>
-
 namespace ippl {
+
+    // Controls how the send-count exchange is performed before the particle data transfer.
+    enum class CountExchange {
+        // One-sided RMA: each sender writes its count directly into the receiver's window.
+        RMA,
+        // Two-sided GPU-direct P2P: Isend/Irecv over device pointers
+        P2P_GPU,
+        // AlltoALl GPU
+        Alltoall_GPU
+    };
 
     /*!
      * ParticleSpatialLayout class definition.
@@ -59,9 +69,9 @@ namespace ippl {
 
         using size_type = detail::size_type;
 
-    public:
         // constructor: this one also takes a Mesh
-        ParticleSpatialLayout(FieldLayout<Dim>&, Mesh&, bool fem = false);
+        ParticleSpatialLayout(FieldLayout<Dim>&, Mesh&, bool fem = false,
+                              CountExchange mode = CountExchange::RMA);
 
         ParticleSpatialLayout()
             : detail::ParticleLayout<T, Dim, PositionProperties...>() {}
@@ -73,22 +83,33 @@ namespace ippl {
         template <class ParticleContainer>
         void update(ParticleContainer& pc);
 
-        const RegionLayout_t& getRegionLayout() const { return rlayout_m; }
+        const RegionLayout_t& getRegionLayout() const { return *rlayout_m; }
 
     protected:
         //! The RegionLayout which determines where our particles go.
-        RegionLayout_t rlayout_m;
+        std::shared_ptr<RegionLayout_t> rlayout_m;
 
         //! The FieldLayout containing information on nearest neighbors
         FieldLayout_t& flayout_m;
-        
-        
+
+        //! How counts are exchanged
+        CountExchange countExchangeMode_;
+
+        //
+        // RMA Path
+        //
+
         // Vector keeping track of the recieves from all ranks
         std::vector<size_type> nRecvs_m;
-  
+
         // MPI RMA window for one-sided communication
         mpi::rma::Window<mpi::rma::Active> window_m;
-        
+
+        //
+        // P2P GPU Path
+        //
+        locate_type recvCounts_d_;  // [nranks]
+
         //! Type of the Kokkos view containing the local regions.
         using region_view_type = typename RegionLayout_t::view_type;
         //! Type of a single Region object.
@@ -98,6 +119,10 @@ namespace ippl {
 
         template <size_t... Idx>
         KOKKOS_INLINE_FUNCTION constexpr static bool positionInRegion(
+            const std::index_sequence<Idx...>&, const vector_type& pos, const region_type& region);
+
+        template <size_t... Idx>
+        KOKKOS_INLINE_FUNCTION constexpr static bool positionInRegionInclusive(
             const std::index_sequence<Idx...>&, const vector_type& pos, const region_type& region);
 
         /*!
@@ -120,8 +145,13 @@ namespace ippl {
          * @return The total number of invalidated particles
          */
         template <typename ParticleContainer>
-        std::pair<size_type,size_type> locateParticles(const ParticleContainer& pc, locate_type& ranks,
-                                  bool_type& invalid, locate_type& nSends_dview, locate_type& sends_dview) const;
+        std::pair<size_type, size_type> locateParticles(const ParticleContainer& pc,
+                                                        locate_type& ranks,
+                                                        locate_type& nSends_dview,
+                                                        locate_type& sends_dview) const;
+
+        template <typename ParticleContainer>
+        size_t locateParticlesPacked(const ParticleContainer& pc);
 
         /*!
          * @param rank we sent to
@@ -135,10 +165,50 @@ namespace ippl {
          * @param ranks a container specifying where a particle at the i-th index should go.
          */
         size_t numberOfSends(int rank, const locate_type& ranks);
+
+    private:
+        // Fixed-size scratch
+        locate_type rankSendCount_d_;  // [nRanks]
+        locate_type sendOffsets_d_;    // [nRanks+1]
+        hash_type sendIds_d_;          // [capacity >= max nInvalid seen]
+        locate_type cursor_d_;         // [nRanks]
+        locate_type destRanks_d_;      // [nRanks] (compacted list)
+
+        // Single scalar on device to count destinations
+        Kokkos::View<size_type, position_memory_space> nDest_d_;
+
+        // Neigbour cache
+        locate_type neighbors_d_;          // [neighborSize] cached device neighbors list
+        std::vector<int> neighbors_host_;  // flat host copy
+        bool neighbors_dirty_      = true;
+        size_t neighbors_capacity_ = 0;
+        size_type neighbors_used_  = 0;
+
+        // Host mirror buffers
+        using host_mem_space   = Kokkos::HostSpace;
+        using locate_host_type = typename detail::ViewType<int, 1, host_mem_space>::view_type;
+
+        locate_host_type rankSendCount_h_;  // [nRanks] (mirror)
+        locate_host_type sendOffsets_h_;    // [nRanks+1] (mirror)
+        locate_host_type destRanks_h_;      // [nRanks] (mirror)
+
+        // Host-side destination list
+        std::vector<int> destinationRanks_host_;
+
+        // capacities
+        size_t sendIds_capacity_ = 0;
+        int nRanks_              = 0;
+
+        void initScratch(int nRanks);
+        void ensureSendCapacity(size_t nInvalid);
+        void ensureNeighborsCached();
+
+        void countExchangeRMA();
+        void countExchangeP2P();
+        void countExchangeAlltoall();
     };
 }  // namespace ippl
 
 #include "Particle/ParticleSpatialLayout.hpp"
 
 #endif
-

@@ -62,8 +62,8 @@ namespace ippl {
             addAttribute(ID);
         }
         addAttribute(R);
-        ID.set_name("ID");
-        R.set_name("position");
+        // ID.set_name("ID");
+        // R.set_name("position");
     }
 
     template <class PLayout, typename... IP>
@@ -161,9 +161,9 @@ namespace ippl {
     }
 
     template <class PLayout, typename... IP>
-    template <typename... Properties>
-    void ParticleBase<PLayout, IP...>::internalDestroy(
-        const Kokkos::View<bool*, Properties...>& invalid, const size_type destroyNum) {
+    template <typename memory_space, typename execution_space, typename F, typename... Properties>
+    void ParticleBase<PLayout, IP...>::internalDestroy(const F& invalid_functor,
+                                                       const size_type destroyNum) {
         PAssert(destroyNum <= localNum_m);
 
         // If there aren't any particles to delete, do nothing
@@ -179,12 +179,9 @@ namespace ippl {
             return;
         }
 
-        using view_type       = Kokkos::View<bool*, Properties...>;
-        using memory_space    = typename view_type::memory_space;
-        using execution_space = typename view_type::execution_space;
-        using policy_type     = Kokkos::RangePolicy<execution_space>;
-        auto& locDeleteIndex  = deleteIndex_m.get<memory_space>();
-        auto& locKeepIndex    = keepIndex_m.get<memory_space>();
+        using policy_type    = Kokkos::RangePolicy<execution_space>;
+        auto& locDeleteIndex = deleteIndex_m.get<memory_space>();
+        auto& locKeepIndex   = keepIndex_m.get<memory_space>();
 
         // Resize buffers, if necessary
         detail::runForAllSpaces([&]<typename MemorySpace>() {
@@ -206,10 +203,10 @@ namespace ippl {
         Kokkos::parallel_scan(
             "Scan in ParticleBase::destroy()", policy_type(0, localNum_m - destroyNum),
             KOKKOS_LAMBDA(const size_t i, int& idx, const bool final) {
-                if (final && invalid(i)) {
+                if (final && invalid_functor(i)) {
                     locDeleteIndex(idx) = i;
                 }
-                if (invalid(i)) {
+                if (invalid_functor(i)) {
                     idx += 1;
                 }
             });
@@ -231,10 +228,10 @@ namespace ippl {
             "Second scan in ParticleBase::destroy()",
             Kokkos::RangePolicy<size_type, execution_space>(localNum_m - destroyNum, localNum_m),
             KOKKOS_LAMBDA(const size_t i, int& idx, const bool final) {
-                if (final && !invalid(i)) {
+                if (final && !invalid_functor(i)) {
                     locKeepIndex(idx) = i;
                 }
-                if (!invalid(i)) {
+                if (!invalid_functor(i)) {
                     idx += 1;
                 }
             });
@@ -266,27 +263,39 @@ namespace ippl {
 
     template <class PLayout, typename... IP>
     template <typename HashType>
-    void ParticleBase<PLayout, IP...>::sendToRank(int rank, int tag,
-                                                  std::vector<MPI_Request>& requests,
-                                                  const HashType& hash) {
-        size_type nSends = hash.size();
-        requests.resize(requests.size() + 1);
+    MPI_Request ParticleBase<PLayout, IP...>::sendToRank(int rank, int tag, const HashType& hash) {
+        size_type nSends    = hash.size();
+        MPI_Request request = MPI_REQUEST_NULL;
 
         auto hashes = hash_container_type(hash, [&]<typename MemorySpace>() {
             return attributes_m.template get<MemorySpace>().size() > 0;
         });
-        pack(hashes);
         detail::runForAllSpaces([&]<typename MemorySpace>() {
             size_type bufSize = packedSize<MemorySpace>(nSends);
             if (bufSize == 0) {
                 return;
             }
-
             auto buf = Comm->getBuffer<MemorySpace>(bufSize);
 
-            Comm->isend(rank, tag++, *this, *buf, requests.back(), nSends);
+            forAllAttributes<MemorySpace>([&]<typename Attribute>(Attribute& att) {
+                att->serialize(*buf, hashes.template get<MemorySpace>(), nSends);
+            });
+
+            Comm->isend(rank, tag++, *buf, request);
             buf->resetWritePos();
         });
+        return request;
+    }
+
+    template <class PLayout, typename... IP>
+    template <typename HashType>
+    void ParticleBase<PLayout, IP...>::sendToRank(int rank, int tag,
+                                                  std::vector<MPI_Request>& requests,
+                                                  const HashType& hash) {
+        auto hashes = hash_container_type(hash, [&]<typename MemorySpace>() {
+            return attributes_m.template get<MemorySpace>().size() > 0;
+        });
+        requests.push_back(sendToRank(rank, tag, hash));
     }
 
     template <class PLayout, typename... IP>
@@ -299,10 +308,46 @@ namespace ippl {
 
             auto buf = Comm->getBuffer<MemorySpace>(bufSize);
 
-            Comm->recv(rank, tag++, *this, *buf, bufSize, nRecvs);
+            Comm->recv(rank, tag++, *buf, bufSize);
+            forAllAttributes<MemorySpace>([&]<typename Attribute>(Attribute& att) {
+                att->deserialize(*buf, localNum_m, nRecvs);
+            });
+
             buf->resetReadPos();
         });
-        unpack(nRecvs);
+        localNum_m += nRecvs;
+    }
+
+    template <class PLayout, typename... IP>
+    std::pair<MPI_Request, std::function<void(size_t)>>
+    ParticleBase<PLayout, IP...>::postRecvFromRank(int rank, int tag, size_type nRecvs) {
+        MPI_Request request = MPI_REQUEST_NULL;
+
+        // Collect (buf, nRecvs) per memory space for deferred deserialization
+        auto deferred = std::make_shared<std::vector<std::function<void(size_type)>>>();
+
+        detail::runForAllSpaces([&]<typename MemorySpace>() {
+            size_type bufSize = packedSize<MemorySpace>(nRecvs);
+            if (bufSize == 0)
+                return;
+
+            auto buf = Comm->getBuffer<MemorySpace>(bufSize);
+            Comm->irecv(rank, tag++, *buf, request, bufSize);
+
+            deferred->push_back([this, buf, nRecvs](size_type offset) {
+                forAllAttributes<MemorySpace>([&]<typename Attribute>(Attribute& att) {
+                    att->deserialize(*buf, offset, nRecvs);
+                });
+                buf->resetReadPos();
+            });
+        });
+
+        // Finalize takes the offset (localNum_m after destruction) and advances it
+        return {request, [this, deferred, nRecvs](size_type offset) {
+                    for (auto& fn : *deferred)
+                        fn(offset);
+                    localNum_m += nRecvs;
+                }};
     }
 
     template <class PLayout, typename... IP>
