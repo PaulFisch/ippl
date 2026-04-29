@@ -38,8 +38,15 @@ namespace ippl::Interpolation::detail {
             return result;
         }();
 
-        // Warp size (vector length)
-        static constexpr int vector_length = 32;
+        // Warp size (vector length). Some host backends (e.g. Serial) only
+        // support team_size==1 and vector_length==1, so clamp on those.
+        static constexpr bool is_serial =
+#ifdef KOKKOS_ENABLE_SERIAL
+            std::is_same_v<execution_space, Kokkos::Serial>;
+#else
+            false;
+#endif
+        static constexpr int vector_length = is_serial ? 1 : 32;
 
         // Scratch view types for N particles
         using ScratchBaseView    = Kokkos::View<int**, scratch_space, unmanaged>;
@@ -83,7 +90,7 @@ namespace ippl::Interpolation::detail {
 
         AtomicScatter(const Arguments& a)
             : args(a)
-            , particles_per_team_(2) {}
+            , particles_per_team_(is_serial ? 1 : 2) {}
 
         // Convert linear stencil index to multi-dimensional indices
         KOKKOS_INLINE_FUNCTION Kokkos::Array<int, Dim> linear_to_multi(int linear_idx) const {

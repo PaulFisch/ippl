@@ -244,13 +244,15 @@ namespace ippl {
                             return (g < n) ? g : g - n;
                         };
 
-                        // factor = deconv * exp(-i pi freq / N_grid)
+                        // factor = deconv * exp(-i pi freq / N_grid).
+                        // Same convention as applyPrecorrectionPruned (no conj):
+                        // the iFFT + cell-centered gather then recovers the
+                        // correct values.
                         const complex_type factor =
                             f0(rescale(gi, nx)) * f1(rescale(gj, ny)) * f2(rescale(gk, nz));
 
-                        // G_hat_k = f_k * conj(factor)  [conj gives +i pi phase]
                         output_view(li_out, lj_out, lk_out) =
-                            input_view(li_in, lj_in, lk_in) * Kokkos::conj(factor);
+                            input_view(li_in, lj_in, lk_in) * factor;
                     } else {
                         output_view(li_out, lj_out, lk_out) = complex_type(0, 0);
                     }
