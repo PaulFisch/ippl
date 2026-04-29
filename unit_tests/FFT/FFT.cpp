@@ -199,7 +199,7 @@ public:
     std::array<T, Dim> len;
 };
 
-using Tests = TestParams::tests<2, 3>;
+using Tests = TestParams::tests<3>;
 TYPED_TEST_SUITE(FFTTest, Tests);
 
 TYPED_TEST(FFTTest, Cos) {
