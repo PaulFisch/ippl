@@ -15,6 +15,7 @@
 
 ////////////////////////////////////////////////
 // For message size check; see below
+
 #include <climits>
 #include <cstdlib>
 
@@ -27,7 +28,6 @@
 
 namespace ippl {
     namespace mpi {
-
         class Communicator : public TagMaker {
         public:
             Communicator();
@@ -185,6 +185,25 @@ namespace ippl {
             }
 
             template <typename Archive>
+            void isend(int dest, int tag, Archive& ar, MPI_Request& request) {
+                if (ar.getSize() > INT_MAX) {
+                    std::cerr << "Message size exceeds range of int" << std::endl;
+                    this->abort();
+                }
+                MPI_Isend(ar.getBuffer(), ar.getSize(), MPI_BYTE, dest, tag, *comm_m, &request);
+            }
+
+            template <typename Archive>
+            void recv(int src, int tag, Archive& ar, size_type msize) {
+                if (msize > INT_MAX) {
+                    std::cerr << "Message size exceeds range of int" << std::endl;
+                    this->abort();
+                }
+                MPI_Status status;
+                MPI_Recv(ar.getBuffer(), msize, MPI_BYTE, src, tag, *comm_m, &status);
+            }
+
+            template <typename Archive>
             void irecv(int src, int tag, Archive& ar, MPI_Request& request, size_type msize) {
                 if (msize > INT_MAX) {
                     std::cerr << "Message size exceeds range of int" << std::endl;
@@ -201,7 +220,11 @@ namespace ippl {
             std::vector<LogEntry> gatherLogsFromAllRanks(const std::vector<LogEntry>& localLogs);
             void writeLogsToFile(const std::vector<LogEntry>& allLogs, const std::string& filename);
 
-            std::shared_ptr<buffer_handler_type> buffer_handlers_m;
+            static buffer_handler_type& getBufferHandler() {
+                static buffer_handler_type handler;
+                return handler;
+            }
+
             double defaultOveralloc_m = 1.0;
 
             /////////////////////////////////////////////////////////////////////////////////////
@@ -210,12 +233,10 @@ namespace ippl {
             std::shared_ptr<MPI_Comm> comm_m;
             int size_m;
             int rank_m;
-
-        public:
-            std::shared_ptr<buffer_handler_type> get_buffer_handler_instance();
         };
 
     }  // namespace mpi
+
 }  // namespace ippl
 
 #include "Communicate/Collectives.hpp"
