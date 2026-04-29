@@ -11,29 +11,43 @@ add_ippl_integration_test(TestScatter LABELS integration particle)
 add_ippl_integration_test(TestGather LABELS integration particle)
 
 add_ippl_integration_test(
-  PICnd
-  LABELS
-  integration
-  particle
-  ARGS
-  128
-  128
-  128
-  10000
-  10
-  --info
-  10)
+        PICnd
+        LABELS
+        integration
+        particle
+        ARGS
+        128
+        128
+        128
+        10000
+        10
+        --info
+        10)
 
 add_ippl_integration_test(
-  benchmarkParticleUpdate
-  LABELS
-  integration
-  particle
-  ARGS
-  128
-  128
-  128
-  10000
-  10
-  --info
-  10)
+        benchmarkParticleUpdate
+        LABELS
+        integration
+        particle
+        ARGS
+        128
+        128
+        128
+        10000
+        10
+        --info
+        10)
+
+add_ippl_integration_test(
+        benchmarkParticleUpdateScaling
+        LABELS
+        integration
+        particle
+        ARGS
+        128
+        128
+        128
+        10000
+        10
+        --info
+        10)
