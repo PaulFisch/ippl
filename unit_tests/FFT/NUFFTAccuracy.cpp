@@ -137,7 +137,11 @@ public:
         int N = static_cast<int>(gridSize_m);
         int halfN = N / 2;
 
-        // Iterate over all modes in centered frequency space: k in [-N/2, N/2-1]
+        // Iterate over all modes in centered frequency space: k in [-N/2, N/2-1].
+        // computeDFTReference does an MPI_Allreduce internally, so every rank
+        // must call it on every mode in the same order to stay in lockstep.
+        // The owned-mode check below only gates the error update, never the
+        // allreduce.
         for (int kx = -halfN; kx < halfN; ++kx) {
             for (int ky = -halfN; ky < halfN; ++ky) {
                 for (int kz = -halfN; kz < halfN; ++kz) {
@@ -146,22 +150,16 @@ public:
                     kVec[1] = ky;
                     kVec[2] = kz;
 
-                    // Convert to corner-DC indexing
                     auto globalIdx = ippl::test::IndexUtils<Dim>::centeredToCornerDC(kVec, nModes_m);
+                    auto dftResult = computeDFTReference(kVec);
 
-                    // Only process modes owned by this rank
                     if (!ippl::test::IndexUtils<Dim>::isOwnedLocally(lDom, globalIdx)) {
                         continue;
                     }
 
-                    // Extract NUFFT result from cached host mirror
                     auto localIdx = ippl::test::IndexUtils<Dim>::globalToLocal(lDom, globalIdx, nghost);
                     Kokkos::complex<T> nufftResult = fieldHost(localIdx[0], localIdx[1], localIdx[2]);
 
-                    // Compute DFT reference
-                    auto dftResult = computeDFTReference(kVec);
-
-                    // Track max absolute error and max DFT magnitude
                     T absError = Kokkos::abs(nufftResult - dftResult);
                     T dftMag = Kokkos::abs(dftResult);
 

@@ -763,8 +763,10 @@ TYPED_TEST(TestParticleUpdateORB, ParticleInjectionBetweenOrbRepartitions) {
 
     constexpr unsigned injectPerCycle = 32;
     constexpr int cycles              = 3;
-    size_t cumulative                 = 0;
 
+    // makeBunch() builds a bunch tied to the current playout; rebuildPlayout()
+    // installs a new playout, so we can only compare against the most recent
+    // injection (the previous bunch is destroyed when its shared_ptr drops).
     for (int c = 0; c < cycles; ++c) {
         // Repartition with Gaussian for odd cycles, uniform for even
         bool ok = (c % 2 == 0) ? this->orbUniform() : this->orbGaussian();
@@ -789,14 +791,14 @@ TYPED_TEST(TestParticleUpdateORB, ParticleInjectionBetweenOrbRepartitions) {
             }
             Kokkos::deep_copy(bunch->R.getView(), R_host);
             Kokkos::deep_copy(bunch->Q.getView(), Q_host);
-            cumulative += injectPerCycle;
         }
 
         bunch->update();
 
         auto total_particles = this->totalParticles(*bunch);
         if (ippl::Comm->rank() == 0) {
-            EXPECT_EQ(cumulative, total_particles) << "at cycle " << c;
+            EXPECT_EQ(static_cast<size_t>(injectPerCycle), total_particles)
+                << "at cycle " << c;
         }
         EXPECT_EQ(0u, this->countMisplaced(*bunch)) << "at cycle " << c;
     }
