@@ -113,6 +113,8 @@ function(set_kokkos_options)
       set(Kokkos_ENABLE_LIBDL ON CACHE BOOL "Enable LIBDL" FORCE)
     endif()
   endif()
+
+  set(Kokkos_ENABLE_COMPILE_AS_CMAKE_LANGUAGE ON)
 endfunction()
 
 # -----------------------------------------------------------------------------
@@ -168,7 +170,7 @@ endfunction()
 # ------------------------------------------------------------------------------
 # set the default version of kokkos we will ask for if not already set
 if(NOT Kokkos_VERSION_DEFAULT)
-  set(Kokkos_VERSION_DEFAULT 4.7.01)
+  set(Kokkos_VERSION_DEFAULT 5.0.0)
 endif()
 # if the user has not asked for a specific version, we will use a default
 if(NOT Kokkos_VERSION)
@@ -316,4 +318,56 @@ if(IPPL_ENABLE_TESTS)
   file(DOWNLOAD https://raw.githubusercontent.com/manuel5975p/stb/master/stb_image_write.h
        "${DOWNLOADED_HEADERS_DIR}/stb_image_write.h")
   message(STATUS "✅ stb_image_write loaded for testing FDTD solver.")
+endif()
+
+# ------------------------------------------------------------------------------
+# (CU)FINUFFT
+# ------------------------------------------------------------------------------
+if(IPPL_ENABLE_FFT AND IPPL_ENABLE_FINUFFT)
+  message(STATUS "Fetching (CU)FINUFFT")
+  FetchContent_Declare(
+    finufft
+    GIT_REPOSITORY https://github.com/flatironinstitute/finufft.git
+    GIT_SHALLOW TRUE
+  )
+  if("CUDA" IN_LIST IPPL_PLATFORMS)
+    set(FINUFFT_USE_CUDA ON CACHE BOOL "")
+    add_compile_definitions(ENABLE_GPU_NUFFT)
+    add_compile_definitions(FINUFFT_USE_CUDA)
+  endif()
+  set(FINUFFT_USE_CPU ON CACHE BOOL "")
+  FetchContent_MakeAvailable(finufft)
+
+  add_compile_definitions(ENABLE_FINUFFT)
+endif()
+
+# ------------------------------------------------------------------------------
+# CuFFTMp
+# ------------------------------------------------------------------------------
+# CuFFTMp is opt-in; users must point NVSHMEM_HOME (and optionally
+# CUFFTMP_ROOT via CMAKE_PREFIX_PATH) at their installation.
+if(IPPL_ENABLE_FFT AND IPPL_ENABLE_CUFFTMP)
+  set(NVSHMEM_HOME $ENV{NVSHMEM_HOME})
+
+  find_library(NVSHMEM_HOST_LIBRARY
+    NAMES nvshmem_host
+    HINTS ${NVSHMEM_HOME}
+    PATH_SUFFIXES lib
+  )
+
+  find_library(CUFFTMP_LIBRARY
+    NAMES cufftMp
+  )
+
+  if(NVSHMEM_HOST_LIBRARY)
+    message(STATUS "Found NVSHMEM host library: ${NVSHMEM_HOST_LIBRARY}")
+    set(NVSHMEM_FOUND TRUE)
+  else()
+    message(FATAL_ERROR "NVSHMEM not found. Set NVSHMEM_HOME to your installation directory.")
+    set(NVSHMEM_FOUND FALSE)
+  endif()
+
+  link_libraries(${CUFFTMP_LIBRARY} ${NVSHMEM_HOST_LIBRARY})
+
+  add_compile_definitions(IPPL_ENABLE_CUFFTMP)
 endif()

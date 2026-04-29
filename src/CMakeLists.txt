@@ -103,9 +103,18 @@ include(${PROJECT_SOURCE_DIR}/cmake/PlatformOptions.cmake)
 target_link_libraries(ippl PUBLIC Kokkos::kokkos MPI::MPI_CXX)
 
 if(IPPL_ENABLE_FFT)
-  target_link_libraries(ippl PUBLIC Heffte::Heffte)
-endif()
+  if(IPPL_ENABLE_CUFFTMP)
+    target_link_libraries(ippl PUBLIC ${CUFFTMP_LIBRARY} ${NVSHMEM_HOST_LIBRARY})
+  endif()
 
+  target_link_libraries(ippl PUBLIC Heffte::Heffte)
+  if(IPPL_ENABLE_FINUFFT)
+    target_link_libraries(ippl PUBLIC finufft)
+    if("CUDA" IN_LIST IPPL_PLATFORMS)
+       target_link_libraries(ippl PRIVATE cufinufft)
+    endif()
+  endif()
+endif()
 # this alias should be created after all target properties have been set
 add_library(IPPL::ippl ALIAS ippl)
 
