@@ -341,10 +341,22 @@ namespace ippl {
             template <typename DataType, typename Filter = std::nullptr_t>
             MultispaceContainer(const DataType& data, Filter&& predicate = nullptr)
                 : MultispaceContainer() {
-                using space = typename DataType::memory_space;
-                static_assert(std::is_same_v<DataType, Type<space>>);
+                static_assert(Kokkos::is_view<DataType>::value, "DataType must be a Kokkos::View");
 
-                elements_m[spaceToIndex<space>()] = data;
+                using space    = typename DataType::memory_space;
+                using expected = Type<space>;
+
+                static_assert(std::is_same_v<typename DataType::memory_space,
+                                             typename expected::memory_space>,
+                              "Hash view must live in the same memory_space as expected.");
+                static_assert(std::is_same_v<typename DataType::non_const_value_type,
+                                             typename expected::non_const_value_type>,
+                              "Hash view must have the same value_type as expected.");
+                static_assert(DataType::rank == expected::rank,
+                              "Hash view must have the same rank as expected.");
+
+                expected normalized = data;
+                elements_m[spaceToIndex<space>()] = normalized;
                 copyToOtherSpaces<space>(predicate);
             }
 
@@ -433,6 +445,42 @@ namespace ippl {
             runner(all_spaces{});
         }
     }  // namespace detail
+
+    template <typename T>
+    struct is_complex : std::false_type {};
+
+    template <typename T>
+    struct is_complex<Kokkos::complex<T>> : std::true_type {};
+
+    template <typename T>
+    inline constexpr bool is_complex_v = is_complex<T>::value;
+
+    template <typename T>
+    KOKKOS_FORCEINLINE_FUNCTION decltype(auto) real_part(T& val) {
+        if constexpr (is_complex_v<std::remove_cv_t<T>>) {
+            return val.real();
+        } else {
+            return val;
+        }
+    }
+
+    template <typename GridT, typename T>
+    KOKKOS_FORCEINLINE_FUNCTION decltype(auto) to_grid_value(T& val) {
+        if constexpr (is_complex_v<std::remove_cv_t<T>> && !is_complex_v<std::remove_cv_t<GridT>>) {
+            return val.real();
+        } else {
+            return val;
+        }
+    }
+
+    template <int Base, int Exp>
+    struct StaticPow {
+        static constexpr int value = Base * StaticPow<Base, Exp - 1>::value;
+    };
+    template <int Base>
+    struct StaticPow<Base, 0> {
+        static constexpr int value = 1;
+    };
 }  // namespace ippl
 
 #endif

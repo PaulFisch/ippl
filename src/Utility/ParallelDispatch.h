@@ -7,6 +7,7 @@
 #define IPPL_PARALLEL_DISPATCH_H
 
 #include <Kokkos_Core.hpp>
+#include "Ippl.h"
 
 #include <tuple>
 
@@ -98,6 +99,56 @@ namespace ippl {
         throw IpplException("detail::createRangePolicy", "Unreachable state");
     }
 
+    template <int... Is, typename F>
+    KOKKOS_FORCEINLINE_FUNCTION void for_constexpr(std::integer_sequence<int, Is...>, F&& f) {
+        (f.template operator()<Is>(), ...);
+    }
+
+    template <int... Is, typename F>
+    KOKKOS_FORCEINLINE_FUNCTION auto product_over(std::integer_sequence<int, Is...>, F&& f) {
+        return (f.template operator()<Is>() * ...);
+    }
+
+    template <int N, typename F>
+    KOKKOS_FORCEINLINE_FUNCTION auto product_over(F&& f) {
+        return product_over(std::make_integer_sequence<int, N>{}, std::forward<F>(f));
+    }
+
+    template <int Dim, typename Team, typename Extents, typename F>
+    KOKKOS_FORCEINLINE_FUNCTION void thread_vector_md_for(const Team& team, const Extents& extents,
+                                                          F&& f) {
+        [&]<int... Is>(std::integer_sequence<int, Is...>) {
+            Kokkos::parallel_for(
+                Kokkos::ThreadVectorMDRange<Kokkos::Rank<Dim>, Team>(team, extents[Is]...),
+                std::forward<F>(f));
+        }(std::make_integer_sequence<int, Dim>{});
+    }
+
+    template <int Dim, int W, typename Team, typename F>
+    KOKKOS_FORCEINLINE_FUNCTION void thread_vector_stencil_for(const Team& team, F&& f) {
+        constexpr int TotalCells = [] {
+            int r = 1;
+            for (int i = 0; i < Dim; ++i)
+                r *= W;
+            return r;
+        }();
+
+        Kokkos::parallel_for(Kokkos::ThreadVectorRange(team, TotalCells), [&](const int flat_idx) {
+            // Compile-time unrollable index decomposition
+            Kokkos::Array<int, Dim> idx;
+            int tmp = flat_idx;
+            for (int d = Dim - 1; d >= 0; --d) {
+                idx[d] = tmp % W;
+                tmp /= W;
+            }
+
+            // Call with index pack
+            [&]<int... Is>(std::integer_sequence<int, Is...>) {
+                f(idx[Is]...);
+            }(std::make_integer_sequence<int, Dim>{});
+        });
+    }
+
     namespace detail {
         /*!
          * Recursively templated struct for defining tuples with arbitrary
@@ -127,6 +178,39 @@ namespace ippl {
 
         template <e_functor_type, typename, typename, typename, typename...>
         struct FunctorWrapper;
+
+        template <typename ExecSpace>
+        constexpr bool inline isGPUSpace = false;
+
+#ifdef KOKKOS_ENABLE_CUDA
+        template <>
+        constexpr bool inline isGPUSpace<Kokkos::Cuda> = true;
+#endif
+#ifdef KOKKOS_ENABLE_HIP
+        template <>
+        constexpr bool inline isGPUSpace<Kokkos::HIP> = true;
+#endif
+
+        // Dispatches F(i) for i in [0, n) either in parallel (OpenMP) or serially
+        template <typename F>
+        void parallelForMPI(size_t n, F&& f) {
+            constexpr bool useGPU = isGPUSpace<Kokkos::DefaultExecutionSpace>;
+            const bool threadSafe = Env->threadMultiple();
+
+            if constexpr (useGPU) {
+                if (threadSafe) {
+                    Kokkos::parallel_for(
+                        "Parallel dispatch",
+                        Kokkos::RangePolicy<Kokkos::DefaultHostExecutionSpace>(0, n), [&](int i) {
+                            f(i);
+                        });
+                    return;
+                }
+            }
+            for (size_t i = 0; i < n; ++i) {
+                f(i);
+            }
+        }
 
         /*!
          * Wrapper struct for reduction kernels
@@ -180,8 +264,8 @@ namespace ippl {
         };
         template <typename T>
         concept HasMemberValueType = requires() {
-                                         { typename T::value_type() };
-                                     };
+            { typename T::value_type() };
+        };
         template <typename T>
         struct ExtractReducerReturnType {
             using type = T;
@@ -226,6 +310,31 @@ namespace ippl {
                                typename detail::ExtractReducerReturnType<ReducerArgument>::type...>(
                 functor),
             std::forward<ReducerArgument>(reducer)...);
+    }
+
+    template <std::size_t I, typename T, typename... Rest>
+    KOKKOS_FORCEINLINE_FUNCTION auto get_arg(T first, Rest... rest) {
+        if constexpr (I == 0) {
+            return first;
+        } else {
+            return get_arg<I - 1>(rest...);
+        }
+    }
+
+    template <typename Grid, typename Base, typename... Stencils>
+    KOKKOS_FORCEINLINE_FUNCTION decltype(auto) grid_at(Grid& grid, const Base& base, int team_rank,
+                                                       Stencils... stencil_idx) {
+        return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> decltype(auto) {
+            return grid((base(team_rank, Is) + get_arg<Is>(stencil_idx...))...);
+        }(std::index_sequence_for<Stencils...>{});
+    }
+
+    template <int D, typename Grid, typename Base, typename Stencils>
+    KOKKOS_FORCEINLINE_FUNCTION decltype(auto) grid_at_t(Grid& grid, const Base& base,
+                                                         int team_rank, Stencils& stencil_idx) {
+        return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> decltype(auto) {
+            return grid((base(team_rank, Is) + stencil_idx[Is])...);
+        }(std::make_index_sequence<D>{});
     }
 }  // namespace ippl
 
