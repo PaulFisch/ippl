@@ -3,6 +3,13 @@
 # ------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.24)
 
+# Disable host LTO when CUDA is enabled: nvcc-generated fat binaries contain
+# repeated `fatbinData` symbols that conflict during host LTO merging.
+if("CUDA" IN_LIST IPPL_PLATFORMS)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-lto")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-lto")
+endif()
+
 # ------------------------------------------------------------------------------
 # Policies - use the latest of everything
 # ------------------------------------------------------------------------------

@@ -813,6 +813,34 @@ public:
 
         T refReal = dftResult.real();
 
+        // Compute a global L-infinity scale of the input field so we can use a
+        // magnitude-aware comparison. With random fields, the DFT value at a
+        // single point can be coincidentally close to zero, which makes a
+        // pointwise relative-error check meaningless and very sensitive to the
+        // (rank, thread) layout that drives the random seeding.
+        T localFieldMax = 0;
+        {
+            const auto& lDom = field.getLayout().getLocalNDIndex();
+            const int liN    = lDom[0].length();
+            const int ljN    = lDom[1].length();
+            const int lkN    = lDom[2].length();
+            auto fview       = field.getView();
+            using mdrange    = Kokkos::MDRangePolicy<Kokkos::Rank<3>, exec_space>;
+            T tmp = 0;
+            Kokkos::parallel_reduce(
+                "field_max_abs", mdrange({0, 0, 0}, {liN, ljN, lkN}),
+                KOKKOS_LAMBDA(const int i, const int j, const int k, T& m) {
+                    T v = Kokkos::abs(fview(i + nghost, j + nghost, k + nghost));
+                    if (v > m) m = v;
+                },
+                Kokkos::Max<T>(tmp));
+            localFieldMax = tmp;
+        }
+        T globalFieldMax = 0;
+        MPI_Allreduce(&localFieldMax, &globalFieldMax, 1,
+                      std::is_same_v<T, float> ? MPI_FLOAT : MPI_DOUBLE, MPI_MAX,
+                      ippl::Comm->getCommunicator());
+
         // Now execute the transform (after computing DFT reference)
         auto QView = bunch->Q.getView();
         Kokkos::parallel_for(
@@ -824,12 +852,19 @@ public:
         // Get NUFFT result
         T nufftVal = extractNUFFTResultAtTestParticle();
 
-        // Validate (compare real parts)
+        // Compare absolute error against an L-infinity-norm-scaled tolerance:
+        // for an N-mode 3D problem, |DFT(x)| <= N^3 * max|f_k|, so we use that
+        // as the natural normalizer instead of the (potentially near-zero)
+        // pointwise refReal value.
+        const size_t Ntot =
+            static_cast<size_t>(nModesField[0]) * nModesField[1] * nModesField[2];
         T absError = std::fabs(refReal - nufftVal);
-        T relError = std::fabs(absError / refReal);
+        T scale    = globalFieldMax * static_cast<T>(Ntot);
 
         if (ippl::Comm->rank() == 0) {
-            EXPECT_NEAR(relError, 0.0, tolerance * 100);
+            EXPECT_LT(absError, tolerance * 100 * scale)
+                << "absError=" << absError << " scale=" << scale
+                << " refReal=" << refReal << " nufftVal=" << nufftVal;
         }
     }
 

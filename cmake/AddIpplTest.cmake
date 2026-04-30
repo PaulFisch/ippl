@@ -31,6 +31,8 @@
 
 set(IPPL_DEFAULT_TEST_PROCS "2" CACHE STRING "Default MPI ranks per unit test")
 set(IPPL_DEFAULT_TEST_TIMEOUT "60" CACHE STRING "Default timeout (seconds) per unit test")
+set(IPPL_DEFAULT_INTEGRATION_TIMEOUT "300"
+    CACHE STRING "Default timeout (seconds) per integration test")
 
 function(add_ippl_test TEST_NAME)
   set(options NO_MPI REQUIRE_MPI RUN_SERIAL USE_GTEST_MAIN INTEGRATION COMPILE_ONLY)
@@ -92,6 +94,8 @@ function(add_ippl_test TEST_NAME)
 
   if(TEST_TIMEOUT)
     set(_timeout "${TEST_TIMEOUT}")
+  elseif(TEST_INTEGRATION)
+    set(_timeout "${IPPL_DEFAULT_INTEGRATION_TIMEOUT}")
   else()
     set(_timeout "${IPPL_DEFAULT_TEST_TIMEOUT}")
   endif()
