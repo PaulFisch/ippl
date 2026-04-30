@@ -26,6 +26,7 @@
 #include "Interpolation/Binning.h"
 #include "Interpolation/Gather/AtomicGather.h"
 #include "Interpolation/Gather/Gather.h"
+#include "Interpolation/Kernels.h"
 #include "Interpolation/Scatter/AtomicScatter.h"
 #include "Interpolation/Scatter/Scatter.h"
 #include "Interpolation/Scatter/ScatterConfig.h"
@@ -135,6 +136,23 @@ namespace ippl {
         constexpr unsigned Dim = Field::dim;
         using PositionType     = typename Field::Mesh_t::value_type;
 
+        const bool useHashView = hash_array.extent(0) > 0;
+        const size_t nLocal    = static_cast<size_t>(*(this->localNum_mp));
+        const size_t policyEnd = static_cast<size_t>(iteration_policy.end());
+
+        // Default-policy, no-hash CIC case (alpine PIC examples): route
+        // through the kernel-aware Interpolation::Scatter framework so the
+        // same atomic / tiled / output-focused dispatch (and TileSizeCache
+        // lookup) used by NUFFT applies to PIC too. The new framework's
+        // dimension-specialised AtomicScatter only covers Dim 1..3, so for
+        // higher-dimensional fields we keep the legacy direct path.
+        if (!useHashView && policyEnd == nLocal && Dim <= 3) {
+            Interpolation::LinearKernel<PositionType> cic;
+            this->scatter_kernel(f, pp, cic);
+            return;
+        }
+
+        // Custom range / hash-permuted scatter: legacy direct CIC kernel.
         static IpplTimings::TimerRef scatterTimer = IpplTimings::getTimer("scatter");
         IpplTimings::startTimer(scatterTimer);
         using view_type = typename Field::view_type;
@@ -154,7 +172,6 @@ namespace ippl {
         const NDIndex<Dim>& lDom       = layout.getLocalNDIndex();
         const int nghost               = f.getNghost();
 
-        const bool useHashView = hash_array.extent(0) > 0;
         if (useHashView && (iteration_policy.end() > hash_array.extent(0))) {
             Inform m("scatter");
             m << "Hash array was passed to scatter, but size does not match iteration policy."
@@ -195,50 +212,59 @@ namespace ippl {
         constexpr unsigned Dim = Field::dim;
         using PositionType     = typename Field::Mesh_t::value_type;
 
-        static IpplTimings::TimerRef fillHaloTimer = IpplTimings::getTimer("fillHalo");
-        IpplTimings::startTimer(fillHaloTimer);
-        f.fillHalo();
-        IpplTimings::stopTimer(fillHaloTimer);
+        // Route legacy CIC gather through the kernel-aware Interpolation
+        // framework when the dimension is supported (Dim 1..3). For higher
+        // dimensions, fall back to the direct CIC kernel.
+        if constexpr (Dim <= 3) {
+            Interpolation::LinearKernel<PositionType> cic;
+            this->gather(f, pp, cic, addToAttribute);
+            return;
+        } else {
+            static IpplTimings::TimerRef fillHaloTimer = IpplTimings::getTimer("fillHalo");
+            IpplTimings::startTimer(fillHaloTimer);
+            f.fillHalo();
+            IpplTimings::stopTimer(fillHaloTimer);
 
-        static IpplTimings::TimerRef gatherTimer = IpplTimings::getTimer("gather");
-        IpplTimings::startTimer(gatherTimer);
-        const typename Field::view_type view = f.getView();
+            static IpplTimings::TimerRef gatherTimer = IpplTimings::getTimer("gather");
+            IpplTimings::startTimer(gatherTimer);
+            const typename Field::view_type view = f.getView();
 
-        using mesh_type       = typename Field::Mesh_t;
-        const mesh_type& mesh = f.get_mesh();
+            using mesh_type       = typename Field::Mesh_t;
+            const mesh_type& mesh = f.get_mesh();
 
-        using vector_type = typename mesh_type::vector_type;
+            using vector_type = typename mesh_type::vector_type;
 
-        const vector_type& dx     = mesh.getMeshSpacing();
-        const vector_type& origin = mesh.getOrigin();
-        const vector_type invdx   = 1.0 / dx;
+            const vector_type& dx     = mesh.getMeshSpacing();
+            const vector_type& origin = mesh.getOrigin();
+            const vector_type invdx   = 1.0 / dx;
 
-        const FieldLayout<Dim>& layout = f.getLayout();
-        const NDIndex<Dim>& lDom       = layout.getLocalNDIndex();
-        const int nghost               = f.getNghost();
+            const FieldLayout<Dim>& layout = f.getLayout();
+            const NDIndex<Dim>& lDom       = layout.getLocalNDIndex();
+            const int nghost               = f.getNghost();
 
-        auto dview = dview_m;
-        auto ppview = pp.getView();
-        using policy_type = Kokkos::RangePolicy<execution_space>;
-        Kokkos::parallel_for(
-            "ParticleAttrib::gather", policy_type(0, *(this->localNum_mp)),
-            KOKKOS_LAMBDA(const size_t idx) {
-                vector_type l                        = (ppview(idx) - origin) * invdx + 0.5;
-                Vector<int, Field::dim> index        = l;
-                Vector<PositionType, Field::dim> whi = l - index;
-                Vector<PositionType, Field::dim> wlo = 1.0 - whi;
+            auto dview        = dview_m;
+            auto ppview       = pp.getView();
+            using policy_type = Kokkos::RangePolicy<execution_space>;
+            Kokkos::parallel_for(
+                "ParticleAttrib::gather", policy_type(0, *(this->localNum_mp)),
+                KOKKOS_LAMBDA(const size_t idx) {
+                    vector_type l                        = (ppview(idx) - origin) * invdx + 0.5;
+                    Vector<int, Field::dim> index        = l;
+                    Vector<PositionType, Field::dim> whi = l - index;
+                    Vector<PositionType, Field::dim> wlo = 1.0 - whi;
 
-                Vector<size_t, Field::dim> args = index - lDom.first() + nghost;
+                    Vector<size_t, Field::dim> args = index - lDom.first() + nghost;
 
-                value_type gathered = detail::gatherFromField(
-                    std::make_index_sequence<1 << Field::dim>{}, view, wlo, whi, args);
-                if (addToAttribute) {
-                    dview(idx) += gathered;
-                } else {
-                    dview(idx)  = gathered;
-                }
-            });
-        IpplTimings::stopTimer(gatherTimer);
+                    value_type gathered = detail::gatherFromField(
+                        std::make_index_sequence<1 << Field::dim>{}, view, wlo, whi, args);
+                    if (addToAttribute) {
+                        dview(idx) += gathered;
+                    } else {
+                        dview(idx) = gathered;
+                    }
+                });
+            IpplTimings::stopTimer(gatherTimer);
+        }
     }
 
     template <typename T, class... Properties>

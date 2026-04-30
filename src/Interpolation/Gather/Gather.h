@@ -16,9 +16,16 @@ namespace ippl {
             using FieldTr = ippl::detail::FieldTraits<std::decay_t<FieldType>>;
             using PosTr   = ippl::detail::AttribTraits<std::decay_t<PositionsType>>;
             using ValTr   = ippl::detail::AttribTraits<std::decay_t<ValuesType>>;
-            using VecTr   = ippl::detail::VectorTraits<typename PosTr::value_type>;
 
-            using type = GatherTypes<FieldTr::dim, typename VecTr::real_type, std::decay_t<Kernel>,
+            // Use the kernel's own value_type for the geometric real-precision
+            // computations (origin, invdx, weights). When the position attribute
+            // is float but the mesh is double, taking RealType from the position
+            // would silently downcast the mesh spacing and lose precision; the
+            // kernel knows the correct working precision and the legacy CIC
+            // path uses the mesh type explicitly via Kernel = LinearKernel<T>.
+            using RealType = typename std::decay_t<Kernel>::value_type;
+
+            using type = GatherTypes<FieldTr::dim, RealType, std::decay_t<Kernel>,
                                      typename FieldTr::view_type, typename PosTr::view_type,
                                      typename ValTr::view_type>;
         };
