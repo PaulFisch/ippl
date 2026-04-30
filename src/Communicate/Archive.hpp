@@ -44,26 +44,32 @@ namespace ippl {
         };
 
         // =================================================================
-        // GPU buffer management
+        // Buffer management
         // =================================================================
-
-#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
+        //
+        // Two storage paths:
+        //   * Host-accessible memory spaces (HostSpace, OpenMP, Serial, ...):
+        //     a regular Kokkos::View<char*, MemorySpace> in `buffer_m`.
+        //   * Device memory spaces (CudaSpace, HIPSpace): raw cuda/hipMalloc
+        //     in `buffer_ptr_m`. This avoids the HIP IPC-handle invalidation
+        //     bug on Cray MPICH where Kokkos's reallocation pattern releases
+        //     the device pointer and lets the GPU-aware MPI registration
+        //     cache return stale handles.
 
         template <class... Properties>
         void Archive<Properties...>::gpuAlloc(size_type size) {
-            if (size == 0) return;
+            if (!uses_raw_device_alloc || size == 0) return;
 #if defined(KOKKOS_ENABLE_HIP)
             // HSA IPC (used by Cray MPICH for large-message GPU transfers)
             // requires allocation sizes to be multiples of the GPU page
-            // granularity (64 KB on MI250X / MI300X).  Without this,
-            // hsa_amd_ipc_memory_attach fails with INVALID_ARGUMENT.
+            // granularity (64 KB on MI250X / MI300X).
             static constexpr size_type kGranularity = 65536;
             size = ((size + kGranularity - 1) / kGranularity) * kGranularity;
 #endif
             void* ptr = nullptr;
 #if defined(KOKKOS_ENABLE_CUDA)
             cudaMalloc(&ptr, size);
-#else
+#elif defined(KOKKOS_ENABLE_HIP)
             hipMalloc(&ptr, size);
 #endif
             buffer_ptr_m  = static_cast<pointer_type>(ptr);
@@ -72,88 +78,79 @@ namespace ippl {
 
         template <class... Properties>
         void Archive<Properties...>::gpuFree() {
-            if (buffer_ptr_m) {
+            if (!uses_raw_device_alloc || !buffer_ptr_m) return;
 #if defined(KOKKOS_ENABLE_CUDA)
-                cudaFree(buffer_ptr_m);
-#else
-                hipFree(buffer_ptr_m);
+            cudaFree(buffer_ptr_m);
+#elif defined(KOKKOS_ENABLE_HIP)
+            hipFree(buffer_ptr_m);
 #endif
-                buffer_ptr_m  = nullptr;
-                buffer_size_m = 0;
-            }
+            buffer_ptr_m  = nullptr;
+            buffer_size_m = 0;
         }
 
         template <class... Properties>
         Archive<Properties...>::Archive(size_type size)
             : writepos_m(0)
             , readpos_m(0) {
-            gpuAlloc(size);
+            if constexpr (uses_raw_device_alloc) {
+                gpuAlloc(size);
+            } else {
+                buffer_m = buffer_type("buffer", size);
+            }
         }
 
         template <class... Properties>
         Archive<Properties...>::~Archive() {
-            gpuFree();
-        }
-
-        template <class... Properties>
-        void Archive<Properties...>::resizeBuffer(size_type size) {
-            if (size <= buffer_size_m) return;
-
-#if defined(KOKKOS_ENABLE_HIP)
-            static constexpr size_type kGranularity = 65536;
-            size = ((size + kGranularity - 1) / kGranularity) * kGranularity;
-#endif
-            pointer_type new_ptr = nullptr;
-            void* vptr           = nullptr;
-#if defined(KOKKOS_ENABLE_CUDA)
-            cudaMalloc(&vptr, size);
-#else
-            hipMalloc(&vptr, size);
-#endif
-            new_ptr = static_cast<pointer_type>(vptr);
-
-            if (buffer_ptr_m && buffer_size_m > 0) {
-#if defined(KOKKOS_ENABLE_CUDA)
-                cudaMemcpy(new_ptr, buffer_ptr_m, buffer_size_m, cudaMemcpyDeviceToDevice);
-                cudaFree(buffer_ptr_m);
-#else
-                hipMemcpy(new_ptr, buffer_ptr_m, buffer_size_m, hipMemcpyDeviceToDevice);
-                hipFree(buffer_ptr_m);
-#endif
+            if constexpr (uses_raw_device_alloc) {
+                gpuFree();
             }
-
-            buffer_ptr_m  = new_ptr;
-            buffer_size_m = size;
         }
-
-        template <class... Properties>
-        void Archive<Properties...>::reallocBuffer(size_type size) {
-            gpuFree();
-            gpuAlloc(size);
-        }
-
-#else  // CPU path
-
-        template <class... Properties>
-        Archive<Properties...>::Archive(size_type size)
-            : writepos_m(0)
-            , readpos_m(0)
-            , buffer_m("buffer", size) {}
-
-        template <class... Properties>
-        Archive<Properties...>::~Archive() = default;
 
         template <class... Properties>
         void Archive<Properties...>::resizeBuffer(size_type size) {
-            Kokkos::resize(buffer_m, size);
+            if constexpr (uses_raw_device_alloc) {
+                if (size <= buffer_size_m) return;
+#if defined(KOKKOS_ENABLE_HIP)
+                static constexpr size_type kGranularity = 65536;
+                size = ((size + kGranularity - 1) / kGranularity) * kGranularity;
+#endif
+                pointer_type new_ptr = nullptr;
+                void* vptr           = nullptr;
+#if defined(KOKKOS_ENABLE_CUDA)
+                cudaMalloc(&vptr, size);
+#elif defined(KOKKOS_ENABLE_HIP)
+                hipMalloc(&vptr, size);
+#endif
+                new_ptr = static_cast<pointer_type>(vptr);
+
+                if (buffer_ptr_m && buffer_size_m > 0) {
+#if defined(KOKKOS_ENABLE_CUDA)
+                    cudaMemcpy(new_ptr, buffer_ptr_m, buffer_size_m,
+                               cudaMemcpyDeviceToDevice);
+                    cudaFree(buffer_ptr_m);
+#elif defined(KOKKOS_ENABLE_HIP)
+                    hipMemcpy(new_ptr, buffer_ptr_m, buffer_size_m,
+                              hipMemcpyDeviceToDevice);
+                    hipFree(buffer_ptr_m);
+#endif
+                }
+
+                buffer_ptr_m  = new_ptr;
+                buffer_size_m = size;
+            } else {
+                Kokkos::resize(buffer_m, size);
+            }
         }
 
         template <class... Properties>
         void Archive<Properties...>::reallocBuffer(size_type size) {
-            Kokkos::realloc(buffer_m, size);
+            if constexpr (uses_raw_device_alloc) {
+                gpuFree();
+                gpuAlloc(size);
+            } else {
+                Kokkos::realloc(buffer_m, size);
+            }
         }
-
-#endif  // KOKKOS_ENABLE_CUDA || KOKKOS_ENABLE_HIP
 
         // =================================================================
         // Serialize — scalar
