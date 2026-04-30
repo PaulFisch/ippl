@@ -54,9 +54,15 @@ namespace ippl {
 
         using size_type = detail::size_type;
 
-        // Create storage for M particle attributes.  The storage is uninitialized.
-        // New items are appended to the end of the array.
-        void create(size_type) override;
+        // Create storage for M particle attributes. The storage is uninitialized.
+        // New items are appended to the end of the array. When non_destructive is
+        // true, existing entries are preserved across a capacity grow.
+        void create(size_type, bool non_destructive = false) override;
+
+        // Allocate capacity for n particles (multiplied by the default overallocation
+        // factor) without touching the logical particle count. Existing data is
+        // discarded.
+        void alloc(size_type) override;
 
         /*!
          * Particle deletion function. Partition the particles into a valid region
@@ -93,25 +99,28 @@ namespace ippl {
 
         KOKKOS_INLINE_FUNCTION virtual ~ParticleAttrib() = default;
 
-        size_type size() const override { return size_m; }
+        size_type size() const override { return dview_m.extent(0); }
 
         size_type packedSize(const size_type count) const override {
             return count * sizeof(value_type);
         }
 
-        void resize(size_type n) {
-            if (dview_m.extent(0) < n) {
-                Kokkos::resize(dview_m, n * Comm->getDefaultOverallocation());
-            }
-            size_m = n;
-        }
+        /*!
+         * @brief Resize the underlying view, preserving existing entries on grow.
+         *
+         * Capacity-only operation; does not change the live particle count.
+         * Overallocation is the caller's responsibility (`alloc()` / `create()`
+         * apply it when sizing this view).
+         */
+        void resize(size_type n) { Kokkos::resize(dview_m, n); }
 
-        void realloc(size_type n) {
-            if (dview_m.extent(0) < n) {
-                Kokkos::realloc(dview_m, n * Comm->getDefaultOverallocation());
-            }
-            size_m = n;
-        }
+        /*!
+         * @brief Reallocate the underlying view, discarding existing entries.
+         *
+         * Capacity-only operation. Does not apply the default overallocation
+         * factor — call `alloc()` instead from the outside.
+         */
+        void realloc(size_type n) { Kokkos::realloc(dview_m, n); }
 
         void print() {
             host_mirror_type hview = Kokkos::create_mirror_view(dview_m);
@@ -311,7 +320,6 @@ namespace ippl {
     private:
         view_type dview_m{"ParticleAttrib::dview", 0};
         view_type buf_m{"ParticleAttrib::buf", 0};
-        size_type size_m = 0;
     };
 
     namespace detail {

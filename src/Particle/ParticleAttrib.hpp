@@ -36,9 +36,24 @@
 namespace ippl {
 
     template <typename T, class... Properties>
-    void ParticleAttrib<T, Properties...>::create(size_type n) {
+    void ParticleAttrib<T, Properties...>::create(size_type n, bool non_destructive) {
         size_type required = *(this->localNum_mp) + n;
-        this->resize(required);
+        if (this->size() < required) {
+            int overalloc = Comm->getDefaultOverallocation();
+            if (non_destructive) {
+                // Kokkos::resize preserves existing entries when growing.
+                this->resize(required * overalloc);
+            } else {
+                // Kokkos::realloc is destructive (free + alloc, no copy).
+                this->realloc(required * overalloc);
+            }
+        }
+    }
+
+    template <typename T, class... Properties>
+    void ParticleAttrib<T, Properties...>::alloc(size_type n) {
+        int overalloc = Comm->getDefaultOverallocation();
+        this->realloc(n * overalloc);
     }
 
     template <typename T, class... Properties>
@@ -54,7 +69,6 @@ namespace ippl {
             KOKKOS_LAMBDA(const size_t i) {
                 dview(deleteIndex(i)) = dview(keepIndex(i));
             });
-        size_m = *(this->localNum_mp) - invalidCount;
     }
 
     template <typename T, class... Properties>
