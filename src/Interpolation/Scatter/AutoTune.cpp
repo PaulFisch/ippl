@@ -40,6 +40,7 @@ namespace ippl::Interpolation::AutoTune {
             ScatterMethod method;
             std::string   value_type;  // "real" | "complex"
             int           kernel_width;
+            double        rho;
             int           tile_x, tile_y, tile_z;
             int           team_size;
             int           osub;
@@ -92,7 +93,8 @@ namespace ippl::Interpolation::AutoTune {
             out << header << "\n" << std::fixed;
             for (const auto& s : samples) {
                 out << method_name(s.method) << "," << s.value_type << "," << s.kernel_width
-                    << ",0.0," << s.tile_x << "," << s.tile_y << "," << s.tile_z << ","
+                    << "," << std::setprecision(4) << s.rho << ","
+                    << s.tile_x << "," << s.tile_y << "," << s.tile_z << ","
                     << s.team_size << "," << s.osub << "," << s.z_batches << ","
                     << std::setprecision(2) << s.throughput_Mpts_s << ","
                     << std::setprecision(4) << s.time_ms << ",0,0\n";
@@ -104,7 +106,8 @@ namespace ippl::Interpolation::AutoTune {
             std::vector<Sample> samples;
             for (int w : {1, 2}) {
                 for (const char* vt : {"real", "complex"}) {
-                    samples.push_back({ScatterMethod::Atomic, vt, w, 1, 1, 1, 1, 1, 1, 0.0, 0.0});
+                    samples.push_back(
+                        {ScatterMethod::Atomic, vt, w, 0.0, 1, 1, 1, 1, 1, 1, 0.0, 0.0});
                 }
             }
             write_csv(path, samples);
@@ -116,7 +119,8 @@ namespace ippl::Interpolation::AutoTune {
 
         template <typename ExecSpace>
         double time_config(ScatterMethod method, const Vector<int, 3>& tile_size,
-                           int team_size, int osub, int z_batches) {
+                           int team_size, int osub, int z_batches,
+                           unsigned N = 32, size_t nParticle = 100000, int runs = 3) {
             using value_t   = double;
             using mesh_t    = ippl::UniformCartesian<value_t, 3>;
             using center_t  = typename mesh_t::DefaultCentering;
@@ -124,13 +128,10 @@ namespace ippl::Interpolation::AutoTune {
             using flayout_t = ippl::FieldLayout<3>;
             using playout_t = ippl::ParticleSpatialLayout<value_t, 3, mesh_t, ExecSpace>;
 
-            constexpr unsigned N         = 32;
-            constexpr size_t   nParticle = 100000;
-
             ippl::Index Ix(N), Iy(N), Iz(N);
             ippl::NDIndex<3> dom(Ix, Iy, Iz);
             std::array<bool, 3> isParallel = {true, true, true};
-            ippl::Vector<value_t, 3> hx{1.0 / N, 1.0 / N, 1.0 / N};
+            ippl::Vector<value_t, 3> hx{1.0 / value_t(N), 1.0 / value_t(N), 1.0 / value_t(N)};
             ippl::Vector<value_t, 3> origin{0, 0, 0};
 
             flayout_t layout(MPI_COMM_WORLD, dom, isParallel);
@@ -177,8 +178,7 @@ namespace ippl::Interpolation::AutoTune {
             bunch.Q.scatter_kernel(field, bunch.R, cic, cfg);
             Kokkos::fence();
 
-            constexpr int runs = 3;
-            double best_ms     = 1e18;
+            double best_ms = 1e18;
             for (int r = 0; r < runs; ++r) {
                 field = 0.0;
                 Kokkos::fence();
@@ -194,7 +194,8 @@ namespace ippl::Interpolation::AutoTune {
         }
 
         template <typename ExecSpace>
-        double time_gather(GatherMethod method, const Vector<int, 3>& tile_size) {
+        double time_gather(GatherMethod method, const Vector<int, 3>& tile_size,
+                           unsigned N = 32, size_t nParticle = 100000, int runs = 3) {
             using value_t   = double;
             using mesh_t    = ippl::UniformCartesian<value_t, 3>;
             using center_t  = typename mesh_t::DefaultCentering;
@@ -202,13 +203,10 @@ namespace ippl::Interpolation::AutoTune {
             using flayout_t = ippl::FieldLayout<3>;
             using playout_t = ippl::ParticleSpatialLayout<value_t, 3, mesh_t, ExecSpace>;
 
-            constexpr unsigned N         = 32;
-            constexpr size_t   nParticle = 100000;
-
             ippl::Index Ix(N), Iy(N), Iz(N);
             ippl::NDIndex<3> dom(Ix, Iy, Iz);
             std::array<bool, 3> isParallel = {true, true, true};
-            ippl::Vector<value_t, 3> hx{1.0 / N, 1.0 / N, 1.0 / N};
+            ippl::Vector<value_t, 3> hx{1.0 / value_t(N), 1.0 / value_t(N), 1.0 / value_t(N)};
             ippl::Vector<value_t, 3> origin{0, 0, 0};
 
             flayout_t layout(MPI_COMM_WORLD, dom, isParallel);
@@ -249,8 +247,7 @@ namespace ippl::Interpolation::AutoTune {
             gather_op(field, bunch.R, bunch.Q);
             Kokkos::fence();
 
-            constexpr int runs = 3;
-            double best_ms     = 1e18;
+            double best_ms = 1e18;
             for (int r = 0; r < runs; ++r) {
                 Kokkos::fence();
                 auto t0 = std::chrono::steady_clock::now();
@@ -300,20 +297,20 @@ namespace ippl::Interpolation::AutoTune {
                 Vector<int, 3> tile{1, 1, 1};
                 const double tp =
                     time_config<ExecSpace>(ScatterMethod::Atomic, tile, default_team, 1, 1);
-                out.push_back(Sample{ScatterMethod::Atomic, "real", 2,
+                out.push_back(Sample{ScatterMethod::Atomic, "real", 2, 0.0,
                                      1, 1, 1, default_team, 1, 1, tp, 0.0});
             }
 
             // Tiled — small candidate set over (tile, team, osub).
             {
-                Sample best{ScatterMethod::Tiled, "real", 2, 4, 4, 4,
+                Sample best{ScatterMethod::Tiled, "real", 2, 0.0, 4, 4, 4,
                             host_backend ? 1 : 64, 1, 1, 0.0, 0.0};
                 for (const auto& t :
                      std::vector<Vector<int, 3>>{{2, 2, 2}, {4, 4, 4}, {8, 8, 8}}) {
                     const double tp = time_config<ExecSpace>(ScatterMethod::Tiled, t,
                                                              host_backend ? 1 : 64, 1, 1);
                     if (tp > best.throughput_Mpts_s) {
-                        best = Sample{ScatterMethod::Tiled, "real", 2, t[0], t[1], t[2],
+                        best = Sample{ScatterMethod::Tiled, "real", 2, 0.0, t[0], t[1], t[2],
                                       host_backend ? 1 : 64, 1, 1, tp, 0.0};
                     }
                 }
@@ -322,14 +319,14 @@ namespace ippl::Interpolation::AutoTune {
 
             // OutputFocused — tile + z_batches.
             {
-                Sample best{ScatterMethod::OutputFocused, "real", 2, 2, 2, 2,
+                Sample best{ScatterMethod::OutputFocused, "real", 2, 0.0, 2, 2, 2,
                             host_backend ? 1 : 128, 1, 1, 0.0, 0.0};
                 for (const auto& t : std::vector<Vector<int, 3>>{{2, 2, 2}, {4, 4, 4}}) {
                     for (int zb : {1, 4}) {
                         const double tp = time_config<ExecSpace>(
                             ScatterMethod::OutputFocused, t, host_backend ? 1 : 128, 1, zb);
                         if (tp > best.throughput_Mpts_s) {
-                            best = Sample{ScatterMethod::OutputFocused, "real", 2,
+                            best = Sample{ScatterMethod::OutputFocused, "real", 2, 0.0,
                                           t[0], t[1], t[2],
                                           host_backend ? 1 : 128, 1, zb, tp, 0.0};
                         }
@@ -346,6 +343,206 @@ namespace ippl::Interpolation::AutoTune {
                 out.push_back(s);
             }
             return out;
+        }
+
+        // ====================================================================
+        // FULL sweep — broader candidate set across grid sizes, particle
+        // densities, tile/team/osub/z_batches.  Substantially more
+        // expensive than sweep() (tens of seconds to a few minutes on a
+        // GPU); intended for opt-in via IPPL_AUTO_TUNE=full when the user
+        // wants a CSV that's actually optimised for this machine.
+        //
+        // Each (method, width, density bucket) gets its OWN row in the CSV,
+        // so the density-aware lookup in TileSizeCache picks the closest
+        // recorded rho at runtime.
+        // ====================================================================
+        template <typename ExecSpace>
+        std::vector<Sample> sweep_full() {
+            std::vector<Sample> out;
+
+            const bool host_backend =
+#ifdef KOKKOS_ENABLE_OPENMP
+                std::is_same_v<ExecSpace, Kokkos::OpenMP>
+#else
+                false
+#endif
+                ;
+
+            // Grid sizes to probe — small / medium / large fits typical PIC
+            // working sets without turning the sweep into a benchmark suite.
+            const std::vector<unsigned> grids =
+                host_backend ? std::vector<unsigned>{32, 64}
+                             : std::vector<unsigned>{32, 64, 128};
+
+            // Particle-per-cell densities to bucket the cache by.
+            const std::vector<double> rhos = {0.5, 2.0, 8.0, 32.0};
+
+            // Candidate sets per method.
+            const std::vector<Vector<int, 3>> tiled_tiles =
+                host_backend
+                    ? std::vector<Vector<int, 3>>{{2, 2, 2}, {4, 4, 4}, {8, 8, 8}}
+                    : std::vector<Vector<int, 3>>{
+                          {2, 2, 2}, {3, 3, 3}, {4, 4, 4}, {5, 5, 5}, {6, 6, 6}, {8, 8, 8}};
+            const std::vector<int> tiled_teams =
+                host_backend ? std::vector<int>{1} : std::vector<int>{32, 64, 128, 256};
+            const std::vector<int> tiled_osubs =
+                host_backend ? std::vector<int>{1} : std::vector<int>{1, 2, 4};
+
+            const std::vector<Vector<int, 3>> of_tiles =
+                host_backend
+                    ? std::vector<Vector<int, 3>>{{2, 2, 2}, {4, 4, 4}}
+                    : std::vector<Vector<int, 3>>{
+                          {2, 2, 2}, {3, 3, 3}, {4, 4, 4}, {5, 5, 5}, {6, 6, 6}};
+            const std::vector<int> of_teams =
+                host_backend ? std::vector<int>{1} : std::vector<int>{64, 128, 256, 512};
+            const std::vector<int> of_zbs    = {1, 2, 4, 8};
+            const std::vector<int> of_osubs  =
+                host_backend ? std::vector<int>{1} : std::vector<int>{1, 2, 4};
+
+            // Kernel widths covered by the runtime cache (CIC + NGP).
+            const std::vector<int> widths = {1, 2};
+
+            const int default_team = host_backend ? 1 : 32;
+            const int meas_runs    = host_backend ? 5 : 7;
+
+            const bool is_rank_zero = (ippl::Comm == nullptr) || (ippl::Comm->rank() == 0);
+
+            // Total number of configs we'll time, for progress reporting.
+            const size_t total_configs = grids.size() * rhos.size() * widths.size() * (
+                /*Atomic*/ 1
+                + tiled_tiles.size() * tiled_teams.size() * tiled_osubs.size()
+                + of_tiles.size() * of_teams.size() * of_zbs.size() * of_osubs.size()
+            );
+            size_t done = 0;
+
+            auto progress = [&](const char* label) {
+                if (is_rank_zero && ippl::Info && (done % 16 == 0 || done == total_configs)) {
+                    *ippl::Info << ::level1
+                                << "[AutoTune-full] " << done << " / " << total_configs
+                                << " configs measured (" << label << ")" << endl;
+                }
+            };
+
+            for (unsigned N : grids) {
+                for (double rho : rhos) {
+                    const size_t nParticle = std::max<size_t>(
+                        1, static_cast<size_t>(rho * double(N) * double(N) * double(N)));
+
+                    for (int w : widths) {
+                        // Atomic — only team_size matters; tile is irrelevant.
+                        {
+                            Vector<int, 3> tile{1, 1, 1};
+                            const double tp = time_config<ExecSpace>(
+                                ScatterMethod::Atomic, tile, default_team, 1, 1,
+                                N, nParticle, meas_runs);
+                            out.push_back(Sample{ScatterMethod::Atomic, "real", w, rho,
+                                                 1, 1, 1, default_team, 1, 1, tp, 0.0});
+                            ++done;
+                            progress("Atomic");
+                        }
+
+                        // Tiled — sweep tile × team × osub.
+                        Sample best_tiled{ScatterMethod::Tiled, "real", w, rho, 4, 4, 4,
+                                          host_backend ? 1 : 64, 1, 1, 0.0, 0.0};
+                        for (const auto& t : tiled_tiles) {
+                            for (int team : tiled_teams) {
+                                for (int osub : tiled_osubs) {
+                                    const double tp = time_config<ExecSpace>(
+                                        ScatterMethod::Tiled, t, team, osub, 1,
+                                        N, nParticle, meas_runs);
+                                    if (tp > best_tiled.throughput_Mpts_s) {
+                                        best_tiled = Sample{ScatterMethod::Tiled, "real", w, rho,
+                                                            t[0], t[1], t[2],
+                                                            team, osub, 1, tp, 0.0};
+                                    }
+                                    ++done;
+                                    progress("Tiled");
+                                }
+                            }
+                        }
+                        out.push_back(best_tiled);
+
+                        // OutputFocused — sweep tile × team × osub × z_batches.
+                        Sample best_of{ScatterMethod::OutputFocused, "real", w, rho, 2, 2, 2,
+                                       host_backend ? 1 : 128, 1, 1, 0.0, 0.0};
+                        for (const auto& t : of_tiles) {
+                            for (int team : of_teams) {
+                                for (int zb : of_zbs) {
+                                    for (int osub : of_osubs) {
+                                        const double tp = time_config<ExecSpace>(
+                                            ScatterMethod::OutputFocused, t, team, osub, zb,
+                                            N, nParticle, meas_runs);
+                                        if (tp > best_of.throughput_Mpts_s) {
+                                            best_of = Sample{
+                                                ScatterMethod::OutputFocused, "real", w, rho,
+                                                t[0], t[1], t[2], team, osub, zb, tp, 0.0};
+                                        }
+                                        ++done;
+                                        progress("OutputFocused");
+                                    }
+                                }
+                            }
+                        }
+                        out.push_back(best_of);
+                    }
+                }
+            }
+
+            // Mirror real → complex (complex scatter has the same access
+            // pattern, only the value type differs; tuning is overwhelmingly
+            // dominated by memory bandwidth which is the same).
+            const size_t base = out.size();
+            for (size_t i = 0; i < base; ++i) {
+                Sample s     = out[i];
+                s.value_type = "complex";
+                out.push_back(s);
+            }
+            return out;
+        }
+
+        template <typename ExecSpace>
+        GatherSample sweep_gather_full() {
+            GatherSample best{GatherMethod::Atomic, 1, 1, 1, 0.0};
+
+            const bool host_backend =
+#ifdef KOKKOS_ENABLE_OPENMP
+                std::is_same_v<ExecSpace, Kokkos::OpenMP>
+#else
+                false
+#endif
+                ;
+
+            const std::vector<unsigned> grids =
+                host_backend ? std::vector<unsigned>{32, 64}
+                             : std::vector<unsigned>{32, 64, 128};
+            const std::vector<double> rhos = {0.5, 2.0, 8.0, 32.0};
+            const std::vector<Vector<int, 3>> sort_tiles =
+                host_backend
+                    ? std::vector<Vector<int, 3>>{{4, 4, 4}, {8, 8, 8}}
+                    : std::vector<Vector<int, 3>>{
+                          {2, 2, 2}, {3, 3, 3}, {4, 4, 4}, {6, 6, 6}, {8, 8, 8}};
+
+            for (unsigned N : grids) {
+                for (double rho : rhos) {
+                    const size_t nParticle = std::max<size_t>(
+                        1, static_cast<size_t>(rho * double(N) * double(N) * double(N)));
+
+                    const double atomic_tp = time_gather<ExecSpace>(
+                        GatherMethod::Atomic, {1, 1, 1}, N, nParticle, host_backend ? 5 : 7);
+                    if (atomic_tp > best.throughput_Mpts_s) {
+                        best = GatherSample{GatherMethod::Atomic, 1, 1, 1, atomic_tp};
+                    }
+                    for (const auto& t : sort_tiles) {
+                        const double tp = time_gather<ExecSpace>(
+                            GatherMethod::AtomicSort, t, N, nParticle, host_backend ? 5 : 7);
+                        if (tp > best.throughput_Mpts_s) {
+                            best =
+                                GatherSample{GatherMethod::AtomicSort, t[0], t[1], t[2], tp};
+                        }
+                    }
+                }
+            }
+            return best;
         }
 
     }  // namespace
@@ -461,8 +658,20 @@ namespace ippl::Interpolation::AutoTune {
         // Opt-in only. Default is to skip the sweep entirely and rely on the
         // built-in defaults seeded into TileSizeCache / GatherCache by
         // ippl::initialize.
+        //
+        //   IPPL_AUTO_TUNE=1     → quick sweep (~seconds)
+        //   IPPL_AUTO_TUNE=full  → full sweep (tens of seconds to minutes;
+        //                          much broader candidate set, multiple grid
+        //                          sizes and densities, longer measurement)
+        //   anything else / unset → no-op
         const char* enable = std::getenv("IPPL_AUTO_TUNE");
-        if (enable == nullptr || std::string(enable) != "1") {
+        if (enable == nullptr) {
+            return false;
+        }
+        const std::string mode(enable);
+        const bool quick_mode = (mode == "1" || mode == "quick");
+        const bool full_mode  = (mode == "full" || mode == "2");
+        if (!quick_mode && !full_mode) {
             return false;
         }
 
@@ -483,53 +692,77 @@ namespace ippl::Interpolation::AutoTune {
 
         if (is_rank_zero && ippl::Info) {
             *ippl::Info << ::level1
-                        << "[AutoTune] IPPL_AUTO_TUNE=1 — running width-2 scatter/gather sweep "
-                        << "(this can take a few seconds; opt out by unsetting IPPL_AUTO_TUNE)"
+                        << "[AutoTune] IPPL_AUTO_TUNE=" << mode
+                        << " — running " << (full_mode ? "FULL" : "quick")
+                        << " width-2 scatter/gather sweep "
+                        << (full_mode ? "(can take minutes; broader candidate set across grids "
+                                        "and densities)"
+                                      : "(this can take a few seconds; "
+                                        "set IPPL_AUTO_TUNE=full for a deeper search)")
                         << endl;
         }
+
+        [[maybe_unused]] auto run_scatter = [&](auto&& sweep_fn, const char* label) {
+            if (ippl::Info) {
+                *ippl::Info << ::level1
+                            << "[AutoTune]   sweeping scatter on " << label << " → "
+                            << output_path << endl;
+            }
+            write_csv(output_path, sweep_fn());
+        };
+        [[maybe_unused]] auto run_gather = [&](auto&& sweep_fn, const char* label) {
+            if (ippl::Info) {
+                *ippl::Info << ::level1
+                            << "[AutoTune]   sweeping gather on " << label << " → "
+                            << gather_path << endl;
+            }
+            write_gather_csv(gather_path, sweep_fn());
+        };
 
         if (is_rank_zero) {
 #ifdef KOKKOS_ENABLE_CUDA
             if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::Cuda>) {
                 if (!scatter_done) {
-                    if (ippl::Info) {
-                        *ippl::Info << ::level1
-                                    << "[AutoTune]   sweeping scatter on Kokkos::Cuda → "
-                                    << output_path << endl;
-                    }
-                    write_csv(output_path, sweep<Kokkos::Cuda>());
+                    if (full_mode) run_scatter([] { return sweep_full<Kokkos::Cuda>(); },
+                                               "Kokkos::Cuda (full)");
+                    else           run_scatter([] { return sweep<Kokkos::Cuda>(); },
+                                               "Kokkos::Cuda");
                 }
                 if (!gather_done) {
-                    if (ippl::Info) {
-                        *ippl::Info << ::level1
-                                    << "[AutoTune]   sweeping gather on Kokkos::Cuda → "
-                                    << gather_path << endl;
-                    }
-                    write_gather_csv(gather_path, sweep_gather<Kokkos::Cuda>());
+                    if (full_mode) run_gather([] { return sweep_gather_full<Kokkos::Cuda>(); },
+                                              "Kokkos::Cuda (full)");
+                    else           run_gather([] { return sweep_gather<Kokkos::Cuda>(); },
+                                              "Kokkos::Cuda");
                 }
-            } else
+            }
 #endif
 #ifdef KOKKOS_ENABLE_OPENMP
             if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::OpenMP>) {
                 if (!scatter_done) {
-                    if (ippl::Info) {
-                        *ippl::Info << ::level1
-                                    << "[AutoTune]   sweeping scatter on Kokkos::OpenMP → "
-                                    << output_path << endl;
-                    }
-                    write_csv(output_path, sweep<Kokkos::OpenMP>());
+                    if (full_mode) run_scatter([] { return sweep_full<Kokkos::OpenMP>(); },
+                                               "Kokkos::OpenMP (full)");
+                    else           run_scatter([] { return sweep<Kokkos::OpenMP>(); },
+                                               "Kokkos::OpenMP");
                 }
                 if (!gather_done) {
-                    if (ippl::Info) {
-                        *ippl::Info << ::level1
-                                    << "[AutoTune]   sweeping gather on Kokkos::OpenMP → "
-                                    << gather_path << endl;
-                    }
-                    write_gather_csv(gather_path, sweep_gather<Kokkos::OpenMP>());
+                    if (full_mode) run_gather([] { return sweep_gather_full<Kokkos::OpenMP>(); },
+                                              "Kokkos::OpenMP (full)");
+                    else           run_gather([] { return sweep_gather<Kokkos::OpenMP>(); },
+                                              "Kokkos::OpenMP");
                 }
-            } else
+            }
 #endif
-            {
+            // Fallback for backends with nothing to tune (Serial, etc.).
+            const bool serial_backend =
+                true
+#ifdef KOKKOS_ENABLE_CUDA
+                && !std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::Cuda>
+#endif
+#ifdef KOKKOS_ENABLE_OPENMP
+                && !std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::OpenMP>
+#endif
+                ;
+            if (serial_backend) {
                 if (!scatter_done) write_trivial(output_path);
                 if (!gather_done)  write_trivial_gather(gather_path);
             }

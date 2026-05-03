@@ -9,19 +9,27 @@
 // first scatter/gather call uses a known-good configuration without paying
 // any benchmarking cost or touching the filesystem.
 //
-// Opt in to the sweep with `IPPL_AUTO_TUNE=1` in the environment. When
-// enabled, runOnFirstUse() benchmarks a small candidate set of
-// (tile, team, osub, z_batches) configurations for the Atomic / Tiled /
-// OutputFocused scatter implementations at the kernel width PIC actually
-// uses (CIC = 2), picks the best per method, and writes a CSV in the
-// layout TileSizeCache parses. Progress is reported through ippl::Info at
-// info level >= 1 (`--info 1`).
+// Opt in to the sweep through the IPPL_AUTO_TUNE env var:
 //
-// Cost is bounded by design — a fixed 32^3 grid with O(1e5) particles, a
-// handful of tile sizes per tunable method. On a modest GPU this is well
-// under a second; on Serial we skip the benchmark entirely (there is
-// nothing to tune — Atomic with team_size 1 is the only valid config) and
-// just write a single Atomic row so subsequent loads are consistent.
+//   IPPL_AUTO_TUNE=1 (or "quick")  — small candidate set on a single
+//                                    32^3 grid; finishes in ~seconds.
+//   IPPL_AUTO_TUNE=full (or "2")   — much broader sweep across grid sizes
+//                                    {32, 64, 128}, particle densities
+//                                    {0.5, 2, 8, 32} ppc, larger tile /
+//                                    team / oversubscription / z_batch
+//                                    candidate sets, longer per-config
+//                                    measurement. Each density bucket gets
+//                                    its own CSV row so the runtime
+//                                    density-aware lookup picks the closest
+//                                    match. Tens of seconds to a few
+//                                    minutes on a GPU.
+//
+// Anything else (or unset) is treated as no-op. Progress is reported
+// through ippl::Info at info level >= 1 (`--info 1`).
+//
+// On Serial we skip the benchmark entirely (there is nothing to tune —
+// Atomic with team_size 1 is the only valid config) and just write a
+// single Atomic row so subsequent loads are consistent.
 // ============================================================================
 
 #include <string>
