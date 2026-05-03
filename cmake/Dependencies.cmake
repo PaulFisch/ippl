@@ -405,9 +405,6 @@ if(IPPL_ENABLE_FFT AND IPPL_ENABLE_CUFFTMP)
     set(NVSHMEM_FOUND FALSE)
   endif()
 
-  # The actual link is done at the ippl target in src/CMakeLists.txt; the
-  # global `link_libraries` directive previously here leaked these
-  # dependencies into every downstream target, including unit tests that
-  # don't need cuFFTMp.
+  # The actual link is done at the ippl target in src/CMakeLists.txt
   add_compile_definitions(IPPL_ENABLE_CUFFTMP)
 endif()
