@@ -99,8 +99,12 @@ namespace ippl {
 
         Kokkos::initialize(argc, argv);
 
-        // First-run width-2 scatter auto-tune. Idempotent — skips if a CSV is
-        // already present at the default path. Opt out with IPPL_AUTO_TUNE=0.
+        // Seed scatter/gather caches with per-exec-space defaults so the
+        // first PIC scatter/gather has a usable configuration with no
+        // filesystem access. The sweep itself is opt-in: set
+        // IPPL_AUTO_TUNE=1 to run it and write tile_sweep_sa_optimal.csv /
+        // gather_sweep_optimal.csv next to the executable.
+        ippl::Interpolation::AutoTune::seedBuiltinDefaults();
         ippl::Interpolation::AutoTune::runOnFirstUse();
     }
 

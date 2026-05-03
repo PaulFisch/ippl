@@ -28,7 +28,9 @@
 #include "Particle/ParticleSpatialLayout.h"
 
 #include "Interpolation/Gather/Gather.h"
+#include "Interpolation/Gather/GatherConfig.h"
 #include "Interpolation/Scatter/Scatter.h"
+#include "Interpolation/Scatter/TileSizeCache.h"
 
 namespace ippl::Interpolation::AutoTune {
 
@@ -348,11 +350,120 @@ namespace ippl::Interpolation::AutoTune {
 
     }  // namespace
 
-    bool runOnFirstUse(const std::string& output_path) {
-        if (const char* dis = std::getenv("IPPL_AUTO_TUNE")) {
-            if (std::string(dis) == "0") {
-                return std::filesystem::exists(output_path);
+    void seedBuiltinDefaults() {
+        // Touch instances first so their lazy load() runs and any CSV in
+        // cwd / IPPL_TILE_CSV / IPPL_GATHER_CSV gets honoured. Only seed if
+        // nothing was loaded.
+        auto& tcache = TileSizeCache::instance();
+        auto& gcache = GatherCache::instance();
+
+        const bool tcache_empty = !tcache.loaded();
+        const bool gcache_empty = !gcache.get().has_value();
+        if (!tcache_empty && !gcache_empty) {
+            return;
+        }
+
+        // Pick a backend label and per-method recipes. These match what the
+        // sweep would pick on a typical NVIDIA Ampere-class GPU and on a
+        // multi-core OpenMP host; they are deliberately conservative so
+        // they're never *bad*, just maybe not optimal for an unusual GPU.
+        // Users who want machine-specific tuning can opt in with
+        // IPPL_AUTO_TUNE=1.
+        const char* backend = "Serial";
+        int  atomic_team    = 1;
+        int  tiled_team     = 1, tiled_tile  = 1;
+        int  of_team        = 1, of_tile     = 1, of_zb       = 1;
+        bool seed_tiled_of  = false;
+        bool gather_sort    = false;
+        int  gather_tile    = 1;
+
+#ifdef KOKKOS_ENABLE_CUDA
+        if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::Cuda>) {
+            backend        = "Kokkos::Cuda";
+            atomic_team    = 32;
+            tiled_team     = 64;  tiled_tile = 4;
+            of_team        = 128; of_tile    = 4;  of_zb = 1;
+            seed_tiled_of  = true;
+            gather_sort    = true;
+            gather_tile    = 4;
+        } else
+#endif
+#ifdef KOKKOS_ENABLE_OPENMP
+        if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::OpenMP>) {
+            backend        = "Kokkos::OpenMP";
+            // OpenMP scatter is fastest with the Atomic kernel; Tiled and
+            // OutputFocused incur thread-local-bin overhead that doesn't
+            // pay off without massive parallelism.
+            atomic_team    = 1;
+            seed_tiled_of  = false;
+            gather_sort    = false;
+            gather_tile    = 1;
+        }
+#endif
+
+        const bool is_rank_zero = (ippl::Comm == nullptr) || (ippl::Comm->rank() == 0);
+        if (is_rank_zero && ippl::Info) {
+            *ippl::Info << ::level2
+                        << "[AutoTune] seeding built-in scatter/gather defaults for "
+                        << backend << " (set IPPL_AUTO_TUNE=1 to run the sweep instead)"
+                        << endl;
+        }
+
+        if (tcache_empty) {
+            // throughput=1.0 is just a sentinel so the seeded entry compares
+            // sensibly if a CSV later overrides it (CSV will have a real
+            // throughput). Width 1 and 2 cover the PIC kernels in use.
+            for (int w : {1, 2}) {
+                for (bool cx : {false, true}) {
+                    {
+                        TileCacheEntry e;
+                        e.tile.fill(1);
+                        e.team_size               = atomic_team;
+                        e.oversubscription_factor = 1;
+                        e.z_batches               = 1;
+                        e.is_rectangular          = false;
+                        e.throughput_Mpts_s       = 1.0;
+                        tcache.seed_default(ScatterMethod::Atomic, w, cx, e);
+                    }
+                    if (seed_tiled_of) {
+                        {
+                            TileCacheEntry e;
+                            e.tile.fill(tiled_tile);
+                            e.team_size               = tiled_team;
+                            e.oversubscription_factor = 1;
+                            e.z_batches               = 1;
+                            e.is_rectangular          = false;
+                            e.throughput_Mpts_s       = 1.0;
+                            tcache.seed_default(ScatterMethod::Tiled, w, cx, e);
+                        }
+                        {
+                            TileCacheEntry e;
+                            e.tile.fill(of_tile);
+                            e.team_size               = of_team;
+                            e.oversubscription_factor = 1;
+                            e.z_batches               = of_zb;
+                            e.is_rectangular          = false;
+                            e.throughput_Mpts_s       = 1.0;
+                            tcache.seed_default(ScatterMethod::OutputFocused, w, cx, e);
+                        }
+                    }
+                }
             }
+        }
+
+        if (gcache_empty) {
+            gcache.seed_default(gather_sort ? GatherMethod::AtomicSort : GatherMethod::Atomic,
+                                {gather_tile, gather_tile, gather_tile});
+        }
+    }
+
+    bool runOnFirstUse(const std::string& output_path) {
+        // Opt-in only. Default is to skip the sweep entirely and rely on the
+        // built-in defaults seeded into TileSizeCache / GatherCache by
+        // ippl::initialize.
+        const char* enable = std::getenv("IPPL_AUTO_TUNE");
+        if (enable == nullptr || std::string(enable) != "1") {
+            return false;
         }
 
         const std::string gather_path =
@@ -360,21 +471,62 @@ namespace ippl::Interpolation::AutoTune {
 
         const bool scatter_done = std::filesystem::exists(output_path);
         const bool gather_done  = std::filesystem::exists(gather_path);
-        if (scatter_done && gather_done) return true;
+        if (scatter_done && gather_done) {
+            if (ippl::Info && (ippl::Comm == nullptr || ippl::Comm->rank() == 0)) {
+                *ippl::Info << ::level1 << "[AutoTune] reusing existing sweep CSVs ("
+                            << output_path << ", " << gather_path << ")" << endl;
+            }
+            return true;
+        }
 
         const bool is_rank_zero = (ippl::Comm == nullptr) || (ippl::Comm->rank() == 0);
+
+        if (is_rank_zero && ippl::Info) {
+            *ippl::Info << ::level1
+                        << "[AutoTune] IPPL_AUTO_TUNE=1 — running width-2 scatter/gather sweep "
+                        << "(this can take a few seconds; opt out by unsetting IPPL_AUTO_TUNE)"
+                        << endl;
+        }
 
         if (is_rank_zero) {
 #ifdef KOKKOS_ENABLE_CUDA
             if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::Cuda>) {
-                if (!scatter_done) write_csv(output_path, sweep<Kokkos::Cuda>());
-                if (!gather_done)  write_gather_csv(gather_path, sweep_gather<Kokkos::Cuda>());
+                if (!scatter_done) {
+                    if (ippl::Info) {
+                        *ippl::Info << ::level1
+                                    << "[AutoTune]   sweeping scatter on Kokkos::Cuda → "
+                                    << output_path << endl;
+                    }
+                    write_csv(output_path, sweep<Kokkos::Cuda>());
+                }
+                if (!gather_done) {
+                    if (ippl::Info) {
+                        *ippl::Info << ::level1
+                                    << "[AutoTune]   sweeping gather on Kokkos::Cuda → "
+                                    << gather_path << endl;
+                    }
+                    write_gather_csv(gather_path, sweep_gather<Kokkos::Cuda>());
+                }
             } else
 #endif
 #ifdef KOKKOS_ENABLE_OPENMP
             if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::OpenMP>) {
-                if (!scatter_done) write_csv(output_path, sweep<Kokkos::OpenMP>());
-                if (!gather_done)  write_gather_csv(gather_path, sweep_gather<Kokkos::OpenMP>());
+                if (!scatter_done) {
+                    if (ippl::Info) {
+                        *ippl::Info << ::level1
+                                    << "[AutoTune]   sweeping scatter on Kokkos::OpenMP → "
+                                    << output_path << endl;
+                    }
+                    write_csv(output_path, sweep<Kokkos::OpenMP>());
+                }
+                if (!gather_done) {
+                    if (ippl::Info) {
+                        *ippl::Info << ::level1
+                                    << "[AutoTune]   sweeping gather on Kokkos::OpenMP → "
+                                    << gather_path << endl;
+                    }
+                    write_gather_csv(gather_path, sweep_gather<Kokkos::OpenMP>());
+                }
             } else
 #endif
             {
@@ -385,7 +537,12 @@ namespace ippl::Interpolation::AutoTune {
         if (ippl::Comm != nullptr) {
             ippl::Comm->barrier();
         }
-        return std::filesystem::exists(output_path);
+
+        const bool ok = std::filesystem::exists(output_path);
+        if (ok && is_rank_zero && ippl::Info) {
+            *ippl::Info << ::level1 << "[AutoTune] sweep complete." << endl;
+        }
+        return ok;
     }
 
 }  // namespace ippl::Interpolation::AutoTune

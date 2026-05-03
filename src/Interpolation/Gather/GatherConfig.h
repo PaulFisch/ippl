@@ -44,6 +44,16 @@ namespace ippl {
                 return entry_;
             }
 
+            /// Seed a built-in default. Skipped if a CSV has already been
+            /// loaded (CSV wins). Used by Ippl::initialize so users get a
+            /// known-good config without paying the auto-tune cost.
+            void seed_default(GatherMethod method, std::array<int, 3> tile) {
+                std::call_once(once_, [&]() {
+                    entry_  = GatherCacheEntry{method, tile};
+                    loaded_ = true;
+                });
+            }
+
         private:
             void load();
 

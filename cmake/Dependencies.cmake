@@ -342,7 +342,37 @@ if(IPPL_ENABLE_FFT AND IPPL_ENABLE_FINUFFT)
   # regardless of the global BUILD_SHARED_LIBS setting.
   set(_ippl_saved_bsl ${BUILD_SHARED_LIBS})
   set(BUILD_SHARED_LIBS OFF)
+
+  # Kokkos updates CMAKE_CUDA_ARCHITECTURES only inside its own subproject
+  # scope. A downstream FetchContent like cufinufft would otherwise inherit
+  # CMake's default arch (which doesn't match the GPU) and emit kernels that
+  # fail at launch with cudaErrorInvalidResourceHandle. Translate the
+  # Kokkos_ARCH_* selection into CMAKE_CUDA_ARCHITECTURES once, here, so
+  # every downstream CUDA TU sees it.
+  if("CUDA" IN_LIST IPPL_PLATFORMS)
+    set(_ippl_arch_map
+        "KEPLER30:30" "KEPLER32:32" "KEPLER35:35" "KEPLER37:37"
+        "MAXWELL50:50" "MAXWELL52:52" "MAXWELL53:53"
+        "PASCAL60:60" "PASCAL61:61"
+        "VOLTA70:70" "VOLTA72:72"
+        "TURING75:75"
+        "AMPERE80:80" "AMPERE86:86" "AMPERE87:87"
+        "ADA89:89"
+        "HOPPER90:90"
+        "BLACKWELL100:100" "BLACKWELL120:120")
+    foreach(_entry ${_ippl_arch_map})
+      string(REPLACE ":" ";" _pair ${_entry})
+      list(GET _pair 0 _name)
+      list(GET _pair 1 _sm)
+      if(Kokkos_ARCH_${_name})
+        set(CMAKE_CUDA_ARCHITECTURES ${_sm} CACHE STRING "" FORCE)
+        break()
+      endif()
+    endforeach()
+  endif()
+
   FetchContent_MakeAvailable(finufft)
+
   set(BUILD_SHARED_LIBS ${_ippl_saved_bsl})
 
   add_compile_definitions(ENABLE_FINUFFT)

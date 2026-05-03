@@ -172,6 +172,20 @@ public:
 
     void reload(const std::string& path = "");
 
+    /// Seed a single (method, kernel_width, is_complex) entry. Idempotent
+    /// per row: an existing entry with the same density bucket and a higher
+    /// throughput value wins. Used by Ippl::initialize to pre-populate the
+    /// cache with built-in per-exec-space defaults so the first scatter
+    /// does not pay the AutoTune cost.
+    void seed_default(ScatterMethod method, int kernel_width, bool is_complex,
+                      TileCacheEntry entry) {
+        insert_entry(method, kernel_width, is_complex, std::move(entry));
+        loaded_ = true;
+        if (source_path_.empty()) {
+            source_path_ = "<built-in default>";
+        }
+    }
+
 private:
     TileSizeCache() = default;
 
