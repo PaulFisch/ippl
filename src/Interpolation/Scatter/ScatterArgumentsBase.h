@@ -17,6 +17,15 @@ namespace ippl::Interpolation::detail {
         using ValueType               = typename ValuesViewType_::value_type;
         using memory_space            = typename GridViewType_::memory_space;
         using execution_space         = typename PositionViewType_::execution_space;
+
+        static_assert(std::is_same_v<memory_space,
+                                     typename PositionViewType_::memory_space>,
+                      "Scatter: field grid and particle positions must live in the same "
+                      "memory space");
+        static_assert(std::is_same_v<memory_space,
+                                     typename ValuesViewType_::memory_space>,
+                      "Scatter: field grid and particle values must live in the same "
+                      "memory space");
     };
 
     template <typename Derived, typename Types>

@@ -63,17 +63,18 @@ namespace ippl::Interpolation {
         }
 
         /**
-         *  * @brief Get center grid index for kernel stencil
+         * @brief Round a grid coordinate to the cell index that anchors the stencil.
          *
-         * Uses width-dependent rounding to determine the base index:
-         * - Odd width: round to nearest (symmetric stencil around particle)
-         * - Even width: floor (asymmetric stencil)
+         * Uses width-dependent rounding:
+         * - Odd width:  round to nearest (symmetric stencil around the particle)
+         * - Even width: floor             (asymmetric stencil)
          *
-         * The stencil extends from [center_idx - (width-1)/2, center_idx - (width-1)/2 + width).
+         * The stencil leftmost cell is then `center - (width - 1) / 2`, computed
+         * by `getStencilBase`.
          *
          * @param grid_pos Grid coordinate (output of toGridCoordinate)
          * @param width Kernel width
-         * @return Center index for the kernel stencil
+         * @return Center cell index
          */
         KOKKOS_INLINE_FUNCTION int getStencilCenter(T grid_pos, int width) const {
             const bool odd = (width & 1);

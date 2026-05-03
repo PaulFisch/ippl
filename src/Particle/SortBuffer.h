@@ -90,8 +90,15 @@ namespace ippl {
             size_t tempCapacity() const { return temp_capacity_; }
 
             size_t memoryUsage() const {
-                return particle_capacity_ * (2 * sizeof(uint64_t) + 2 * sizeof(size_type))
-                       + bin_offset_capacity_ * sizeof(size_type) + temp_capacity_;
+                // Sum the bytes actually held by each view rather than
+                // assuming all of them are populated — keys_out_ / perm_out_
+                // are only allocated on the CUDA fast path.
+                return bin_keys_.span() * sizeof(uint64_t)
+                       + permute_.span() * sizeof(size_type)
+                       + bin_offsets_.span() * sizeof(size_type)
+                       + keys_out_.span() * sizeof(uint64_t)
+                       + perm_out_.span() * sizeof(size_type)
+                       + temp_storage_.span();
             }
 
             void clear() {

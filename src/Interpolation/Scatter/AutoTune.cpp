@@ -75,10 +75,9 @@ namespace ippl::Interpolation::AutoTune {
 
         const char* method_name(ScatterMethod m) {
             switch (m) {
-                case ScatterMethod::Atomic:              return "Atomic";
-                case ScatterMethod::Tiled:               return "Tiled";
-                case ScatterMethod::OutputFocused:       return "OutputFocused";
-                case ScatterMethod::OutputFocusedZBatch: return "OutputFocusedZBatch";
+                case ScatterMethod::Atomic:        return "Atomic";
+                case ScatterMethod::Tiled:         return "Tiled";
+                case ScatterMethod::OutputFocused: return "OutputFocused";
             }
             return "Atomic";
         }
@@ -585,6 +584,21 @@ namespace ippl::Interpolation::AutoTune {
             gather_tile    = 4;
         }
 #endif
+#ifdef KOKKOS_ENABLE_HIP
+        if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::HIP>) {
+            backend        = "Kokkos::HIP";
+            // CDNA wavefronts are 64-wide; favour larger team sizes than
+            // CUDA's warp-32. Numbers are conservative starting points;
+            // run IPPL_AUTO_TUNE=full and commit the resulting CSV to
+            // cmake/auto_tune/<gfx*>/ for true machine-tuned values.
+            atomic_team    = 64;
+            tiled_team     = 128; tiled_tile = 4;
+            of_team        = 256; of_tile    = 4;  of_zb = 1;
+            seed_tiled_of  = true;
+            gather_sort    = true;
+            gather_tile    = 4;
+        }
+#endif
 #ifdef KOKKOS_ENABLE_OPENMP
         if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::OpenMP>) {
             backend        = "Kokkos::OpenMP";
@@ -736,6 +750,22 @@ namespace ippl::Interpolation::AutoTune {
                 }
             }
 #endif
+#ifdef KOKKOS_ENABLE_HIP
+            if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::HIP>) {
+                if (!scatter_done) {
+                    if (full_mode) run_scatter([] { return sweep_full<Kokkos::HIP>(); },
+                                               "Kokkos::HIP (full)");
+                    else           run_scatter([] { return sweep<Kokkos::HIP>(); },
+                                               "Kokkos::HIP");
+                }
+                if (!gather_done) {
+                    if (full_mode) run_gather([] { return sweep_gather_full<Kokkos::HIP>(); },
+                                              "Kokkos::HIP (full)");
+                    else           run_gather([] { return sweep_gather<Kokkos::HIP>(); },
+                                              "Kokkos::HIP");
+                }
+            }
+#endif
 #ifdef KOKKOS_ENABLE_OPENMP
             if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::OpenMP>) {
                 if (!scatter_done) {
@@ -757,6 +787,9 @@ namespace ippl::Interpolation::AutoTune {
                 true
 #ifdef KOKKOS_ENABLE_CUDA
                 && !std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::Cuda>
+#endif
+#ifdef KOKKOS_ENABLE_HIP
+                && !std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::HIP>
 #endif
 #ifdef KOKKOS_ENABLE_OPENMP
                 && !std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::OpenMP>

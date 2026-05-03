@@ -23,8 +23,7 @@
 namespace ippl {
     namespace detail {
         /*!
-         * @file Archive.h
-         * Serialize and desesrialize particle attributes.
+         * Serialize and deserialize particle attributes.
          * @tparam Properties variadic template for Kokkos::View
          */
 
@@ -112,19 +111,17 @@ namespace ippl {
             void resetWritePos() { writepos_m = 0; }
             void resetReadPos() { readpos_m = 0; }
 
-        public:
             using memory_space = typename buffer_type::memory_space;
 
-            //! True iff this Archive's memory space lives on a CUDA/HIP
-            //! device. We only take the raw cudaMalloc/hipMalloc path on
-            //! device-side archives — for a HostSpace archive (used by host
-            //! exec spaces such as Kokkos::Serial / Kokkos::OpenMP) the
-            //! buffer must remain host-accessible or the host-side memcpy in
-            //! serialize() will segfault.
+            //! True iff this Archive's memory space is host-inaccessible
+            //! (CUDA device or HIP device). UVM is excluded — it works with
+            //! the regular Kokkos::View path because the host can address
+            //! the memory directly. For a HostSpace archive the host-side
+            //! memcpy in serialize() requires a host-accessible buffer, so
+            //! the raw device allocation path must NOT be used there.
             static constexpr bool uses_raw_device_alloc =
 #if defined(KOKKOS_ENABLE_CUDA)
                 std::is_same_v<memory_space, Kokkos::CudaSpace>
-                || std::is_same_v<memory_space, Kokkos::CudaUVMSpace>
 #elif defined(KOKKOS_ENABLE_HIP)
                 std::is_same_v<memory_space, Kokkos::HIPSpace>
 #else

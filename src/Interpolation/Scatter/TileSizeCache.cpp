@@ -14,6 +14,10 @@
 #include "Interpolation/Gather/GatherConfig.h"
 #include "Ippl.h"
 
+#if __has_include("IpplAutoTunePresets.h")
+#include "IpplAutoTunePresets.h"
+#endif
+
 namespace ippl::Interpolation {
 
 namespace {
@@ -89,7 +93,24 @@ void TileSizeCache::load() {
     }
     if (load_file("tile_sweep_sa_optimal.csv"))
         return;
-    load_file("tile_sweep_optimal.csv");
+    if (load_file("tile_sweep_optimal.csv"))
+        return;
+
+#ifdef IPPL_AUTOTUNE_PRESET_DIR
+    // Shipped preset baked in at configure time for this build's arch.
+    {
+        const std::string preset =
+            std::string(IPPL_AUTOTUNE_PRESET_DIR) + "/tile_sweep_sa_optimal.csv";
+        if (load_file(preset)) {
+            if (ippl::Info) {
+                *ippl::Info << ::level2
+                            << "[TileSizeCache] using shipped preset for "
+                            << IPPL_AUTOTUNE_ARCH_TAG << " (" << preset << ")" << endl;
+            }
+            return;
+        }
+    }
+#endif
 }
 
 bool TileSizeCache::load_file(const std::string& path) {
@@ -232,30 +253,45 @@ bool TileSizeCache::parse_rect_row(const std::string& line, bool has_rho) {
 }
 
 void GatherCache::load() {
-    const char* path_env = std::getenv("IPPL_GATHER_CSV");
-    const std::string path = path_env ? std::string(path_env) : "gather_sweep_optimal.csv";
+    auto try_load = [&](const std::string& path) -> bool {
+        std::ifstream f(path);
+        if (!f.is_open()) return false;
 
-    std::ifstream f(path);
-    if (!f.is_open()) return;
+        std::string line;
+        if (!std::getline(f, line)) return false;  // header
+        if (!std::getline(f, line)) return false;  // single data row
 
-    std::string line;
-    if (!std::getline(f, line)) return;  // header
-    if (!std::getline(f, line)) return;  // single data row
+        auto fields = split_csv(line);
+        if (fields.size() < 5) return false;
 
-    auto fields = split_csv(line);
-    if (fields.size() < 5) return;
+        if (fields[0] == "AtomicSort") {
+            entry_.method = GatherMethod::AtomicSort;
+        } else {
+            entry_.method = GatherMethod::Atomic;
+        }
 
-    if (fields[0] == "AtomicSort") {
-        entry_.method = GatherMethod::AtomicSort;
-    } else {
-        entry_.method = GatherMethod::Atomic;
+        entry_.tile = {parse_int(fields[2]), parse_int(fields[3]), parse_int(fields[4])};
+        for (auto& v : entry_.tile) {
+            if (v <= 0) v = 1;
+        }
+        loaded_ = true;
+        return true;
+    };
+
+    if (const char* env = std::getenv("IPPL_GATHER_CSV")) {
+        if (try_load(std::string(env))) return;
     }
+    if (try_load("gather_sweep_optimal.csv")) return;
 
-    entry_.tile = {parse_int(fields[2]), parse_int(fields[3]), parse_int(fields[4])};
-    for (auto& v : entry_.tile) {
-        if (v <= 0) v = 1;
+#ifdef IPPL_AUTOTUNE_PRESET_DIR
+    const std::string preset =
+        std::string(IPPL_AUTOTUNE_PRESET_DIR) + "/gather_sweep_optimal.csv";
+    if (try_load(preset) && ippl::Info) {
+        *ippl::Info << ::level2
+                    << "[GatherCache] using shipped preset for "
+                    << IPPL_AUTOTUNE_ARCH_TAG << " (" << preset << ")" << endl;
     }
-    loaded_ = true;
+#endif
 }
 
 }  // namespace ippl::Interpolation

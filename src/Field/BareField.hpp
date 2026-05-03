@@ -101,7 +101,6 @@ namespace ippl {
     template <typename T, unsigned Dim, class... ViewArgs>
     BareField<T, Dim, ViewArgs...>::BareField(Layout_t& l, int nghost)
         : nghost_m(nghost)
-        //     , owned_m(0)
         , layout_m(&l) {
         setup();
     }
@@ -115,10 +114,8 @@ namespace ippl {
         }
     }
 
-    // ML
     template <typename T, unsigned Dim, class... ViewArgs>
     void BareField<T, Dim, ViewArgs...>::updateLayout(Layout_t& l, int nghost) {
-        // std::cout << "Got in BareField::updateLayout()" << std::endl;
         layout_m = &l;
         nghost_m = nghost;
         setup();

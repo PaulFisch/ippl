@@ -13,10 +13,18 @@ namespace ippl {
             , threadMultiple_m(false) {
             if (!initialized()) {
                 int provided = MPI_THREAD_SINGLE;
-                MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+                int rc = MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+                if (rc != MPI_SUCCESS) {
+                    std::cerr << "MPI_Init_thread failed (rc=" << rc << ")" << std::endl;
+                    std::exit(EXIT_FAILURE);
+                }
                 threadMultiple_m = (provided >= MPI_THREAD_MULTIPLE);
                 if (!threadMultiple_m) {
-                    std::cerr << "MPI doesn't support MPI_THREAD_MULTIPLE!" << std::endl;
+                    int rank = 0;
+                    MPI_Comm_rank(comm_m, &rank);
+                    if (rank == 0) {
+                        std::cerr << "MPI doesn't support MPI_THREAD_MULTIPLE!" << std::endl;
+                    }
                 }
             }
         }

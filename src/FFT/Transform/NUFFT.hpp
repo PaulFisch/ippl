@@ -246,12 +246,14 @@ namespace ippl {
         std::string spreadMethod = params.get<std::string>("spread_method", "none");
         if (spreadMethod == "atomic") {
             cfg.scatter_config.method = Interpolation::ScatterMethod::Atomic;
-        } else if (spreadMethod == "output_focused") {
+        } else if (spreadMethod == "output_focused"
+                   || spreadMethod == "output_focused_zbatched") {
+            // The "_zbatched" alias is kept so old test parameter sets still
+            // resolve; both map to OutputFocused (the z_batches knob lives on
+            // ScatterConfig, not in the method enum).
             cfg.scatter_config.method = Interpolation::ScatterMethod::OutputFocused;
         } else if (spreadMethod == "tiled") {
             cfg.scatter_config.method = Interpolation::ScatterMethod::Tiled;
-        } else if (spreadMethod == "output_focused_zbatched") {
-            cfg.scatter_config.method = Interpolation::ScatterMethod::OutputFocusedZBatch;
         }
 
         std::string gatherMethod = params.get<std::string>("gather_method", "none");

@@ -3,26 +3,31 @@
 
 namespace ippl::mpi {
 
+    namespace {
+        // Populate rank_m / size_m from the live communicator.
+        void cacheRankAndSize(const MPI_Comm& comm, int& rank, int& size) {
+            MPI_Comm_rank(comm, &rank);
+            MPI_Comm_size(comm, &size);
+        }
+    }  // namespace
+
     Communicator::Communicator()
         : comm_m(new MPI_Comm(MPI_COMM_WORLD)) {
-        MPI_Comm_rank(*comm_m, &rank_m);
-        MPI_Comm_size(*comm_m, &size_m);
+        cacheRankAndSize(*comm_m, rank_m, size_m);
     }
 
     Communicator::Communicator(MPI_Comm comm) {
         comm_m = std::make_shared<MPI_Comm>(comm);
-        MPI_Comm_rank(*comm_m, &rank_m);
-        MPI_Comm_size(*comm_m, &size_m);
+        cacheRankAndSize(*comm_m, rank_m, size_m);
     }
 
     Communicator& Communicator::operator=(MPI_Comm comm) {
         comm_m = std::make_shared<MPI_Comm>(comm);
-        MPI_Comm_rank(*comm_m, &rank_m);
-        MPI_Comm_size(*comm_m, &size_m);
+        cacheRankAndSize(*comm_m, rank_m, size_m);
         return *this;
     }
 
-    Communicator Communicator::Communicator::split(int color, int key) const {
+    Communicator Communicator::split(int color, int key) const {
         MPI_Comm newcomm;
         MPI_Comm_split(*comm_m, color, key, &newcomm);
         return Communicator(newcomm);

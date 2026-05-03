@@ -13,10 +13,10 @@ namespace ippl::Interpolation::detail {
         static constexpr bool requires_binning = UseSorting;
         static constexpr unsigned Dim          = Types::Dim;
 
-        using RealType        = Types::RealType;
-        using ValueType       = Types::ValueType;
-        using memory_space    = Types::memory_space;
-        using execution_space = Types::execution_space;
+        using RealType        = typename Types::RealType;
+        using ValueType       = typename Types::ValueType;
+        using memory_space    = typename Types::memory_space;
+        using execution_space = typename Types::execution_space;
 
         struct Arguments : GatherArgumentsBase<Arguments, Types> {
             using PermuteView = Kokkos::View<uint64_t*, memory_space>;
@@ -99,10 +99,13 @@ namespace ippl::Interpolation::detail {
         }
 
         void run(size_t n_particles) {
-            auto policy             = Kokkos::RangePolicy<execution_space>(0, n_particles);
+            auto policy = Kokkos::RangePolicy<execution_space>(0, n_particles);
+            // `Kokkos::Experimental::prefer` + DesiredOccupancy is still in
+            // the Experimental namespace (Kokkos 5.x). The interface may
+            // move; if it does, drop the prefer() and pass `policy` directly.
             auto const policy_tuned = Kokkos::Experimental::prefer(
                 policy, Kokkos::Experimental::DesiredOccupancy{Kokkos::AUTO});
-            Kokkos::parallel_for("AtomicGather(Add)", policy_tuned, *this);
+            Kokkos::parallel_for("AtomicGather", policy_tuned, *this);
         }
     };
 }  // namespace ippl::Interpolation::detail

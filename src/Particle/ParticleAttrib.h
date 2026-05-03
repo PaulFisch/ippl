@@ -20,8 +20,8 @@
 
 #include "Expression/IpplExpressions.h"
 
-#include "../Interpolation/Gather/GatherConfig.h"
-#include "../Interpolation/Scatter/ScatterConfig.h"
+#include "Interpolation/Gather/GatherConfig.h"
+#include "Interpolation/Scatter/ScatterConfig.h"
 #ifdef IPPL_ENABLE_FFT
 #include "FFT/FFT.h"
 #endif
@@ -146,10 +146,6 @@ namespace ippl {
                                    Kokkos::make_pair(size_type(0),
                                                      static_cast<size_type>(*(this->localNum_mp))));
         }
-
-        // view_type& getRawView() { return dview_m; }
-        //
-        // const view_type& getRawView() const { return dview_m; }
 
         host_mirror_type getHostMirror() const { return Kokkos::create_mirror(getView()); }
 

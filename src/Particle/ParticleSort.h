@@ -134,16 +134,12 @@ namespace ippl {
                 pairs[i] = {computeMortonCode<Dim, T, size_t>(positions(i), origin, invdx, ngrid),
                             i};
             }
-            std::sort(pairs.begin(), pairs.end(), [](const auto& a, const auto& b) {
-                return a.first < b.first;
-            });
+            std::sort(pairs.begin(), pairs.end());  // pair has lexicographic < by .first
 
             for (size_t i = 0; i < n; ++i) {
                 permute(i) = pairs[i].second;
             }
 
-            // validatePermutation<Kokkos::DefaultHostExecutionSpace>(permute, n,
-            // "sortParticlesHost");
             return permute;
         }
 
@@ -191,7 +187,6 @@ namespace ippl {
                                             static_cast<int>(n));
             Kokkos::fence();
 
-            // validatePermutation<Kokkos::Cuda>(bufs.permOut(), n, "sortParticlesCuda");
             return bufs.permOut();
         }
 #endif
@@ -238,7 +233,6 @@ namespace ippl {
                                       sizeof(uint64_t) * 8, Kokkos::HIP().hip_stream());
             Kokkos::fence();
 
-            // validatePermutation<Kokkos::HIP>(bufs.permOut(), n, "sortParticlesHip");
             return bufs.permOut();
         }
 #endif

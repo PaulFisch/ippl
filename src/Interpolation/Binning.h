@@ -88,7 +88,7 @@ namespace ippl {
              *
              * @param positions Particle positions in physical coordinates
              * @param n_grid_global Global grid dimensions
-             * @param n_grid_local Local grid dimensions
+             * @param n_grid_local Local grid dimensions (kept for API compatibility; unused)
              * @param local_offset First global index of local domain
              * @param tile_size Tile size per dimension
              * @param kernel_width Interpolation kernel width
@@ -159,7 +159,7 @@ namespace ippl {
                     auto perm_out_sub =
                         Kokkos::subview(bufs.permOut(), std::make_pair(size_t(0), n_particles));
 
-                    // Grab the Kokkos CUDA stream
+                    cudaStream_t cuda_stream = ExecSpace().cuda_stream();
 
                     // Query required temp-storage size
                     void* d_temp      = nullptr;
@@ -167,27 +167,26 @@ namespace ippl {
                     cub::DeviceRadixSort::SortPairs(
                         d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
                         permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles), 0,
-                        sizeof(key_type) * 8, 0);
+                        sizeof(key_type) * 8, cuda_stream);
 
                     bufs.ensureTempStorage(temp_bytes);
                     d_temp = bufs.tempStorage().data();
 
-                    // Sort into buffered output views
+                    // Sort into buffered output views on the same stream as
+                    // subsequent Kokkos kernels — avoids needing a global fence
+                    // before the deep_copy below.
                     auto err = cub::DeviceRadixSort::SortPairs(
                         d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
                         permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles), 0,
-                        sizeof(key_type) * 8, 0);
+                        sizeof(key_type) * 8, cuda_stream);
 
                     if (err != cudaSuccess) {
                         printf("CUB SortPairs failed: %s\n", cudaGetErrorString(err));
                         Kokkos::abort("CUB Radix Sort failed.");
                     }
 
-                    // Copy sorted results back into the working views
-                    Kokkos::fence();
-                    Kokkos::deep_copy(keys_sub, keys_out_sub);
-                    Kokkos::deep_copy(permute_sub, perm_out_sub);
-                    Kokkos::fence();
+                    Kokkos::deep_copy(ExecSpace(), keys_sub, keys_out_sub);
+                    Kokkos::deep_copy(ExecSpace(), permute_sub, perm_out_sub);
 #else
                     Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
 #endif
@@ -207,24 +206,32 @@ namespace ippl {
                 Kokkos::fence();
 
                 if (n_particles > 0) {
-                    // Find bin boundaries by detecting where keys change
+                    // Step A: each particle writes its index into the slot of
+                    // its own bin iff it is the first particle in that bin.
+                    // Each thread does O(1) work — no inner loop over the gap
+                    // to the previous transition.
                     Kokkos::parallel_for(
-                        "BinSort::FindBoundaries", Kokkos::RangePolicy<ExecSpace>(0, n_particles),
+                        "BinSort::MarkStarts", Kokkos::RangePolicy<ExecSpace>(0, n_particles),
                         KOKKOS_LAMBDA(const size_t i) {
                             const auto curr_bin = bin_keys(i);
+                            if (i == 0 || bin_keys(i - 1) != curr_bin) {
+                                bin_offsets(static_cast<size_t>(curr_bin)) = i;
+                            }
+                        });
+                    Kokkos::fence();
 
-                            if (i == 0) {
-                                // First particle starts bin 0 through curr_bin
-                                for (size_t b = 0; b <= static_cast<size_t>(curr_bin); ++b) {
-                                    bin_offsets(b) = 0;
-                                }
-                            } else {
-                                const auto prev_bin = bin_keys(i - 1);
-                                if (curr_bin != prev_bin) {
-                                    // Transition: set start of curr_bin and all empty bins between
-                                    for (auto b = prev_bin + 1; b <= curr_bin; ++b) {
-                                        bin_offsets(b) = i;
-                                    }
+                    // Step B: right-to-left inclusive min-scan to fill empty
+                    // bins (their start = next non-empty bin's start). Empty
+                    // bins still hold the n_particles sentinel after Step A.
+                    // Sequential single-thread launch is intentional: the
+                    // dependency is purely linear and n_bins is small relative
+                    // to n_particles in any realistic configuration.
+                    Kokkos::parallel_for(
+                        "BinSort::PropagateEmpties",
+                        Kokkos::RangePolicy<ExecSpace>(0, 1), KOKKOS_LAMBDA(const int) {
+                            for (size_t b = n_bins; b-- > 0;) {
+                                if (bin_offsets(b) > bin_offsets(b + 1)) {
+                                    bin_offsets(b) = bin_offsets(b + 1);
                                 }
                             }
                         });
@@ -277,7 +284,7 @@ namespace ippl {
                     local_offset[d] = lDom[d].first();
                 }
 
-                // Compute number of tiles (+1 for boundary particles)
+                // Compute number of tiles (+1 for boundary particles).
                 Vector<int, Dim> num_tiles;
                 size_t total_tiles = 1;
                 for (unsigned d = 0; d < Dim; ++d) {

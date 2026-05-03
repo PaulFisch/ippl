@@ -215,6 +215,8 @@ namespace ippl {
 #endif
 
 #ifdef KOKKOS_ENABLE_HIP
+            // Wavefronts are 64-wide (vs CUDA's 32) so a larger tile per
+            // team keeps occupancy similar; team_size = wavefront width.
             template <unsigned Dim>
             struct GatherConfigDefault<Dim, Kokkos::HIP> {
                 static GatherConfig<Dim> get() {

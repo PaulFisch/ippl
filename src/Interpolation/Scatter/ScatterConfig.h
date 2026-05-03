@@ -11,17 +11,23 @@ namespace ippl {
     namespace Interpolation {
 
         /**
-         * @brief Scattering/gathering method for particle-grid interpolation
+         * @brief Scatter algorithm for particle → grid interpolation.
+         *
+         * - Atomic:        per-particle stencil scatter with `Kokkos::atomic_add`.
+         * - Tiled:         bin particles into tiles, scatter each tile's
+         *                  histogram into team-local scratch, then flush.
+         * - OutputFocused: same as Tiled but with grid-parallel histogram
+         *                  filling (one team per output tile, batched
+         *                  particle reads).
          */
         enum class ScatterMethod {
             Atomic,
             Tiled,
-            OutputFocused,
-            OutputFocusedZBatch
+            OutputFocused
         };
 
         /**
-         * @brief Configuration for scatter/gather operations
+         * @brief Configuration for scatter operations
          */
         template <unsigned Dim>
         struct ScatterConfig {
@@ -131,7 +137,7 @@ namespace ippl {
                 return *this;
             }
 
-            bool do_binning() const { return !(method == ScatterMethod::Atomic && sort == false); }
+            bool do_binning() const { return method != ScatterMethod::Atomic || sort; }
 
             /**
              * @brief Get default configuration for an execution space
@@ -211,6 +217,12 @@ namespace ippl {
             template <unsigned Dim>
             struct ScatterConfigDefault<Dim, Kokkos::HIP> {
                 static ScatterConfig<Dim> get() {
+                    // CDNA wavefronts are 64-wide and the on-chip atomic
+                    // throughput is more contention-sensitive than NVIDIA's,
+                    // so the binned Tiled path tends to win as the default
+                    // (with team_size = wavefront for full occupancy). The
+                    // AutoTune pre-pass overrides these whenever it has a
+                    // measured value for the running architecture.
                     ScatterConfig<Dim> config;
                     config.method    = ScatterMethod::Tiled;
                     config.sort      = true;
@@ -221,7 +233,7 @@ namespace ippl {
                     } else if constexpr (Dim == 2) {
                         config.tile_size = {16, 16};
                     } else {
-                        // Dim == 3: conservative (same rationale as CUDA)
+                        // Dim == 3: conservative (same shmem rationale as CUDA)
                         config.tile_size = {2, 2, 2};
                     }
                     return config;
@@ -234,8 +246,17 @@ namespace ippl {
             struct ScatterConfigDefault<Dim, Kokkos::Threads> {
                 static ScatterConfig<Dim> get() {
                     ScatterConfig<Dim> config;
-                    config.method = ScatterMethod::Atomic;
-                    config.sort   = true;
+                    config.method    = ScatterMethod::Atomic;
+                    config.sort      = true;
+                    config.team_size = 1;
+
+                    if constexpr (Dim == 1) {
+                        config.tile_size = {256};
+                    } else if constexpr (Dim == 2) {
+                        config.tile_size = {16, 16};
+                    } else {
+                        config.tile_size = {9, 9, 9};
+                    }
                     return config;
                 }
             };

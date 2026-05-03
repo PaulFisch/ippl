@@ -93,11 +93,10 @@ namespace ippl::mpi {
         size_t offset = 0;
 
         while (offset < buffer.size()) {
-            LogEntry logEntry = LogEntry::deserialize(buffer, offset);
-
-            logs.push_back(logEntry);
-
-            offset += logEntry.serialize().size();
+            // deserializeAdvance walks `offset` past the consumed bytes —
+            // avoids the O(N²) blowup of re-serializing each entry just to
+            // measure how many bytes it occupies.
+            logs.push_back(LogEntry::deserializeAdvance(buffer, offset));
         }
         return logs;
     }

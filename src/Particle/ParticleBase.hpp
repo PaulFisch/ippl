@@ -62,8 +62,6 @@ namespace ippl {
             addAttribute(ID);
         }
         addAttribute(R);
-        // ID.set_name("ID");
-        // R.set_name("position");
     }
 
     template <class PLayout, typename... IP>
@@ -197,12 +195,14 @@ namespace ippl {
         auto& locDeleteIndex = deleteIndex_m.get<memory_space>();
         auto& locKeepIndex   = keepIndex_m.get<memory_space>();
 
-        // Resize buffers, if necessary
+        // Resize buffers per-memory-space. The previous code mistakenly used
+        // the outer `memory_space` template parameter inside the per-space
+        // lambda, leaving every other space's del/keep buffers undersized.
         detail::runForAllSpaces([&]<typename MemorySpace>() {
-            if (attributes_m.template get<memory_space>().size() > 0) {
+            if (attributes_m.template get<MemorySpace>().size() > 0) {
                 int overalloc = Comm->getDefaultOverallocation();
-                auto& del     = deleteIndex_m.get<memory_space>();
-                auto& keep    = keepIndex_m.get<memory_space>();
+                auto& del     = deleteIndex_m.template get<MemorySpace>();
+                auto& keep    = keepIndex_m.template get<MemorySpace>();
                 if (del.size() < destroyNum) {
                     Kokkos::realloc(del, destroyNum * overalloc);
                     Kokkos::realloc(keep, destroyNum * overalloc);

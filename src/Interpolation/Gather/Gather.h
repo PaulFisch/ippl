@@ -1,6 +1,8 @@
 #ifndef IPPL_GATHER_H
 #define IPPL_GATHER_H
 
+#include "Utility/IpplException.h"
+
 #include "Interpolation/Binning.h"
 #include "Interpolation/Gather/AtomicGather.h"
 #include "Interpolation/Gather/GatherArgumentsBase.h"
@@ -59,6 +61,8 @@ namespace ippl {
                 case Interpolation::GatherMethod::AtomicSort:
                     dispatch<Interpolation::detail::AtomicGather, Types, true>(field, positions, values);
                     break;
+                default:
+                    throw IpplException("Gather", "Unknown GatherMethod");
             }
         }
 
@@ -80,11 +84,15 @@ namespace ippl {
             const int width          = kernel_m.width();
             const size_t n_particles = positions.getParticleCount();
 
+            // The halo must be valid before any stencil reads it, and is
+            // independent of the runtime kernel width — fill once outside
+            // the WidthDispatcher.
+            field.fillHalo();
+
             Interpolation::WidthDispatcher<1, std::decay_t<Kernel>::max_width>::dispatch(width, [&]<int W>() {
                 auto args = Impl<W, Types, UseSorting>::Arguments::create(field, positions, values, kernel_m,
                                                                            config_m, binning);
                 Impl<W, Types, UseSorting> functor(std::move(args));
-                field.fillHalo();
                 functor.run(n_particles);
             });
         }

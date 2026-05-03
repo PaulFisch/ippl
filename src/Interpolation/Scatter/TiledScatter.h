@@ -19,10 +19,10 @@ namespace ippl::Interpolation::detail {
         static constexpr unsigned Dim          = Types::Dim;
         static constexpr int half_left         = (W + 1) / 2;
 
-        using RealType        = Types::RealType;
-        using ValueType       = Types::ValueType;
-        using memory_space    = Types::memory_space;
-        using execution_space = Types::execution_space;
+        using RealType        = typename Types::RealType;
+        using ValueType       = typename Types::ValueType;
+        using memory_space    = typename Types::memory_space;
+        using execution_space = typename Types::execution_space;
 
         using team_policy   = Kokkos::TeamPolicy<execution_space>;
         using team_member   = typename team_policy::member_type;

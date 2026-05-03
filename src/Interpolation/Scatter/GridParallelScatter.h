@@ -5,14 +5,12 @@
 
 namespace ippl::Interpolation::detail {
 
-    template <int Base, int Exp>
-    struct StaticPow {
-        static constexpr int value = Base * StaticPow<Base, Exp - 1>::value;
-    };
-    template <int Base>
-    struct StaticPow<Base, 0> {
-        static constexpr int value = 1;
-    };
+    constexpr int int_pow(int base, int exp) {
+        int result = 1;
+        for (int i = 0; i < exp; ++i)
+            result *= base;
+        return result;
+    }
 
     template <class Policy, class = void>
     struct GridParallelScatterTuning {
@@ -118,7 +116,9 @@ namespace ippl::Interpolation::detail {
             const RealType* __restrict__ kwz = kw + 2 * W;
 
             constexpr int plane = W * W;
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
 #pragma unroll 1
+#endif
             for (int idx = team.team_rank(); idx < stencil_total; idx += team.team_size()) {
                 const int zz  = idx / plane;
                 const int rem = idx - zz * plane;
@@ -242,7 +242,9 @@ namespace ippl::Interpolation::detail {
                     const int idx2 = transform.template getStencilBase<W>(gp2 - RealType(0.5));
 
                     RealType* const kw = kerevals + static_cast<size_t>(bi) * ker_stride;
+#if defined(__CUDA_ARCH__) || defined(__HIP_DEVICE_COMPILE__)
 #pragma unroll
+#endif
                     for (int wi = 0; wi < W; ++wi) {
                         kw[wi]         = args.kernel((gp0 - (RealType(idx0 + wi) + RealType(0.5)))
                                                      * args.inv_hw);
@@ -278,9 +280,14 @@ namespace ippl::Interpolation::detail {
                     const RealType vr        = vals_r[bi];
                     const RealType vi        = needs_imag ? vals_i[bi] : RealType(0);
 
-                    scatter_particle_fast<needs_imag>(team, sx, sy, sz, pitch0, pitch1, kw, vr,
-                    vi,
-                                                      local_r, local_i);
+                    scatter_particle_fast<needs_imag>(team, sx, sy, sz, pitch0, pitch1, kw,
+                                                      vr, vi, local_r, local_i);
+                    // Per-particle barrier is required because consecutive
+                    // particles' stencils can write to overlapping cells of
+                    // the team-local histogram (`local_r` / `local_i`) using
+                    // non-atomic `+=`. Without the barrier, two team threads
+                    // working on different particles could race on the same
+                    // cell.
                     team.team_barrier();
                 }
             }
@@ -293,6 +300,9 @@ namespace ippl::Interpolation::detail {
                 const int ix  = rem - jy * pitch0;
 
                 const RealType rr = local_r[lid];
+                // Skip cells the team never touched (initialised to exactly 0
+                // and never written). Real kernel evaluations of touched cells
+                // are non-zero in finite precision, so the float `==` is safe.
                 if constexpr (needs_imag) {
                     if (rr == RealType(0) && local_i[lid] == RealType(0))
                         continue;
@@ -398,7 +408,7 @@ namespace ippl::Interpolation::detail {
         static constexpr unsigned Dim          = Types::Dim;
         static constexpr int half_left         = (W + 1) / 2;
         static constexpr int padded_extra      = 2 * half_left;
-        static constexpr int stencil_total     = StaticPow<W, Dim>::value;
+        static constexpr int stencil_total     = int_pow(W, static_cast<int>(Dim));
         static constexpr bool fixed_oversubscription =
             GridParallelScatterTuning<Policy>::fixed_oversubscription;
 
