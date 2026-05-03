@@ -139,7 +139,7 @@ namespace ippl {
                     {local_first[0], local_first[1], local_first[2]},
                     {local_last[0] + 1, local_last[1] + 1, local_last[2] + 1}),
                 KOKKOS_LAMBDA(int gi, int gj, int gk) {
-                    // Corner-DC layout: modes in [0, N/2) ∪ [N+N/2, 2N)
+                    // Corner-DC layout: modes in [0, N/2) U [N+N/2, 2N)
                     auto in_bounds = [&](int g, int n) {
                         return (g >= 0 && g < n / 2) || (g >= n + n / 2 && g < 2 * n);
                     };

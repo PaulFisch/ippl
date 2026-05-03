@@ -33,9 +33,9 @@ namespace Kokkos {
     };
 }  // namespace Kokkos
 
-// Reducer wrappers that pull `ippl::max` / `ippl::min` into the join-overload
-// resolution set. The stock `Kokkos::Max` / `Kokkos::Min` join uses
-// `Kokkos::max` only, which has no overload for `ippl::Vector<T,Dim>`; the
+// Reducer wrappers that pull ippl::max / ippl::min into the join-overload
+// resolution set. The stock Kokkos::Max / Kokkos::Min join uses
+// Kokkos::max only, which has no overload for ippl::Vector<T,Dim>; the
 // using-declarations below let ADL find the IPPL element-wise overloads while
 // keeping the scalar Kokkos path intact.
 namespace KokkosCorrection {

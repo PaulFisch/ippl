@@ -100,7 +100,7 @@ namespace fft {
             checkCudaError(cudaStreamCreate(&stream_), "Failed to create CUDA stream");
 
             // cuFFT expects row-major (C-order) dimensions. The Kokkos views are
-            // LayoutLeft, so dimension 0 is fastest-varying — pass extents reversed.
+            // LayoutLeft, so dimension 0 is fastest-varying - pass extents reversed.
             int n[3] = {
                 static_cast<int>(localSize_[2]),
                 static_cast<int>(localSize_[1]),

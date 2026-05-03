@@ -157,11 +157,9 @@ namespace ippl {
 
             const MPI_Comm& getCommunicator() const noexcept { return *comm_m; }
 
-            // MPI uses `int` for byte counts; messages exceeding INT_MAX must
+            // MPI uses int for byte counts; messages exceeding INT_MAX must
             // be split. This shared check aborts the run with a single
-            // diagnostic instead of silently truncating. (Communicator.h is
-            // included from headers below Ippl.h so we keep this dependency
-            // free of the Inform machinery and write straight to stderr.)
+            // diagnostic instead of silently truncating.
             void assertMessageSize(size_type msize) const {
                 if (msize > static_cast<size_type>(INT_MAX)) {
                     std::cerr << "Communicator: message size " << msize

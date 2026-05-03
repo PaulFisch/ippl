@@ -131,16 +131,13 @@ namespace ippl {
     template <typename MemorySpace>
     typename DefaultBufferHandler<MemorySpace>::buffer_type
     DefaultBufferHandler<MemorySpace>::reallocateLargestFreeBuffer(size_type requiredSize) {
-        // The function name predates the policy change. Always allocate a
+        // Always allocate a
         // fresh buffer instead of reallocating the largest free one: a
         // free + alloc cycle can release the device pointer that a GPU-aware
         // MPI's registration cache still holds, and a subsequent alloc
         // returning the same virtual address would surface a stale IPC
         // handle on the next transfer. Keeping the old buffers in the free
         // pool and returning a new buffer at a new address sidesteps this.
-        // The same rule is applied on host backends too — IPPL assumes
-        // GPU-aware MPI uniformly, and consistency between host and device
-        // pools makes the BufferHandler tests deterministic across builds.
         return allocateNewBuffer(requiredSize);
     }
 

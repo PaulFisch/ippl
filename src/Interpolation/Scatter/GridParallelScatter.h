@@ -41,7 +41,7 @@ namespace ippl::Interpolation::detail {
             GridParallelScatterTuning<Policy>::fixed_oversubscription;
 
         // Kernel weight stride per particle: Dim*W.
-        // No extra padding — modest store conflicts on kerevals fill are cheaper
+        // No extra padding - modest store conflicts on kerevals fill are cheaper
         // than the shmem they would consume (which directly reduces block occupancy).
         static constexpr int ker_stride = 3 * W;
 

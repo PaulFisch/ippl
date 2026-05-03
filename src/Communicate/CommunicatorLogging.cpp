@@ -93,9 +93,8 @@ namespace ippl::mpi {
         size_t offset = 0;
 
         while (offset < buffer.size()) {
-            // deserializeAdvance walks `offset` past the consumed bytes —
-            // avoids the O(N²) blowup of re-serializing each entry just to
-            // measure how many bytes it occupies.
+            // deserializeAdvance walks offset past the consumed bytes -
+            // avoids the O(N^2) blowup of re-serializing each entry
             logs.push_back(LogEntry::deserializeAdvance(buffer, offset));
         }
         return logs;

@@ -11,9 +11,9 @@
 //
 // Opt in to the sweep through the IPPL_AUTO_TUNE env var:
 //
-//   IPPL_AUTO_TUNE=1 (or "quick")  — small candidate set on a single
+//   IPPL_AUTO_TUNE=1 (or "quick")  - small candidate set on a single
 //                                    32^3 grid; finishes in ~seconds.
-//   IPPL_AUTO_TUNE=full (or "2")   — much broader sweep across grid sizes
+//   IPPL_AUTO_TUNE=full (or "2")   - much broader sweep across grid sizes
 //                                    {32, 64, 128}, particle densities
 //                                    {0.5, 2, 8, 32} ppc, larger tile /
 //                                    team / oversubscription / z_batch
@@ -27,7 +27,7 @@
 // Anything else (or unset) is treated as no-op. Progress is reported
 // through ippl::Info at info level >= 1 (`--info 1`).
 //
-// On Serial we skip the benchmark entirely (there is nothing to tune —
+// On Serial we skip the benchmark entirely (there is nothing to tune -
 // Atomic with team_size 1 is the only valid config) and just write a
 // single Atomic row so subsequent loads are consistent.
 // ============================================================================
@@ -47,7 +47,7 @@ namespace ippl::Interpolation::AutoTune {
     /// requested via `IPPL_AUTO_TUNE=1`, write the resulting CSVs next to
     /// the running executable, and return true if a CSV exists at the
     /// requested path on exit. When the env var is not set (default),
-    /// returns false without doing any work — callers should fall back to
+    /// returns false without doing any work - callers should fall back to
     /// the seeded defaults in TileSizeCache / GatherCache.
     /// Rank 0 owns the writing; all ranks barrier before returning so any
     /// subsequent cache reload is consistent across ranks.

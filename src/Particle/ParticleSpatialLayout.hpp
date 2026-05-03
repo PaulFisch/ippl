@@ -348,7 +348,7 @@ namespace ippl {
                 if (positionInRegionInclusive(is, positions(i), Regions(r)))
                     return r;
             }
-            return myRank;  // truly outside all regions — applyBC should have prevented this
+            return myRank;  // truly outside all regions - applyBC should have prevented this
         };
 
         // Make sure the leaving-mask buffer is large enough; it's reused across
