@@ -386,7 +386,7 @@ namespace ippl::Interpolation::AutoTune {
             seed_tiled_of  = true;
             gather_sort    = true;
             gather_tile    = 4;
-        } else
+        }
 #endif
 #ifdef KOKKOS_ENABLE_OPENMP
         if constexpr (std::is_same_v<Kokkos::DefaultExecutionSpace, Kokkos::OpenMP>) {
