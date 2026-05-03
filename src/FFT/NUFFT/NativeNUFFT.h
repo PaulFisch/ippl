@@ -70,11 +70,10 @@ namespace ippl {
             };
 
             struct TimingInfo {
-                T spread     = 0;
-                T fft        = 0;
-                T correct    = 0;
-                T total      = 0;
-                T precompute = 0;
+                T spread  = 0;
+                T fft     = 0;
+                T correct = 0;
+                T total   = 0;
             };
 
         private:
@@ -193,8 +192,6 @@ namespace ippl {
                 }
 
                 // Precompute deconvolution factors
-                auto t0 = std::chrono::high_resolution_clock::now();
-
                 ESKernel<T> nufft_kernel(cfg_.tol);
                 for (unsigned d = 0; d < Dim; ++d) {
                     factors_[d] = complex_view_1d("deconv_factors", n_modes_[d]);
@@ -205,9 +202,6 @@ namespace ippl {
                 }
 
                 Kokkos::fence();
-                timing_.precompute =
-                    std::chrono::duration<T>(std::chrono::high_resolution_clock::now() - t0)
-                        .count();
 
                 initialized_ = true;
                 IpplTimings::stopTimer(initTimer);
@@ -240,7 +234,6 @@ namespace ippl {
 
                 static IpplTimings::TimerRef scatterTimer = IpplTimings::getTimer("scatterTimerNUFFT1");
                 IpplTimings::startTimer(scatterTimer);
-                // *grid_field_ = complex_type(0, 0);  // Zero the grid
                 Kokkos::deep_copy(grid_field_->getView(), 0.0);
 
                 Q.scatter_kernel(*grid_field_, R, kernel_, cfg_.scatter_config);
@@ -329,9 +322,7 @@ namespace ippl {
             Vector<size_t, Dim> numModes() const { return n_modes_; }
 
             void resetTimings() {
-                timing_.spread  = 0;
-                timing_.fft     = 0;
-                timing_.correct = 0;
+                timing_ = TimingInfo{};
             }
 
             void performFFT(int sign) {

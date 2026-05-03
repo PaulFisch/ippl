@@ -9,6 +9,7 @@
 #include <cstring>
 #include <list>
 
+#include "Interpolation/Scatter/AutoTune.h"
 #include "Utility/IpplInfo.h"
 
 namespace ippl {
@@ -97,6 +98,10 @@ namespace ippl {
         }
 
         Kokkos::initialize(argc, argv);
+
+        // First-run width-2 scatter auto-tune. Idempotent — skips if a CSV is
+        // already present at the default path. Opt out with IPPL_AUTO_TUNE=0.
+        ippl::Interpolation::AutoTune::runOnFirstUse();
     }
 
     void finalize() {

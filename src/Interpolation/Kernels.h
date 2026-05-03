@@ -17,6 +17,7 @@ namespace ippl {
         struct NGPKernel {
             using value_type = T;
             static constexpr bool has_width_template = false;
+            static constexpr int max_width = 1;
 
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // Transform: y = x * (w/2) = x * 0.5
@@ -38,6 +39,7 @@ namespace ippl {
         struct LinearKernel {
             using value_type = T;
             static constexpr bool has_width_template = false;
+            static constexpr int max_width = 2;
 
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // w/2 = 1, so y = x (no transformation needed)
@@ -63,6 +65,7 @@ namespace ippl {
         struct QuadraticKernel {
             using value_type                         = T;
             static constexpr bool has_width_template = false;
+            static constexpr int max_width           = 3;
 
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // Transform to natural coordinates: y = x * (w/2) = x * 1.5
@@ -95,6 +98,7 @@ namespace ippl {
         struct CubicKernel {
             using value_type                         = T;
             static constexpr bool has_width_template = false;
+            static constexpr int max_width           = 4;
 
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // Transform to natural coordinates: y = x * (w/2) = x * 2
@@ -127,6 +131,7 @@ namespace ippl {
         struct QuarticKernel {
             using value_type                         = T;
             static constexpr bool has_width_template = false;
+            static constexpr int max_width           = 5;
 
             KOKKOS_INLINE_FUNCTION T operator()(T x) const {
                 // Transform to natural coordinates: y = x * (w/2) = x * 2.5

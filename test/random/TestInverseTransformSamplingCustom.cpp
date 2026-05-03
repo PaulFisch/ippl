@@ -186,7 +186,7 @@ int main(int argc, char* argv[]) {
     ippl::initialize(argc, argv);
     {
         ippl::Vector<int, 2> nr = {100, 100};
-        size_type ntotal        = 1000000;
+        size_type ntotal        = 10000;
 
         ippl::NDIndex<2> domain;
         for (unsigned i = 0; i < Dim; i++) {

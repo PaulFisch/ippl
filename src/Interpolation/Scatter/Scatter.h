@@ -258,7 +258,7 @@ namespace ippl {
             const int width          = kernel_m.width();
             const size_t n_particles = positions.getParticleCount();
 
-            Interpolation::WidthDispatcher<1, 14>::dispatch(width, [&]<int W>() {
+            Interpolation::WidthDispatcher<1, std::decay_t<decltype(kernel_m)>::max_width>::dispatch(width, [&]<int W>() {
                 // ── Step 1: Resolve config from cache (density-aware) ──────────
                 auto tuned_config = resolve_config<Impl, W, Types, Policy, is_complex>(rho_est);
 

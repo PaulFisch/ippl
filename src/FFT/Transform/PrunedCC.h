@@ -1,5 +1,5 @@
-#ifndef IPPL_FFT_TRANSFORM_PRUNEDCC_HPP
-#define IPPL_FFT_TRANSFORM_PRUNEDCC_HPP
+#ifndef IPPL_FFT_TRANSFORM_PRUNEDCC_H
+#define IPPL_FFT_TRANSFORM_PRUNEDCC_H
 
 #include <array>
 #include <mpi.h>
@@ -74,7 +74,7 @@ namespace ippl {
             heffte::box3d<long long> box{low, high};
 
             for (int s = 0; s < numConcurrent_; ++s) {
-                MPI_Comm_dup(MPI_COMM_WORLD, &comms_[s]);
+                MPI_Comm_dup(Comm->getCommunicator(), &comms_[s]);
                 GPUOps::create(streams_[s]);
                 backends_[s] = std::make_unique<Backend_t>(box, box, comms_[s], params);
             }

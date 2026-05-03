@@ -2,23 +2,54 @@
 #define IPPL_GATHER_CONFIG_H
 
 #include <array>
+#include <mutex>
+#include <optional>
+
+#include <Kokkos_Core.hpp>
+
+#include "Types/Vector.h"
 
 namespace ippl {
     namespace Interpolation {
 
         /**
-         * @brief Scattering/gathering method for particle-grid interpolation
+         * @brief Gather method for grid-to-particle interpolation.
          *
-         * Different methods offer various performance characteristics:
-         * - Atomic: Simple atomic operations, no sorting
-         * - AtomicSort: Atomic operations with particle sorting for better cache locality
-         * - Tiled: Cache-friendly tiling with team policies and shared memory histograms
+         * - Atomic: read-only field gather, no sorting (no atomic ops actually
+         *   needed since gather only reads — name kept for symmetry with the
+         *   Scatter API).
+         * - AtomicSort: same gather kernel, with a binning pre-pass that
+         *   improves cache locality for clustered particle distributions.
          */
         enum class GatherMethod {
             Atomic,
-            AtomicSort,
-            Tiled,
-            Native
+            AtomicSort
+        };
+
+        struct GatherCacheEntry {
+            GatherMethod       method = GatherMethod::Atomic;
+            std::array<int, 3> tile   = {1, 1, 1};
+        };
+
+        class GatherCache {
+        public:
+            static GatherCache& instance() {
+                static GatherCache c;
+                std::call_once(c.once_, [&]() { c.load(); });
+                return c;
+            }
+
+            std::optional<GatherCacheEntry> get() const {
+                if (!loaded_) return std::nullopt;
+                return entry_;
+            }
+
+        private:
+            void load();
+
+            std::once_flag   once_;
+            bool             loaded_ = false;
+            GatherCacheEntry entry_;
         };
 
         /**
@@ -26,7 +57,7 @@ namespace ippl {
          */
         template <unsigned Dim>
         struct GatherConfig {
-            GatherMethod method = GatherMethod::Tiled;
+            GatherMethod method = GatherMethod::Atomic;
 
             // Tile size per dimension
             std::array<int, Dim> tile_size;
@@ -178,7 +209,7 @@ namespace ippl {
             struct GatherConfigDefault<Dim, Kokkos::HIP> {
                 static GatherConfig<Dim> get() {
                     GatherConfig<Dim> config;
-                    config.method    = GatherMethod::Tiled;
+                    config.method    = GatherMethod::AtomicSort;
                     config.team_size = 64;
 
                     if constexpr (Dim == 1) {
@@ -205,11 +236,21 @@ namespace ippl {
 #endif
         }  // namespace detail
 
-        // Implementation of get_default using the helper
+        // Implementation of get_default using the helper. Overrides the
+        // backend baseline with the AutoTune-recorded entry when present.
         template <unsigned Dim>
         template <typename ExecSpace>
         GatherConfig<Dim> GatherConfig<Dim>::get_default() {
-            return detail::GatherConfigDefault<Dim, ExecSpace>::get();
+            GatherConfig<Dim> cfg = detail::GatherConfigDefault<Dim, ExecSpace>::get();
+            if (auto cached = GatherCache::instance().get()) {
+                cfg.method = cached->method;
+                if constexpr (Dim <= 3) {
+                    for (unsigned d = 0; d < Dim; ++d) {
+                        cfg.tile_size[d] = cached->tile[d];
+                    }
+                }
+            }
+            return cfg;
         }
 
     }  // namespace Interpolation

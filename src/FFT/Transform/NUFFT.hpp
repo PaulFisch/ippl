@@ -1,5 +1,5 @@
-#ifndef IPPL_FFT_TRANSFORM_NUFFT_IMPL_HPP
-#define IPPL_FFT_TRANSFORM_NUFFT_IMPL_HPP
+#ifndef IPPL_FFT_TRANSFORM_NUFFT_HPP
+#define IPPL_FFT_TRANSFORM_NUFFT_HPP
 
 namespace ippl {
 
@@ -186,9 +186,9 @@ namespace ippl {
         : type_m(type)
         , tol_m(params.get<T>("tolerance", T(1e-6)))
         , useFinufft_m(params.get<bool>("use_finufft", false))
+        , useUpsampledInputs_m(params.get<bool>("use_upsampled_inputs", false))
         , useR2C_m(params.get<bool>("use_r2c", false))
         , r2cDir_m(params.get<int>("r2c_direction", 0))
-        , useUpsampledInputs_m(params.get<bool>("use_upsampled_inputs", false))
         , lockMethod_m(params.get<bool>("lock_method", false)) {
         const auto& domain = layout.getDomain();
         for (unsigned d = 0; d < Dim; ++d) {
@@ -238,15 +238,10 @@ namespace ippl {
         cfg.tol   = tol_m;
         cfg.sigma = params.get<T>("sigma", T(2.0));
 
-        // // Pass the R2C settings from the parameters down to the implementation layer
-        // cfg.use_r2c       = params.get<bool>("use_r2c", false);
-        // cfg.r2c_direction = params.get<int>("r2c_direction", 0);
-
         cfg.scatter_config = Interpolation::ScatterConfig<Dim>::template get_default<ExecSpace>();
         cfg.gather_config  = Interpolation::GatherConfig<Dim>::template get_default<ExecSpace>();
 
-        bool lock_method               = params.get<bool>("lock_method", false);
-        cfg.scatter_config.lock_method = lockMethod_m || lock_method;
+        cfg.scatter_config.lock_method = lockMethod_m;
 
         std::string spreadMethod = params.get<std::string>("spread_method", "none");
         if (spreadMethod == "atomic") {
@@ -260,11 +255,7 @@ namespace ippl {
         }
 
         std::string gatherMethod = params.get<std::string>("gather_method", "none");
-        if (gatherMethod == "tiled") {
-            cfg.gather_config.method = Interpolation::GatherMethod::Tiled;
-        } else if (gatherMethod == "native") {
-            cfg.gather_config.method = Interpolation::GatherMethod::Native;
-        } else if (gatherMethod == "atomic") {
+        if (gatherMethod == "atomic") {
             cfg.gather_config.method = Interpolation::GatherMethod::Atomic;
         } else if (gatherMethod == "atomic_sort") {
             cfg.gather_config.method = Interpolation::GatherMethod::AtomicSort;
@@ -273,16 +264,13 @@ namespace ippl {
         if (params.contains("tile_size_3d")) {
             cfg.scatter_config.tile_size.fill(params.get<int>("tile_size_3d"));
         }
-        if (params.contains("z_tiles")) {
-            // cfg.scatter_config.z_tiles = params.get<int>("z_tiles");
-        }
         if (params.contains("team_size")) {
             cfg.scatter_config.team_size = params.get<int>("team_size");
             cfg.gather_config.team_size  = params.get<int>("team_size");
         }
 
         nativeNufft_m = std::make_unique<NativeNUFFT_t>(nModesVec, useUpsampledInputs_m, cfg);
-        nativeNufft_m->initialize(layout, MPI_COMM_WORLD);
+        nativeNufft_m->initialize(layout, Comm->getCommunicator());
     }
 
     template <typename RealField>
@@ -532,4 +520,4 @@ namespace ippl {
     }
 }  // namespace ippl
 
-#endif  // IPPL_FFT_TRANSFORM_NUFFT_IMPL_HPP
+#endif  // IPPL_FFT_TRANSFORM_NUFFT_HPP

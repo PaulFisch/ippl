@@ -12,13 +12,10 @@
 #define IPPL_ENABLE_TIMER_FENCES false
 #endif
 
-#include <chrono>
+#include <cstdint>
 
 class Timer {
 public:
-    using timer_type    = std::chrono::time_point<std::chrono::high_resolution_clock>;
-    using duration_type = std::chrono::duration<double>;
-
     static bool enableFences;
 
     Timer();
@@ -31,7 +28,9 @@ public:
 
 private:
     double elapsed_m;
-    timer_type start_m, stop_m;
+    // high_resolution_clock tick counts since epoch — kept as int64 in the
+    // header so consumers don't pay for <chrono>'s pull-in of <format>.
+    std::int64_t start_m = 0, stop_m = 0;
 };
 
 #endif

@@ -1279,11 +1279,6 @@ TYPED_TEST(ScatterGatherTest, Gather_ConstantField_AtomicSort) {
     this->runGatherConstantFieldTest(config);
 }
 
-TYPED_TEST(ScatterGatherTest, Gather_ConstantField_Tiled) {
-    typename TestFixture::gather_config_type config;
-    config.method = ippl::Interpolation::GatherMethod::Tiled;
-    this->runGatherConstantFieldTest(config);
-}
 
 TYPED_TEST(ScatterGatherTest, Gather_Convergence_Atomic) {
     typename TestFixture::gather_config_type config;
@@ -1319,28 +1314,6 @@ TYPED_TEST(ScatterGatherTest, Adjointness_AtomicSort_AtomicSort) {
 
     typename TestFixture::gather_config_type gatherCfg;
     gatherCfg.method = ippl::Interpolation::GatherMethod::AtomicSort;
-
-    this->runAdjointnessTest(scatterCfg, gatherCfg);
-}
-
-TYPED_TEST(ScatterGatherTest, Adjointness_Tiled_Tiled) {
-    typename TestFixture::scatter_config_type scatterCfg;
-    scatterCfg.method = ippl::Interpolation::ScatterMethod::Tiled;
-    scatterCfg.sort   = true;
-
-    typename TestFixture::gather_config_type gatherCfg;
-    gatherCfg.method = ippl::Interpolation::GatherMethod::Tiled;
-
-    this->runAdjointnessTest(scatterCfg, gatherCfg);
-}
-
-TYPED_TEST(ScatterGatherTest, Adjointness_Mixed) {
-    typename TestFixture::scatter_config_type scatterCfg;
-    scatterCfg.method = ippl::Interpolation::ScatterMethod::Atomic;
-    scatterCfg.sort   = true;
-
-    typename TestFixture::gather_config_type gatherCfg;
-    gatherCfg.method = ippl::Interpolation::GatherMethod::Tiled;
 
     this->runAdjointnessTest(scatterCfg, gatherCfg);
 }
@@ -1400,17 +1373,6 @@ TYPED_TEST(ScatterGatherTest, Roundtrip_AtomicSort) {
 
     typename TestFixture::gather_config_type gatherCfg;
     gatherCfg.method = ippl::Interpolation::GatherMethod::AtomicSort;
-
-    this->runRoundtripTest(scatterCfg, gatherCfg);
-}
-
-TYPED_TEST(ScatterGatherTest, Roundtrip_Tiled) {
-    typename TestFixture::scatter_config_type scatterCfg;
-    scatterCfg.method = ippl::Interpolation::ScatterMethod::Tiled;
-    scatterCfg.sort   = true;
-
-    typename TestFixture::gather_config_type gatherCfg;
-    gatherCfg.method = ippl::Interpolation::GatherMethod::Tiled;
 
     this->runRoundtripTest(scatterCfg, gatherCfg);
 }

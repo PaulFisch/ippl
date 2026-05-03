@@ -3,6 +3,10 @@
 
 #include <array>
 
+#include <Kokkos_Core.hpp>
+
+#include "Types/Vector.h"
+
 namespace ippl {
     namespace Interpolation {
 

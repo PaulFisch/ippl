@@ -1,5 +1,5 @@
-#ifndef IPPL_FFT_TRANSFORM_PRUNEDRC_HPP
-#define IPPL_FFT_TRANSFORM_PRUNEDRC_HPP
+#ifndef IPPL_FFT_TRANSFORM_PRUNEDRC_H
+#define IPPL_FFT_TRANSFORM_PRUNEDRC_H
 
 #include <array>
 #include <mpi.h>
@@ -46,8 +46,9 @@ namespace ippl {
         using ExecSpace = typename RealField::execution_space;
         using Layout_t  = FieldLayout<Dim>;
 
-        using ComplexField = Field<Complex_t, Dim, typename RealField::Mesh_t,
-                                   typename RealField::Centering_t, ExecSpace>::uniform_type;
+        using ComplexField =
+            typename Field<Complex_t, Dim, typename RealField::Mesh_t,
+                           typename RealField::Centering_t, ExecSpace>::uniform_type;
 
 #ifdef IPPL_ENABLE_CUFFTMP
         using Backend_t = fft::CuFFTMpR2C<T, Dim, MemSpace>;
@@ -190,20 +191,6 @@ namespace ippl {
         const long long lcf1 = lowComplexFull_[1];
         const long long lcf2 = lowComplexFull_[2];
         const int r2c        = r2c_dir_;
-
-        // Local-index helper (compiled away by the compiler since r2c is a
-        // runtime constant that rarely changes):
-        //
-        //   R2C dim:     fi = gi (direct),  fi_local = gi - lcf[r2c]
-        //   Other dims:  fi = wrap(gi),     fi_local = fi  (lcf=0, so no offset)
-        auto fullLocal = [=](int d, long long gi, long long K, long long N, long long lcf) -> int {
-            if (d == r2c) {
-                return int(gi - lcf);
-            } else {
-                return int((gi < K / 2) ? gi : (N - K + gi));
-                // lcf == 0 for non-r2c dims, so fi_local == fi
-            }
-        };
 
         auto owned = g.getOwned();  // ghost-free extent of pruned field
 

@@ -1,8 +1,6 @@
 #ifndef IPPL_SCATTER_ARGUMENTS_BASE_H
 #define IPPL_SCATTER_ARGUMENTS_BASE_H
 
-#include <Ippl.h>
-
 #include "Types/Vector.h"
 
 namespace ippl::Interpolation::detail {

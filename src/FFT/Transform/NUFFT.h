@@ -1,5 +1,5 @@
-#ifndef IPPL_FFT_TRANSFORM_NUFFT_HPP
-#define IPPL_FFT_TRANSFORM_NUFFT_HPP
+#ifndef IPPL_FFT_TRANSFORM_NUFFT_H
+#define IPPL_FFT_TRANSFORM_NUFFT_H
 
 #include <array>
 #include <cmath>
@@ -260,4 +260,4 @@ namespace ippl {
 
 #include "FFT/Transform/NUFFT.hpp"
 
-#endif  // IPPL_FFT_TRANSFORM_NUFFT_HPP
+#endif  // IPPL_FFT_TRANSFORM_NUFFT_H

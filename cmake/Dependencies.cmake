@@ -336,7 +336,14 @@ if(IPPL_ENABLE_FFT AND IPPL_ENABLE_FINUFFT)
     add_compile_definitions(FINUFFT_USE_CUDA)
   endif()
   set(FINUFFT_USE_CPU ON CACHE BOOL "")
+
+  # cufinufft's CUDA RDC fatbin registration segfaults at startup when its
+  # device code is wrapped in a .so. Force static for the FetchContent build
+  # regardless of the global BUILD_SHARED_LIBS setting.
+  set(_ippl_saved_bsl ${BUILD_SHARED_LIBS})
+  set(BUILD_SHARED_LIBS OFF)
   FetchContent_MakeAvailable(finufft)
+  set(BUILD_SHARED_LIBS ${_ippl_saved_bsl})
 
   add_compile_definitions(ENABLE_FINUFFT)
 endif()

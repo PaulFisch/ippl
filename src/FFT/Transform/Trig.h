@@ -1,5 +1,5 @@
-#ifndef IPPL_FFT_TRANSFORM_TRIG_HPP
-#define IPPL_FFT_TRANSFORM_TRIG_HPP
+#ifndef IPPL_FFT_TRANSFORM_TRIG_H
+#define IPPL_FFT_TRANSFORM_TRIG_H
 
 #include "Utility/ParameterList.h"
 #include "Utility/ViewUtils.h"

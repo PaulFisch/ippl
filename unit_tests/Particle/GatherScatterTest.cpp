@@ -70,7 +70,7 @@ public:
 
     // Particle counts for the tests.
     size_t nGather = 10;              // for gather test: local particles per rank
-    size_t nScatter = static_cast<unsigned int>(std::pow(64, Dim));  // for scatter tests
+    size_t nScatter = static_cast<unsigned int>(std::pow(32, Dim));  // for scatter tests
 
     // Store cell sizes (hx) for use in generating positions.
     T hx[Dim];

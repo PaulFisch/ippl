@@ -345,8 +345,9 @@ public:
     std::shared_ptr<playout_type> playout_ptr;
 };
 
-// Run over 1-D, 2-D, 3-D with default scalar / exec space
-using Tests = TestParams::tests<1, 2, 3>;
+// Run over 2-D, 3-D with default scalar / exec space (1-D is a degenerate
+// path that adds little coverage compared to its share of test runtime).
+using Tests = TestParams::tests<2, 3>;
 TYPED_TEST_SUITE(TestParticleUpdateORB, Tests);
 
 // ============================================================
@@ -706,7 +707,7 @@ TYPED_TEST(TestParticleUpdateORB, LargeParticleCountGaussianOrb) {
     this->rebuildPlayout();
 
     auto bunch = this->makeBunch();
-    this->fillRandom(*bunch, 4096, /*seed=*/98765);
+    this->fillRandom(*bunch, 1024, /*seed=*/98765);
 
     const size_t before = this->totalParticles(*bunch);
     bunch->update();

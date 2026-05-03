@@ -59,14 +59,6 @@ namespace ippl {
                 case Interpolation::GatherMethod::AtomicSort:
                     dispatch<Interpolation::detail::AtomicGather, Types, true>(field, positions, values);
                     break;
-                case Interpolation::GatherMethod::Tiled:
-                    // TODO: Implement tiled, fallback to atomic
-                    dispatch<Interpolation::detail::AtomicGather, Types, false>(field, positions, values);
-                    break;
-                case Interpolation::GatherMethod::Native:
-                    // TODO: Implement native, fallback to atomic
-                    dispatch<Interpolation::detail::AtomicGather, Types, false>(field, positions, values);
-                    break;
             }
         }
 
@@ -88,7 +80,7 @@ namespace ippl {
             const int width          = kernel_m.width();
             const size_t n_particles = positions.getParticleCount();
 
-            Interpolation::WidthDispatcher<1, 14>::dispatch(width, [&]<int W>() {
+            Interpolation::WidthDispatcher<1, std::decay_t<Kernel>::max_width>::dispatch(width, [&]<int W>() {
                 auto args = Impl<W, Types, UseSorting>::Arguments::create(field, positions, values, kernel_m,
                                                                            config_m, binning);
                 Impl<W, Types, UseSorting> functor(std::move(args));

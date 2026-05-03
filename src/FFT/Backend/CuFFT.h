@@ -1,5 +1,5 @@
-#ifndef IPPL_FFT_BACKEND_CUFFT_HPP
-#define IPPL_FFT_BACKEND_CUFFT_HPP
+#ifndef IPPL_FFT_BACKEND_CUFFT_H
+#define IPPL_FFT_BACKEND_CUFFT_H
 
 #ifdef KOKKOS_ENABLE_CUDA
 
@@ -34,15 +34,16 @@ namespace fft {
         }
     }  // namespace detail
 
-    // Scaling kernel
-    template <typename T>
-    __global__ void cufftScaleKernel(T* data, size_t n, double scale) {
-        size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx < n) {
-            data[idx].x *= scale;
-            data[idx].y *= scale;
+    namespace detail {
+        template <typename T>
+        __global__ void cufftScaleKernel(T* data, size_t n, double scale) {
+            size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+            if (idx < n) {
+                data[idx].x *= scale;
+                data[idx].y *= scale;
+            }
         }
-    }
+    }  // namespace detail
 
     //=========================================================================
     // CuFFTC2C - Single-node cuFFT with Batched Support
@@ -98,8 +99,8 @@ namespace fft {
             // Create CUDA stream
             checkCudaError(cudaStreamCreate(&stream_), "Failed to create CUDA stream");
 
-            // cuFFT dimensions (reversed for row-major, but we use column-major so keep as-is)
-            // For LayoutLeft (column-major): dimension 0 is fastest varying
+            // cuFFT expects row-major (C-order) dimensions. The Kokkos views are
+            // LayoutLeft, so dimension 0 is fastest-varying — pass extents reversed.
             int n[3] = {
                 static_cast<int>(localSize_[2]),
                 static_cast<int>(localSize_[1]),
@@ -286,11 +287,11 @@ namespace fft {
         }
 
         void applyScaling(complex_t* data, size_t count, T scale) {
-            auto* ptr     = reinterpret_cast<cuda_complex_t*>(data);
-            int blockSize = 256;
-            int numBlocks = (count + blockSize - 1) / blockSize;
-            cufftScaleKernel<<<numBlocks, blockSize, 0, stream_>>>(ptr, count,
-                                                                    static_cast<double>(scale));
+            auto* ptr                  = reinterpret_cast<cuda_complex_t*>(data);
+            constexpr size_t blockSize = 256;
+            size_t numBlocks           = (count + blockSize - 1) / blockSize;
+            detail::cufftScaleKernel<<<numBlocks, blockSize, 0, stream_>>>(
+                ptr, count, static_cast<double>(scale));
         }
 
         cufftHandle planBatched_ = 0;
@@ -313,4 +314,4 @@ namespace fft {
 
 #endif  // KOKKOS_ENABLE_CUDA
 
-#endif  // IPPL_FFT_BACKEND_CUFFT_HPP
+#endif  // IPPL_FFT_BACKEND_CUFFT_H

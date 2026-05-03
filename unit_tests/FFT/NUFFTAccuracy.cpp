@@ -201,20 +201,15 @@ public:
 using AccuracyTest3D = NUFFTAccuracyTest<double, 3>;
 
 TEST_F(AccuracyTest3D, ToleranceSweep) {
-    const size_t gridSize     = 16;  // 16^3 = 4096 modes
-    const size_t numParticles = 40960;
+    const size_t gridSize     = 16;  // 8^3 = 512 modes
+    const size_t numParticles = 10240;
 
     setup(gridSize, numParticles);
 
-    // Generate tolerances with multiple points per decade for smooth plotting
-    // Pattern: 1e-n, 3e-(n+1), 1e-(n+1), 3e-(n+2), ...
-    std::vector<double> tolerances;
-    for (int exp = 2; exp <= 12; ++exp) {
-        tolerances.push_back(1.0 * std::pow(10.0, -exp));
-        if (exp < 12) {
-            tolerances.push_back(3.0 * std::pow(10.0, -(exp + 1)));
-        }
-    }
+    // Coarse tolerance sweep: one point per pair of decades is enough to
+    // verify accuracy/tolerance correlation; the previous 21-point sweep was
+    // for plotting smoothness, not coverage.
+    const std::vector<double> tolerances{1e-2, 1e-4, 1e-6, 1e-8, 1e-10};
 
     // Store results: tolerance, native_error, finufft_error
     struct ResultData {

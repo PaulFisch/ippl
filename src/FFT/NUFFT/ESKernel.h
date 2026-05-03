@@ -318,6 +318,14 @@ namespace ippl {
                     return es_kernel_eval_w10(x);
                 case 11:
                     return es_kernel_eval_w11(x);
+                case 12:
+                    return es_kernel_eval_w12(x);
+                case 13:
+                    return es_kernel_eval_w13(x);
+                case 14:
+                    return es_kernel_eval_w14(x);
+                case 15:
+                    return es_kernel_eval_w15(x);
                 default:
                     // Fallback to exact evaluation for unsupported widths
                     return Kokkos::exp(T(2.30) * w * (Kokkos::sqrt(T(1) - x * x) - T(1)));
@@ -379,6 +387,9 @@ namespace ippl {
         class ESKernel {
         public:
             static constexpr bool has_width_template = true;
+            // Upper bound on the runtime width; matches the precomputed
+            // ES-kernel polynomial expansions (w = 4..15) used by NativeNUFFT.
+            static constexpr int max_width = 15;
             using value_type = T;
 
             static constexpr T default_tol = T(1e-10);
@@ -400,7 +411,8 @@ namespace ippl {
              */
             KOKKOS_INLINE_FUNCTION ESKernel(int width, T beta)
                 : w_(width)
-                , beta_(beta) {}
+                , beta_(beta)
+                , tol_(default_tol) {}
 
             /**
              * @brief Evaluate the ES kernel at position x in [-1, 1].

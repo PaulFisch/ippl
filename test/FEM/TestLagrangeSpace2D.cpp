@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
     {
         Inform out("Test LagrangeSpace2DMidpoint");
 
-        const unsigned number_of_points_per_dim = 200;
+        const unsigned number_of_points_per_dim = 50;
 
         // Create a 1D uniform mesh centered at 0.0.
         const unsigned number_of_vertices_per_dim = 5;

@@ -1,5 +1,5 @@
-#ifndef IPPL_FFT_TRANSFORM_CC_HPP
-#define IPPL_FFT_TRANSFORM_CC_HPP
+#ifndef IPPL_FFT_TRANSFORM_CC_H
+#define IPPL_FFT_TRANSFORM_CC_H
 
 #include "Utility/ParameterList.h"
 

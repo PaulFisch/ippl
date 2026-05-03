@@ -1,5 +1,5 @@
-#ifndef IPPL_FFT_BACKEND_CUFFTMP_HPP
-#define IPPL_FFT_BACKEND_CUFFTMP_HPP
+#ifndef IPPL_FFT_BACKEND_CUFFTMP_H
+#define IPPL_FFT_BACKEND_CUFFTMP_H
 
 #include <array>
 #include <cufftMp.h>
@@ -63,15 +63,16 @@ namespace ippl {
             }
         }  // namespace detail
 
-        // CUDA scaling kernel
-        template <typename T>
-        __global__ void scaleKernel(T* data, size_t n, double scale) {
-            size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-            if (idx < n) {
-                data[idx].x *= scale;
-                data[idx].y *= scale;
+        namespace detail {
+            template <typename T>
+            __global__ void cufftMpScaleKernel(T* data, size_t n, double scale) {
+                size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+                if (idx < n) {
+                    data[idx].x *= scale;
+                    data[idx].y *= scale;
+                }
             }
-        }
+        }  // namespace detail
 
         //=============================================================================
         // cuFFTMp C2C Backend
@@ -91,8 +92,8 @@ namespace ippl {
 
             CuFFTMpC2C(const heffte::box3d<long long>& inbox,
                        const heffte::box3d<long long>& outbox, MPI_Comm comm,
-                       const ParameterList& params)
-                : comm_(MPI_COMM_WORLD) {
+                       const ParameterList& /*params*/)
+                : comm_(comm) {
                 using detail::checkCudaError;
                 using detail::checkCufftResult;
 
@@ -140,16 +141,9 @@ namespace ippl {
 
                 checkCufftResult(cufftXtMalloc(handle_, &desc_, CUFFT_XT_FORMAT_DISTRIBUTED_INPUT),
                                  "Failed to allocate descriptor");
-
-                // Allocate transpose buffer
-                checkCudaError(
-                    cudaMalloc(&transpose_buf_, local_elements_ * sizeof(cuda_complex_t)),
-                    "Failed to allocate transpose buffer");
             }
 
             ~CuFFTMpC2C() {
-                if (transpose_buf_)
-                    cudaFree(transpose_buf_);
                 if (desc_)
                     cufftXtFree(desc_);
                 if (handle_)
@@ -166,7 +160,6 @@ namespace ippl {
                 , comm_(other.comm_)
                 , stream_(other.stream_)
                 , desc_(other.desc_)
-                , transpose_buf_(other.transpose_buf_)
                 , worksize_(other.worksize_)
                 , total_elements_(other.total_elements_)
                 , local_elements_(other.local_elements_)
@@ -176,10 +169,39 @@ namespace ippl {
                 , upper_in_(other.upper_in_)
                 , lower_out_(other.lower_out_)
                 , upper_out_(other.upper_out_) {
-                other.handle_        = 0;
-                other.stream_        = nullptr;
-                other.desc_          = nullptr;
-                other.transpose_buf_ = nullptr;
+                other.handle_ = 0;
+                other.stream_ = nullptr;
+                other.desc_   = nullptr;
+            }
+
+            CuFFTMpC2C& operator=(CuFFTMpC2C&& other) noexcept {
+                if (this != &other) {
+                    if (desc_)
+                        cufftXtFree(desc_);
+                    if (handle_)
+                        cufftDestroy(handle_);
+                    if (stream_)
+                        cudaStreamDestroy(stream_);
+
+                    handle_         = other.handle_;
+                    comm_           = other.comm_;
+                    stream_         = other.stream_;
+                    desc_           = other.desc_;
+                    worksize_       = other.worksize_;
+                    total_elements_ = other.total_elements_;
+                    local_elements_ = other.local_elements_;
+                    global_size_    = other.global_size_;
+                    local_size_     = other.local_size_;
+                    lower_in_       = other.lower_in_;
+                    upper_in_       = other.upper_in_;
+                    lower_out_      = other.lower_out_;
+                    upper_out_      = other.upper_out_;
+
+                    other.handle_ = 0;
+                    other.stream_ = nullptr;
+                    other.desc_   = nullptr;
+                }
+                return *this;
             }
 
             void forward(complex_t* in, complex_t* out) {
@@ -250,16 +272,16 @@ namespace ippl {
             }
 
             void applyScaling(cuda_complex_t* data, size_t count, T scale) {
-                int blockSize = 256;
-                int numBlocks = (count + blockSize - 1) / blockSize;
-                scaleKernel<<<numBlocks, blockSize, 0, stream_>>>(data, count, scale);
+                constexpr size_t blockSize = 256;
+                size_t numBlocks           = (count + blockSize - 1) / blockSize;
+                detail::cufftMpScaleKernel<<<numBlocks, blockSize, 0, stream_>>>(
+                    data, count, static_cast<double>(scale));
             }
 
             cufftHandle handle_ = 0;
             MPI_Comm comm_;
-            cudaStream_t stream_           = nullptr;
-            cudaLibXtDesc* desc_           = nullptr;
-            cuda_complex_t* transpose_buf_ = nullptr;
+            cudaStream_t stream_ = nullptr;
+            cudaLibXtDesc* desc_ = nullptr;
 
             size_t worksize_       = 0;
             size_t total_elements_ = 0;
@@ -287,10 +309,9 @@ namespace ippl {
             static_assert(is_available_v<CuFFTMp>, "cuFFTMp not available");
 
             CuFFTMpR2C(const heffte::box3d<long long>& inbox,
-                       const heffte::box3d<long long>& outbox, int r2c_direction, MPI_Comm comm,
-                       const ParameterList& params)
-                : comm_(comm)
-                , r2c_direction_(r2c_direction) {
+                       const heffte::box3d<long long>& outbox, int /*r2c_direction*/,
+                       MPI_Comm comm, const ParameterList& /*params*/)
+                : comm_(comm) {
                 using detail::checkCudaError;
                 using detail::checkCufftResult;
 
@@ -343,37 +364,30 @@ namespace ippl {
                 local_complex_elements_ =
                     local_complex_size_[0] * local_complex_size_[1] * local_complex_size_[2];
 
+                size_t worksize_r2c = 0;
+                size_t worksize_c2r = 0;
                 checkCufftResult(
                     cufftMpMakePlanDecomposition(
                         handle_r2c_, 3, n, lower_real.data(), upper_real.data(),
                         strides_real.data(), lower_complex.data(), upper_complex.data(),
-                        strides_complex.data(), CUFFT_R2C, &comm_, CUFFT_COMM_MPI, &worksize_),
+                        strides_complex.data(), CUFFT_R2C, &comm_, CUFFT_COMM_MPI, &worksize_r2c),
                     "Failed to create R2C plan");
 
                 checkCufftResult(
                     cufftMpMakePlanDecomposition(
                         handle_c2r_, 3, n, lower_real.data(), upper_real.data(),
                         strides_real.data(), lower_complex.data(), upper_complex.data(),
-                        strides_complex.data(), CUFFT_C2R, &comm_, CUFFT_COMM_MPI, &worksize_),
+                        strides_complex.data(), CUFFT_C2R, &comm_, CUFFT_COMM_MPI, &worksize_c2r),
                     "Failed to create C2R plan");
+
+                worksize_ = std::max(worksize_r2c, worksize_c2r);
 
                 checkCufftResult(
                     cufftXtMalloc(handle_r2c_, &desc_, CUFFT_XT_FORMAT_DISTRIBUTED_INPUT),
                     "Failed to allocate R2C descriptor");
-
-                // Allocate transpose buffers
-                checkCudaError(cudaMalloc(&transpose_real_buf_, local_real_elements_ * sizeof(T)),
-                               "Failed to allocate real transpose buffer");
-                checkCudaError(cudaMalloc(&transpose_complex_buf_,
-                                          local_complex_elements_ * sizeof(cuda_complex_t)),
-                               "Failed to allocate complex transpose buffer");
             }
 
             ~CuFFTMpR2C() {
-                if (transpose_real_buf_)
-                    cudaFree(transpose_real_buf_);
-                if (transpose_complex_buf_)
-                    cudaFree(transpose_complex_buf_);
                 if (desc_)
                     cufftXtFree(desc_);
                 if (handle_r2c_)
@@ -386,6 +400,57 @@ namespace ippl {
 
             CuFFTMpR2C(const CuFFTMpR2C&)            = delete;
             CuFFTMpR2C& operator=(const CuFFTMpR2C&) = delete;
+
+            CuFFTMpR2C(CuFFTMpR2C&& other) noexcept
+                : handle_r2c_(other.handle_r2c_)
+                , handle_c2r_(other.handle_c2r_)
+                , comm_(other.comm_)
+                , stream_(other.stream_)
+                , desc_(other.desc_)
+                , worksize_(other.worksize_)
+                , total_elements_(other.total_elements_)
+                , local_real_elements_(other.local_real_elements_)
+                , local_complex_elements_(other.local_complex_elements_)
+                , global_size_(other.global_size_)
+                , local_real_size_(other.local_real_size_)
+                , local_complex_size_(other.local_complex_size_) {
+                other.handle_r2c_ = 0;
+                other.handle_c2r_ = 0;
+                other.stream_     = nullptr;
+                other.desc_       = nullptr;
+            }
+
+            CuFFTMpR2C& operator=(CuFFTMpR2C&& other) noexcept {
+                if (this != &other) {
+                    if (desc_)
+                        cufftXtFree(desc_);
+                    if (handle_r2c_)
+                        cufftDestroy(handle_r2c_);
+                    if (handle_c2r_)
+                        cufftDestroy(handle_c2r_);
+                    if (stream_)
+                        cudaStreamDestroy(stream_);
+
+                    handle_r2c_             = other.handle_r2c_;
+                    handle_c2r_             = other.handle_c2r_;
+                    comm_                   = other.comm_;
+                    stream_                 = other.stream_;
+                    desc_                   = other.desc_;
+                    worksize_               = other.worksize_;
+                    total_elements_         = other.total_elements_;
+                    local_real_elements_    = other.local_real_elements_;
+                    local_complex_elements_ = other.local_complex_elements_;
+                    global_size_            = other.global_size_;
+                    local_real_size_        = other.local_real_size_;
+                    local_complex_size_     = other.local_complex_size_;
+
+                    other.handle_r2c_ = 0;
+                    other.handle_c2r_ = 0;
+                    other.stream_     = nullptr;
+                    other.desc_       = nullptr;
+                }
+                return *this;
+            }
 
             void forward(T* in, complex_t* out) {
                 using detail::checkCudaError;
@@ -477,21 +542,19 @@ namespace ippl {
             }
 
             void applyScaling(cuda_complex_t* data, size_t count, T scale) {
-                int blockSize = 256;
-                int numBlocks = (count + blockSize - 1) / blockSize;
-                scaleKernel<<<numBlocks, blockSize, 0, stream_>>>(data, count, scale);
+                constexpr size_t blockSize = 256;
+                size_t numBlocks           = (count + blockSize - 1) / blockSize;
+                detail::cufftMpScaleKernel<<<numBlocks, blockSize, 0, stream_>>>(
+                    data, count, static_cast<double>(scale));
             }
 
             cufftHandle handle_r2c_ = 0;
             cufftHandle handle_c2r_ = 0;
             MPI_Comm comm_;
-            cudaStream_t stream_                   = nullptr;
-            cudaLibXtDesc* desc_                   = nullptr;
-            T* transpose_real_buf_                 = nullptr;
-            cuda_complex_t* transpose_complex_buf_ = nullptr;
+            cudaStream_t stream_ = nullptr;
+            cudaLibXtDesc* desc_ = nullptr;
 
-            size_t worksize_ = 0;
-            int r2c_direction_;
+            size_t worksize_               = 0;
             size_t total_elements_         = 0;
             size_t local_real_elements_    = 0;
             size_t local_complex_elements_ = 0;

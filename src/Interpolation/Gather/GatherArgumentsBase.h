@@ -1,8 +1,6 @@
 #ifndef IPPL_GATHER_ARGUMENTS_BASE_H
 #define IPPL_GATHER_ARGUMENTS_BASE_H
 
-#include "Ippl.h"
-
 #include "Types/Vector.h"
 
 namespace ippl::Interpolation::detail {
