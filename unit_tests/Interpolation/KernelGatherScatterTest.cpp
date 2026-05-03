@@ -619,6 +619,7 @@ public:
             KOKKOS_LAMBDA(size_t i) {
                 typename RandPool::generator_type gen = randPool.get_state();
                 (void)extent_local; // Fix nvcc problems
+                (void)origin_local;
 
                 ippl::Vector<T, Dim> pos;
                 pos[0] = centerX + (gen.drand() - 0.5) * spread;
