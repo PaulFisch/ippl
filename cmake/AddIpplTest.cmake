@@ -75,10 +75,6 @@ function(add_ippl_test TEST_NAME)
     target_link_libraries(${TEST_NAME} PRIVATE IPPL::ippl ${TEST_LINK_LIBS})
   endif()
 
-  if(TARGET ippl_build_flags)
-    target_link_libraries(${TEST_NAME} PRIVATE ippl_build_flags)
-  endif()
-
   if(TARGET ippl::test_support)
     target_link_libraries(${TEST_NAME} PRIVATE ippl::test_support)
   endif()
@@ -173,7 +169,7 @@ function(add_ippl_test TEST_NAME)
         ENV_VARS
         "OMP_PROC_BIND=spread"
         "OMP_PLACES=threads"
-        "OMP_NUM_THREADS=${_threads} "
+        "OMP_NUM_THREADS=${_threads}"
         "KOKKOS_NUM_THREADS=${_threads}"
         "MKL_NUM_THREADS=${_threads}"
         "OPENBLAS_NUM_THREADS=${_threads}"

@@ -54,8 +54,7 @@ public:
         : name("")
         , wallTime(0.0)
         , indx(std::numeric_limits<TimerRef>::max())
-        , measurements()
-        , measurement_count(0) {
+        , measurements() {
         clear();
     }
 
@@ -65,22 +64,19 @@ public:
     // timer operations
     void start() {
         if (!running) {
-            running = true;
-            t.stop();
-            t.clear();
+            t.clear();  // running was false, no need to stop first
             t.start();
+            running = true;
         }
     }
 
     void stop() {
         if (running) {
             t.stop();
-            running = false;
-            double elapsed = t.elapsed();
+            running              = false;
+            const double elapsed = t.elapsed();
             wallTime += elapsed;
-
             measurements.push_back(elapsed);
-            measurement_count++;
         }
     }
 
@@ -94,7 +90,6 @@ public:
         clear();
         wallTime = 0.0;
         measurements.clear();
-        measurement_count = 0;
     }
 
     // the IPPL timer that this object manages
@@ -113,7 +108,6 @@ public:
     TimerRef indx;
 
     std::vector<double> measurements;
-    size_t measurement_count;
 };
 
 struct Timing {

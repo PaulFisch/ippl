@@ -98,10 +98,9 @@ namespace ippl {
          * @param l of field
          * @param nghost number of ghost layers
          */
-        void initialize(Layout_t& l, int nghost);
+        void initialize(Layout_t& l, int nghost = 1);
 
-        // ML
-        void updateLayout(Layout_t&, int nghost);
+        void updateLayout(Layout_t&, int nghost = 1);
 
         /*!
          * Local field size.

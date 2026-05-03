@@ -295,10 +295,9 @@ namespace ippl {
                 } else {
                     return spaceToIndex<Space, Idx + 1>();
                 }
-                // Silences incorrect nvcc warning: missing return statement at end of non-void
-                // function
-                throw IpplException("detail::MultispaceContainer::spaceToIndex",
-                                    "Unreachable state");
+                // Suppress nvcc "missing return" warning at the end of an
+                // exhaustive if constexpr chain.
+                __builtin_unreachable();
             }
 
             /*!
@@ -311,18 +310,16 @@ namespace ippl {
 
             /*!
              * Determine whether the element for a space should be initialized,
-             * possibly based on a predicate functor
+             * possibly based on a predicate functor. A nullptr_t Filter
+             * unconditionally enables the copy.
              */
-            template <typename MemorySpace, typename Filter,
-                      std::enable_if_t<std::is_null_pointer_v<std::decay_t<Filter>>, int> = 0>
-            constexpr bool copyToSpace(Filter&&) {
-                return true;
-            }
-
-            template <typename MemorySpace, typename Filter,
-                      std::enable_if_t<!std::is_null_pointer_v<std::decay_t<Filter>>, int> = 0>
+            template <typename MemorySpace, typename Filter>
             bool copyToSpace(Filter&& predicate) {
-                return predicate.template operator()<MemorySpace>();
+                if constexpr (std::is_null_pointer_v<std::decay_t<Filter>>) {
+                    return true;
+                } else {
+                    return predicate.template operator()<MemorySpace>();
+                }
             }
 
         public:
@@ -473,14 +470,12 @@ namespace ippl {
         }
     }
 
-    template <int Base, int Exp>
-    struct StaticPow {
-        static constexpr int value = Base * StaticPow<Base, Exp - 1>::value;
-    };
-    template <int Base>
-    struct StaticPow<Base, 0> {
-        static constexpr int value = 1;
-    };
+    constexpr int int_pow(int base, int exp) {
+        int result = 1;
+        for (int i = 0; i < exp; ++i)
+            result *= base;
+        return result;
+    }
 }  // namespace ippl
 
 #endif

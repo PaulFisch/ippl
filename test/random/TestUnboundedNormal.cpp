@@ -92,7 +92,7 @@ void write_error_in_moments(double* moms_p, double* moms_ref_p, int P) {
 int main(int argc, char* argv[]) {
     ippl::initialize(argc, argv);
     {
-        size_type ntotal = 10000;
+        size_type ntotal = 1000000;
 
         int seed = 42;
 

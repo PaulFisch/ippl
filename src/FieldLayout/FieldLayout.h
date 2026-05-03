@@ -218,33 +218,24 @@ namespace ippl {
         // Return the domain.
         const NDIndex<Dim>& getDomain() const { return gDomain_m; }
 
-        // Compare FieldLayouts to see if they represent the same domain; if
-        // dimensionalities are different, the NDIndex operator==() will return
-        // false:
+        // Compare FieldLayouts. Different dimensionalities or different global
+        // domains are not equal; same global domain but different per-rank
+        // local-domain decompositions are also not equal.
         template <unsigned Dim2>
         bool operator==(const FieldLayout<Dim2>& x) const {
-
-            // Throw exception if the domains are not the same
-            if (gDomain_m != x.getDomain()) {
-                throw std::runtime_error("FieldLayout: only FieldLayouts with the same global domain should be compared");
-            }
-
-            return gDomain_m == x.getDomain();
-        }
-
-        bool operator==(const FieldLayout<Dim>& x) const {
-
-            // Throw exception if the domains are not the same
-            if (gDomain_m != x.getDomain()) {
-                throw std::runtime_error("FieldLayout: only FieldLayouts with the same global domain should be compared");
-            }
-
-            for (unsigned int i = 0; i < Dim; ++i) {
-                if (hLocalDomains_m(comm.rank())[i] != x.getLocalNDIndex()[i]) {
+            if constexpr (Dim != Dim2) {
+                return false;
+            } else {
+                if (gDomain_m != x.getDomain()) {
                     return false;
                 }
+                for (unsigned int i = 0; i < Dim; ++i) {
+                    if (hLocalDomains_m(comm.rank())[i] != x.getLocalNDIndex()[i]) {
+                        return false;
+                    }
+                }
+                return true;
             }
-            return true;
         }
 
         // for the requested dimension, report if the distribution is

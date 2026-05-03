@@ -47,6 +47,14 @@ target_compile_options(
          $<$<CONFIG:Release>:-O3>
          >)
 
+# Disable host LTO on the IPPL library when CUDA is enabled. Repeated
+# `fatbinData` symbols in nvcc-generated fat binaries fail LTO merging,
+# but this only matters for code that links against cuFFT/cuFFTMp/cufinufft
+# — keep the rest of the build LTO-eligible.
+if("CUDA" IN_LIST IPPL_PLATFORMS)
+  target_compile_options(ippl PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-fno-lto>)
+endif()
+
 get_target_property(_ippl_type ippl TYPE)
 if(_ippl_type)
   string(REPLACE "_LIBRARY" "" _ippl_type "${_ippl_type}") # -> STATIC / SHARED / OBJECT / INTERFACE

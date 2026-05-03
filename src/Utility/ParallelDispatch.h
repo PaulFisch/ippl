@@ -69,8 +69,8 @@ namespace ippl {
             }
             return policy_type(begin, end);
         }
-        // Silences incorrect nvcc warning: missing return statement at end of non-void function
-        throw IpplException("detail::getRangePolicy", "Unreachable state");
+        // Silences nvcc "missing return" at end of exhaustive if constexpr.
+        __builtin_unreachable();
     }
 
     /*!
@@ -95,8 +95,8 @@ namespace ippl {
         } else {
             return policy_type(begin, end);
         }
-        // Silences incorrect nvcc warning: missing return statement at end of non-void function
-        throw IpplException("detail::createRangePolicy", "Unreachable state");
+        // Silences nvcc "missing return" at end of exhaustive if constexpr.
+        __builtin_unreachable();
     }
 
     template <int... Is, typename F>
@@ -172,8 +172,7 @@ namespace ippl {
 
         enum e_functor_type {
             FOR,
-            REDUCE,
-            SCAN
+            REDUCE
         };
 
         template <e_functor_type, typename, typename, typename, typename...>
@@ -191,7 +190,11 @@ namespace ippl {
         constexpr bool inline isGPUSpace<Kokkos::HIP> = true;
 #endif
 
-        // Dispatches F(i) for i in [0, n) either in parallel (OpenMP) or serially
+        // Dispatches F(i) for i in [0, n) either in parallel (OpenMP host)
+        // when MPI_THREAD_MULTIPLE is available, or serially otherwise.
+        // `f(i)` must be synchronous w.r.t. its own work — this dispatcher
+        // fences after the parallel_for so the caller's next operation sees
+        // a consistent state.
         template <typename F>
         void parallelForMPI(size_t n, F&& f) {
             constexpr bool useGPU = isGPUSpace<Kokkos::DefaultExecutionSpace>;
@@ -204,6 +207,7 @@ namespace ippl {
                         Kokkos::RangePolicy<Kokkos::DefaultHostExecutionSpace>(0, n), [&](int i) {
                             f(i);
                         });
+                    Kokkos::fence();
                     return;
                 }
             }
@@ -263,9 +267,7 @@ namespace ippl {
             static constexpr int rank = Kokkos::MDRangePolicy<T...>::rank;
         };
         template <typename T>
-        concept HasMemberValueType = requires() {
-            { typename T::value_type() };
-        };
+        concept HasMemberValueType = requires { typename T::value_type; };
         template <typename T>
         struct ExtractReducerReturnType {
             using type = T;

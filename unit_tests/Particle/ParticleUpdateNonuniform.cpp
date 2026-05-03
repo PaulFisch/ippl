@@ -86,11 +86,9 @@ public:
     using RegionLayout_t = typename playout_type::RegionLayout_t;
     using bunch_type     = OrbBunch<T, ExecSpace, Dim>;
     using position_type  = ippl::Vector<T, Dim>;
-    using Mesh_t = ippl::UniformCartesian<double, Dim>;
-    using Centering_t = Mesh_t::DefaultCentering;
+    using centering_type = typename mesh_type::DefaultCentering;
 
-    // Density field type used by ORB
-    using field_type = ippl::Field<T, Dim, mesh_type, Centering_t, ExecSpace>;
+    using field_type = ippl::Field<T, Dim, mesh_type, centering_type, ExecSpace>;
     using orb_type   = ippl::OrthogonalRecursiveBisection<field_type, T>;
 
     // ---- construction --------------------------------------------------
@@ -136,19 +134,6 @@ public:
     bool orbGaussian(T sigma = T(0.15)) {
         field_type rho(*mesh, *layout);
 
-        // Fill the density field on-device: Gaussian centred at 0.5
-        auto view   = rho.getView();
-        auto lDom   = layout->getLocalNDIndex();
-        auto hx_vec = mesh->getMeshSpacing();
-        auto orig   = mesh->getOrigin();
-        int nghost  = rho.getNghost();
-
-        // Kokkos::parallel_for("GaussianRho", ippl::createRangePolicy<Dim, ExecSpace>(rho.getOwned()),
-        //                      KOKKOS_LAMBDA(/* index args */){
-        //                          // Generic lambda for any Dim via index_array_type
-        //                      });
-
-        // Simpler: fill via host mirror
         auto rho_host = rho.getHostMirror();
         auto lDomH    = layout->getLocalNDIndex();
         for (int gz = (Dim > 2 ? lDomH[2].first() : 0); gz <= (Dim > 2 ? lDomH[2].last() : 0);
@@ -258,14 +243,15 @@ public:
         auto Q_host = b.Q.getHostMirror();
         auto t_host = b.tag.getHostMirror();
 
+        constexpr long long kRankIdStride = 10'000'000LL;
         for (size_t i = 0; i < b.getLocalNum(); ++i) {
             position_type r;
             for (unsigned d = 0; d < Dim; d++)
                 r[d] = unif(eng) * domain[d];
             R_host(i) = r;
             Q_host(i) = T(1);
-            t_host(i) =
-                static_cast<long long>(ippl::Comm->rank()) * 10000000LL + static_cast<long long>(i);
+            t_host(i) = static_cast<long long>(ippl::Comm->rank()) * kRankIdStride
+                        + static_cast<long long>(i);
         }
         Kokkos::deep_copy(b.R.getView(), R_host);
         Kokkos::deep_copy(b.Q.getView(), Q_host);

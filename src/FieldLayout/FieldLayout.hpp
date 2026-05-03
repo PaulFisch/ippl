@@ -86,6 +86,10 @@ namespace ippl {
             Kokkos::resize(hLocalDomains_m, nRanks);
             hLocalDomains_m(0) = domain;
             Kokkos::deep_copy(dLocalDomains_m, hLocalDomains_m);
+            // Even on a single rank we must populate minWidth_m so that
+            // getDistribution(d) returns the right answer; without this the
+            // serial-build path silently reports every dim as PARALLEL.
+            calcWidths();
             return;
         }
 

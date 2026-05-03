@@ -41,7 +41,8 @@ endif()
 # ------------------------------------------------------------------------------
 if("OPENMP" IN_LIST IPPL_PLATFORMS)
   find_package(OpenMP REQUIRED)
-  colour_message(STATUS ${Green} "✅ OpenMP platform requested OpenMP found ${OPENMP_VERSION}")
+  colour_message(STATUS ${Green}
+                 "✅ OpenMP platform requested, OpenMP found ${OpenMP_CXX_VERSION}")
 endif()
 
 # ------------------------------------------------------------------------------
@@ -404,7 +405,9 @@ if(IPPL_ENABLE_FFT AND IPPL_ENABLE_CUFFTMP)
     set(NVSHMEM_FOUND FALSE)
   endif()
 
-  link_libraries(${CUFFTMP_LIBRARY} ${NVSHMEM_HOST_LIBRARY})
-
+  # The actual link is done at the ippl target in src/CMakeLists.txt; the
+  # global `link_libraries` directive previously here leaked these
+  # dependencies into every downstream target, including unit tests that
+  # don't need cuFFTMp.
   add_compile_definitions(IPPL_ENABLE_CUFFTMP)
 endif()

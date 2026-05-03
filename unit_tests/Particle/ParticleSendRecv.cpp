@@ -109,7 +109,7 @@ public:
         using mdrange_type = Kokkos::MDRangePolicy<Kokkos::Rank<2>, ExecSpace>;
 
         RegionLayout_t RLayout           = playout_ptr->getRegionLayout();
-        auto positions                  = bunch->R.getView();
+        auto positions                   = bunch->R.getView();
         region_view Regions              = RLayout.getdLocalRegions();
         typename rank_type::view_type ER = bunch->expectedRank.getView();
 
@@ -142,7 +142,6 @@ using Tests = TestParams::tests<1, 2, 3, 4, 5, 6>;
 TYPED_TEST_SUITE(ParticleSendRecv, Tests);
 
 TYPED_TEST(ParticleSendRecv, SendAndRecieve) {
-
     const auto nParticles = this->nParticles;
     auto& bunch           = this->bunch;
 

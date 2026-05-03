@@ -102,8 +102,7 @@ namespace ippl {
             }
         }
 
-        // TODO: thread the actual nghost count through instead of hardcoding 1.
-        this->findNeighbors(1);
+        this->findNeighbors(this->nghost_m);
 
         Kokkos::deep_copy(this->dLocalDomains_m, this->hLocalDomains_m);
 

@@ -617,16 +617,6 @@ int main(int argc, char* argv[]) {
     ippl::initialize(argc, argv);
     {
         ::testing::InitGoogleTest(&argc, argv);
-
-        if (ippl::Comm->rank() == 0) {
-            std::cout << "========================================\n";
-            std::cout << " Binning Test Suite\n";
-            std::cout << "========================================\n";
-            std::cout << "MPI ranks: " << ippl::Comm->size() << "\n";
-            std::cout << "Testing dimensions: 2D, 3D\n";
-            std::cout << "========================================\n\n";
-        }
-
         success = RUN_ALL_TESTS();
     }
     ippl::finalize();

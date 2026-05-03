@@ -1,3 +1,19 @@
+//
+// benchmarkParticleUpdateScaling.cpp
+//
+// Scaling benchmark for particle update. Times only ParticleSpatialLayout::update()
+// (with barrier before/after), reports per-step max wall time across ranks, and
+// appends a CSV row per run.
+//
+// Usage:
+//   srun ./benchmarkParticleUpdateScaling Nx Ny Nz nParticles nSteps
+//       [--warmup N] [--exchange rma|p2p|alltoall]
+//       [--ranks-per-node R] [--overallocate F] [--info N]
+//
+// --ranks-per-node defaults to the number of MPI ranks (single-node). On a
+// multi-node run, pass the actual GPUs/CPUs per node so the CSV reports it.
+//
+
 #include "Ippl.h"
 
 #include <Kokkos_Random.hpp>
@@ -11,52 +27,14 @@
 #include <string>
 #include <vector>
 
+#include "BenchParticles.h"
 #include "Utility/IpplTimings.h"
-
-constexpr unsigned Dim = 3;
-
-typedef ippl::ParticleSpatialLayout<double, Dim> PLayout_t;
-typedef ippl::UniformCartesian<double, Dim> Mesh_t;
-typedef ippl::FieldLayout<Dim> FieldLayout_t;
-
-template <typename T, unsigned D>
-using Vector = ippl::Vector<T, D>;
-template <typename T>
-using ParticleAttrib = ippl::ParticleAttrib<T>;
-typedef Vector<double, Dim> Vector_t;
-
-template <class PLayout>
-class BenchParticles : public ippl::ParticleBase<PLayout> {
-public:
-    std::array<bool, Dim> isParallel_m;
-    ParticleAttrib<double> qm;
-    typename ippl::ParticleBase<PLayout>::particle_position_type P;
-    typename ippl::ParticleBase<PLayout>::particle_position_type E;
-
-    BenchParticles(PLayout& pl, std::array<bool, Dim> isParallel)
-        : ippl::ParticleBase<PLayout>(pl)
-        , isParallel_m(isParallel) {
-        this->addAttribute(qm);
-        this->addAttribute(P);
-        this->addAttribute(E);
-        this->setParticleBC(ippl::BC::PERIODIC);
-    }
-};
-
-static ippl::CountExchange parseMode(const std::string& s) {
-    if (s == "rma")
-        return ippl::CountExchange::RMA;
-    if (s == "p2p")
-        return ippl::CountExchange::P2P_GPU;
-    if (s == "alltoall")
-        return ippl::CountExchange::Alltoall_GPU;
-    throw std::invalid_argument("Unknown exchange mode: " + s);
-}
 
 using Clock = std::chrono::steady_clock;
 using Sec   = std::chrono::duration<double>;
 
 int main(int argc, char* argv[]) {
+    using namespace bench;
     ippl::initialize(argc, argv);
     {
         Inform msg(argv[0]);
@@ -66,7 +44,7 @@ int main(int argc, char* argv[]) {
                 std::cerr << "Usage: " << argv[0]
                           << " Nx Ny Nz nParticles nSteps"
                              " [--warmup N] [--exchange rma|p2p|alltoall]"
-                             " [--overallocate F] [--info N]\n";
+                             " [--ranks-per-node R] [--overallocate F] [--info N]\n";
             ippl::finalize();
             return 1;
         }
@@ -78,6 +56,7 @@ int main(int argc, char* argv[]) {
         int warmupSteps         = 5;
         std::string exchangeStr = "alltoall";
         int infoEvery           = 0;
+        int ranksPerNode        = 0;  // 0 → fill in from comm size below
 
         for (int i = 6; i < argc; ++i) {
             std::string flag = argv[i];
@@ -87,6 +66,8 @@ int main(int argc, char* argv[]) {
                 exchangeStr = argv[++i];
             else if (flag == "--info" && i + 1 < argc)
                 infoEvery = std::stoi(argv[++i]);
+            else if (flag == "--ranks-per-node" && i + 1 < argc)
+                ranksPerNode = std::stoi(argv[++i]);
         }
 
         const ippl::CountExchange exchangeMode = parseMode(exchangeStr);
@@ -95,7 +76,6 @@ int main(int argc, char* argv[]) {
             << "nt=" << nt << " Np=" << totalP << " grid=" << nr << " exchange=" << exchangeStr
             << " warmup=" << warmupSteps << endl;
 
-        // ── domain ────────────────────────────────────────────────────────
         ippl::NDIndex<Dim> domain;
         for (unsigned i = 0; i < Dim; ++i)
             domain[i] = ippl::Index(nr[i]);
@@ -116,7 +96,6 @@ int main(int argc, char* argv[]) {
         FieldLayout_t FL(MPI_COMM_WORLD, domain, isParallel);
         PLayout_t PL(FL, mesh, /*fem=*/false, exchangeMode);
 
-        // ── particles ─────────────────────────────────────────────────────
         using bunch_type = BenchParticles<PLayout_t>;
         auto P           = std::make_unique<bunch_type>(PL, isParallel);
 
@@ -138,12 +117,10 @@ int main(int argc, char* argv[]) {
         P->qm = 1.0 / totalP;
         P->E  = 0.0;
 
-        // initial redistribution (not measured)
         ippl::Comm->barrier();
         P->update();
         ippl::Comm->barrier();
 
-        // ── warmup ────────────────────────────────────────────────────────
         if (ippl::Comm->rank() == 0)
             std::cout << "Running " << warmupSteps << " warmup step(s)...\n";
 
@@ -168,14 +145,10 @@ int main(int argc, char* argv[]) {
         if (ippl::Comm->rank() == 0)
             std::cout << "Warmup done. Starting timed run.\n";
 
-        // ── timed loop ────────────────────────────────────────────────────
-        // Per-step wall times for P->update() on this rank.
-        // We barrier before/after so the clock measures the true collective cost.
         std::vector<double> stepTimes;
         stepTimes.reserve(nt);
 
         for (unsigned int it = 0; it < nt; ++it) {
-            // randomise velocities
             {
                 auto P_view = P->P.getView();
                 Kokkos::parallel_for(
@@ -191,7 +164,6 @@ int main(int argc, char* argv[]) {
 
             P->R = P->R + dt * P->P;
 
-            // ── measure only the update ───────────────────────────────────
             ippl::Comm->barrier();
             auto t0 = Clock::now();
 
@@ -201,7 +173,6 @@ int main(int argc, char* argv[]) {
             ippl::Comm->barrier();
             double elapsed = Sec(Clock::now() - t0).count();
             stepTimes.push_back(elapsed);
-            // ─────────────────────────────────────────────────────────────
 
             P->P = P->P + dt * P->qm * P->E;
 
@@ -210,12 +181,10 @@ int main(int argc, char* argv[]) {
                           << "  local particles: " << P->getLocalNum() << "\n";
         }
 
-        // ── reduce per-step times: max across ranks (true wall clock) ─────
         std::vector<double> maxTimes(nt);
         MPI_Reduce(stepTimes.data(), maxTimes.data(), (int)nt, MPI_DOUBLE, MPI_MAX, 0,
                    MPI_COMM_WORLD);
 
-        // ── stats + CSV (rank 0 only) ─────────────────────────────────────
         if (ippl::Comm->rank() == 0) {
             double total  = std::accumulate(maxTimes.begin(), maxTimes.end(), 0.0);
             double minVal = *std::min_element(maxTimes.begin(), maxTimes.end());
@@ -235,15 +204,16 @@ int main(int argc, char* argv[]) {
                 std::cerr << "Could not open " << csvPath << " for writing\n";
             } else {
                 if (!fileExists)
-                    csv << "exchange_mode,num_gpus,num_nodes,"
+                    csv << "exchange_mode,num_ranks,ranks_per_node,num_nodes,"
                            "update_total_s,update_mean_s,"
                            "update_min_s,update_max_s,nsteps\n";
 
                 const int nRanks = ippl::Comm->size();
-                const int nNodes = (nRanks + 3) / 4;
+                const int rpn    = (ranksPerNode > 0) ? ranksPerNode : nRanks;
+                const int nNodes = (nRanks + rpn - 1) / rpn;
                 csv << std::fixed << std::setprecision(6) << exchangeStr << "," << nRanks << ","
-                    << nNodes << "," << total << "," << mean << "," << minVal << "," << maxVal
-                    << "," << nt << "\n";
+                    << rpn << "," << nNodes << "," << total << "," << mean << "," << minVal << ","
+                    << maxVal << "," << nt << "\n";
                 std::cout << "Appended results to " << csvPath << "\n";
             }
         }

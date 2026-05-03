@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
         Inform m("test ITS normal");
 
         ippl::Vector<int, 2> nr = {100, 100};
-        size_type ntotal        = 10000;
+        size_type ntotal        = 100000;
 
         ippl::NDIndex<2> domain;
         for (unsigned i = 0; i < Dim; i++) {

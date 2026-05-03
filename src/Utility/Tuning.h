@@ -7,8 +7,10 @@
 #include <limits>
 #include <vector>
 
+// Kokkos's tuning interface is still exposed only through this internal
+// header in 5.0.x. When a public header (`Kokkos_Tools.hpp`) becomes
+// available across the supported version range, switch to it.
 #include <impl/Kokkos_Profiling_Interface.hpp>
-#define IPPL_TUNING_ENABLED 1
 
 namespace ippl {
 
@@ -52,7 +54,6 @@ public:
         // Sort candidates for consistent mapping
         std::sort(candidates_.begin(), candidates_.end());
 
-#if IPPL_TUNING_ENABLED
         if (Kokkos::Tools::Experimental::have_tuning_tool()) {
             using namespace Kokkos::Tools::Experimental;
 
@@ -68,35 +69,34 @@ public:
                     kernel_name + "_tile_size_" + std::to_string(d), info);
             }
         }
-#endif
 
         initialized_ = true;
     }
 
     bool is_initialized() const { return initialized_; }
 
-    // Map normalized value [0,1] to candidate index
+    // Map normalized value [0,1] to candidate index. With no candidates the
+    // tuner has nothing to choose from, so return 1 as a defensive default.
     int map_to_candidate(double normalized) const {
         if (candidates_.empty()) return 1;
 
-        // Clamp to [0, 1]
-        normalized = std::max(0.0, std::min(1.0, normalized));
+        normalized = std::clamp(normalized, 0.0, 1.0);
 
-        // Map to index
         size_t idx = static_cast<size_t>(normalized * (candidates_.size() - 1) + 0.5);
-        idx = std::min(idx, candidates_.size() - 1);
+        idx        = std::min(idx, candidates_.size() - 1);
 
         return candidates_[idx];
     }
 
-    // Map candidate value back to normalized [0,1]
+    // Map candidate value back to normalized [0,1]. Returns 0.0 (matching the
+    // behaviour of an empty/single-element candidate set) when the candidate
+    // list cannot meaningfully be mapped.
     double map_to_normalized(int candidate) const {
-        if (candidates_.size() <= 1) return 0.5;
+        if (candidates_.size() <= 1) return 0.0;
 
-        auto it = std::lower_bound(candidates_.begin(), candidates_.end(), candidate);
-        size_t idx = (it != candidates_.end())
-                     ? std::distance(candidates_.begin(), it)
-                     : candidates_.size() - 1;
+        auto it    = std::lower_bound(candidates_.begin(), candidates_.end(), candidate);
+        size_t idx = (it != candidates_.end()) ? std::distance(candidates_.begin(), it)
+                                               : candidates_.size() - 1;
 
         return static_cast<double>(idx) / (candidates_.size() - 1);
     }
@@ -108,7 +108,6 @@ public:
 
         TileConfig result = default_tile_;
 
-#if IPPL_TUNING_ENABLED
         if (Kokkos::Tools::Experimental::have_tuning_tool()) {
             using namespace Kokkos::Tools::Experimental;
 
@@ -133,52 +132,64 @@ public:
             // Validate scratch constraint - scale down if needed
             result = fit_to_scratch(result);
         }
-#endif
 
         return result;
     }
 
     void end() {
-#if IPPL_TUNING_ENABLED
         if (context_active_ && Kokkos::Tools::Experimental::have_tuning_tool()) {
             Kokkos::Tools::Experimental::end_context(context_id_);
             context_active_ = false;
         }
-#endif
     }
 
 private:
-    // Scale down proportionally if tile doesn't fit in scratch
+    // Scale down proportionally if tile doesn't fit in scratch.
     TileConfig fit_to_scratch(const TileConfig& tile) const {
         if (scratch_calc_(tile) <= max_scratch_) {
             return tile;
         }
 
-        // Binary search for largest scale factor that fits
+        // Binary search for the largest scale factor that fits. The result
+        // space is integer-valued (we snap to a discrete candidate after
+        // scaling), so the number of meaningful iterations is bounded by
+        // log2(max tile dim), capped at 20 for robustness.
+        int max_tile = 1;
+        for (unsigned d = 0; d < Dim; ++d) {
+            max_tile = std::max(max_tile, tile[d]);
+        }
+        int max_iter = std::min(20, static_cast<int>(std::ceil(std::log2(max_tile + 1)) + 1));
+
         TileConfig result = tile;
         double lo = 0.0, hi = 1.0;
-
-        for (int iter = 0; iter < 20; ++iter) {
+        for (int iter = 0; iter < max_iter; ++iter) {
             double mid = (lo + hi) / 2.0;
 
             TileConfig test;
             for (unsigned d = 0; d < Dim; ++d) {
                 int scaled = static_cast<int>(tile[d] * mid);
-                test[d] = snap_to_candidate(std::max(1, scaled));
+                test[d]    = snap_to_candidate(std::max(1, scaled));
             }
 
             if (scratch_calc_(test) <= max_scratch_) {
-                lo = mid;
+                lo     = mid;
                 result = test;
             } else {
                 hi = mid;
             }
         }
 
-        // Final fallback - minimum tile
+        // Final fallback — smallest candidate. If even that overflows the
+        // scratch budget the kernel cannot run; throw so the caller doesn't
+        // get a confusing Kokkos::abort deeper in the dispatch.
         if (scratch_calc_(result) > max_scratch_) {
             for (unsigned d = 0; d < Dim; ++d) {
                 result[d] = candidates_.front();
+            }
+            if (scratch_calc_(result) > max_scratch_) {
+                throw std::runtime_error(
+                    "TileSizeTuner::fit_to_scratch: even the smallest tile "
+                    "exceeds the scratch budget");
             }
         }
 

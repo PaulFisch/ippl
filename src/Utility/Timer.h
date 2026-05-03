@@ -8,7 +8,9 @@
 #define IPPL_TIMER_H
 
 #ifndef IPPL_ENABLE_TIMER_FENCES
-#warning "IPPL timer fences were not set via CMake! Defaulting to no fences."
+// Soften from #warning to #pragma message — Timer.h is transitively included
+// from many TUs and the warning was shouting on every translation unit.
+#pragma message("IPPL_ENABLE_TIMER_FENCES not set by CMake; defaulting to false.")
 #define IPPL_ENABLE_TIMER_FENCES false
 #endif
 

@@ -121,15 +121,8 @@ install(FILES "${CMAKE_CURRENT_BINARY_DIR}/IPPLConfig.cmake"
 # Fix/Hack: Ensure extern dependencies are exported correctly if they were built in-tree. This is
 # needed for Heffte because it doesn't fully use CMake's export target mechanism
 # -------------------------------------------------------
-if(TARGET Heffte)
-  install(TARGETS Heffte EXPORT ipplTargets DESTINATION lib)
-endif()
-if(TARGET finufft)
-  install(TARGETS finufft EXPORT ipplTargets DESTINATION lib)
-endif()
-if(TARGET finufft_common)
-  install(TARGETS finufft_common EXPORT ipplTargets DESTINATION lib)
-endif()
-if(TARGET cufinufft)
-  install(TARGETS cufinufft EXPORT ipplTargets DESTINATION lib)
-endif()
+foreach(_ippl_extern_dep IN ITEMS Heffte finufft finufft_common cufinufft)
+  if(TARGET ${_ippl_extern_dep})
+    install(TARGETS ${_ippl_extern_dep} EXPORT ipplTargets DESTINATION lib)
+  endif()
+endforeach()

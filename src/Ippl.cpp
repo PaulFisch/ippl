@@ -99,13 +99,9 @@ namespace ippl {
 
         Kokkos::initialize(argc, argv);
 
-        // Seed scatter/gather caches with per-exec-space defaults so the
-        // first PIC scatter/gather has a usable configuration with no
-        // filesystem access. The sweep itself is opt-in: set
-        // IPPL_AUTO_TUNE=1 to run it and write tile_sweep_sa_optimal.csv /
-        // gather_sweep_optimal.csv next to the executable.
-        ippl::Interpolation::AutoTune::seedBuiltinDefaults();
-        ippl::Interpolation::AutoTune::runOnFirstUse();
+        // Seed scatter/gather caches with per-exec-space defaults and, when
+        // IPPL_AUTO_TUNE is set, run the sweep. See AutoTune.h.
+        ippl::Interpolation::AutoTune::initialize();
     }
 
     void finalize() {

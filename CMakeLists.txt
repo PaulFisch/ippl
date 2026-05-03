@@ -3,12 +3,12 @@
 # ------------------------------------------------------------------------------
 cmake_minimum_required(VERSION 3.24)
 
-# Disable host LTO when CUDA is enabled: nvcc-generated fat binaries contain
-# repeated `fatbinData` symbols that conflict during host LTO merging.
-if("CUDA" IN_LIST IPPL_PLATFORMS)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fno-lto")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-lto")
-endif()
+# Note: when CUDA is enabled, host LTO across nvcc-generated fat binaries
+# fails because of repeated `fatbinData` symbols. We therefore disable LTO
+# at the IPPL library target level (see `target_compile_options(ippl ... -fno-lto)`
+# applied in src/CMakeLists.txt when CUDA is in IPPL_PLATFORMS) instead of
+# globally. Keeping it scoped lets pure-host code in alpine/tests benefit
+# from LTO when explicitly requested.
 
 # ------------------------------------------------------------------------------
 # Policies - use the latest of everything
@@ -61,10 +61,6 @@ option(IPPL_ENABLE_SCRIPTS "Generate job script templates for some benchmarks/te
 
 option(IPPL_ENABLE_FINUFFT "Enable (CU)FINUFFT" OFF)
 option(IPPL_ENABLE_CUFFTMP "Enable cuFFTMp distributed FFT backend" OFF)
-
-# "Build IPPL as a shared library (ON) or static library (OFF)" OFF) if(IPPL_DYL)
-# set(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE) message(WARNING "IPPL_DYL is deprecated; use
-# -DBUILD_SHARED_LIBS=ON instead.") endif()
 
 # ------------------------------------------------------------------------------
 # Setup Output directories

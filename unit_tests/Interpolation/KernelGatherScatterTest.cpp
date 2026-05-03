@@ -257,10 +257,6 @@ public:
         playout = std::make_shared<playout_type>(*layout, *mesh);
         bunch   = std::make_shared<bunch_type>(*playout);
 
-        if (myRank == 0) {
-            std::cout << "  [" << kernel_traits::name << " kernel, " << Dim
-                      << "D, width=" << kernel.width() << "]\n";
-        }
     }
 
     void TearDown() override {
@@ -354,7 +350,7 @@ public:
     size_t countTotalParticles() {
         size_t localCount  = bunch->getLocalNum();
         size_t globalCount = 0;
-        ippl::Comm->allreduce(localCount, globalCount, 1, std::plus<T>{});
+        ippl::Comm->allreduce(localCount, globalCount, 1, std::plus<size_t>{});
         return globalCount;
     }
 
@@ -522,7 +518,7 @@ public:
         Kokkos::fence();
 
         T globalMaxError = 0.0;
-        ippl::Comm->allreduce(localMaxError, globalMaxError, 1, std::plus<float>{});
+        ippl::Comm->allreduce(localMaxError, globalMaxError, 1, std::greater<T>{});
 
         if (myRank == 0) {
             EXPECT_LT(globalMaxError, 1e-10)
@@ -622,8 +618,6 @@ public:
             "create_dense_particles", Kokkos::RangePolicy<ExecSpace>(0, nParticles),
             KOKKOS_LAMBDA(size_t i) {
                 typename RandPool::generator_type gen = randPool.get_state();
-                (void)origin_local;
-                (void)extent_local;
 
                 ippl::Vector<T, Dim> pos;
                 pos[0] = centerX + (gen.drand() - 0.5) * spread;
@@ -1033,14 +1027,13 @@ public:
             auto hx_         = hx_local;
             auto extent_     = extent;
 
-            T localSum = T(0);
-            T localN   = T(0);
+            T localSum      = T(0);
+            size_t localCnt = 0;
 
             using index_array_type = ippl::RangePolicy<Dim>::index_array_type;
             ippl::parallel_reduce(
                 "scatter_conv_error", field.getFieldRangePolicy(),
-                KOKKOS_LAMBDA(const index_array_type& args, T& sum, T& cnt) {
-                    // Skip ghost cells
+                KOKKOS_LAMBDA(const index_array_type& args, T& sum, size_t& cnt) {
                     for (unsigned d = 0; d < Dim; ++d) {
                         if (static_cast<int>(args[d]) < ng
                             || static_cast<int>(args[d]) >= ng + nGrid)
@@ -1053,15 +1046,16 @@ public:
                         expected *= Kokkos::sin(T(2) * Kokkos::numbers::pi_v<T> * xc / extent_[d]);
                     }
                     sum += Kokkos::abs(apply(view, args) - expected);
-                    cnt += T(1);
+                    cnt += 1;
                 },
-                Kokkos::Sum<T>(localSum), Kokkos::Sum<T>(localN));
+                Kokkos::Sum<T>(localSum), Kokkos::Sum<size_t>(localCnt));
             Kokkos::fence();
 
-            T globalSum = T(0), globalN = T(0);
+            T globalSum      = T(0);
+            size_t globalCnt = 0;
             ippl::Comm->allreduce(localSum, globalSum, 1, std::plus<T>{});
-            ippl::Comm->allreduce(localN, globalN, 1, std::plus<T>{});
-            return globalSum / globalN;
+            ippl::Comm->allreduce(localCnt, globalCnt, 1, std::plus<size_t>{});
+            return globalSum / static_cast<T>(globalCnt);
         };
 
         const T err_coarse = measureScatterError(N_COARSE);
@@ -1132,7 +1126,7 @@ public:
         ippl::fence();
 
         T globalMaxDiff = 0.0;
-        ippl::Comm->allreduce(maxDiff, globalMaxDiff, 1, std::plus<T>{});
+        ippl::Comm->allreduce(maxDiff, globalMaxDiff, 1, std::greater<T>{});
 
         T sumNoSort   = ippl::norm(fieldNoSort, 1);
         T sumWithSort = ippl::norm(fieldWithSort, 1);
@@ -1386,25 +1380,7 @@ int main(int argc, char* argv[]) {
     ippl::initialize(argc, argv);
     {
         ::testing::InitGoogleTest(&argc, argv);
-
-        if (ippl::Comm->rank() == 0) {
-            std::cout << "========================================\n";
-            std::cout << " Scatter/Gather Test Suite\n";
-            std::cout << "  Using standard interpolation kernels\n";
-            std::cout << "========================================\n";
-            std::cout << "Number of MPI ranks: " << ippl::Comm->size() << "\n";
-            std::cout << "Testing kernels: NGP, Linear, Quadratic, Cubic\n";
-            std::cout << "Testing dimensions: 2D, 3D\n";
-            std::cout << "========================================\n\n";
-        }
-
         success = RUN_ALL_TESTS();
-
-        if (ippl::Comm->rank() == 0) {
-            std::cout << "\n========================================\n";
-            std::cout << "Test suite completed\n";
-            std::cout << "========================================\n";
-        }
     }
     ippl::finalize();
     return success;

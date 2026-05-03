@@ -199,6 +199,8 @@ public:
     std::array<T, Dim> len;
 };
 
+// HeFFTe wrapper (src/FFT/Backend/Heffte.h) is hard-coded to 3D, so 2D
+// test instances cannot compile. Re-add when the wrapper is generalised.
 using Tests = TestParams::tests<3>;
 TYPED_TEST_SUITE(FFTTest, Tests);
 

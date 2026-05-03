@@ -28,12 +28,17 @@ void Timer::clear() {
 }
 
 void Timer::start() {
+    // Fence on start as well: any in-flight kernel from before the timer was
+    // armed otherwise leaks its tail latency into the measured interval.
+    if (enableFences) {
+        Kokkos::fence("Timer Fence (start)");
+    }
     start_m = now_ticks();
 }
 
 void Timer::stop() {
     if (enableFences) {
-        Kokkos::fence("Timer Fence");
+        Kokkos::fence("Timer Fence (stop)");
     }
     stop_m = now_ticks();
 

@@ -46,9 +46,9 @@ namespace ippl {
             auto ldom = layout->getLocalNDIndex();
             for (const auto& axis : ldom) {
                 if ((axis.length() == 1) && (Dim != 1)) {
-                    throw std::runtime_error(
-                        "HaloCells: Cannot do neighbour exchange when domain decomposition "
-                        "contains planes!");
+                    throw IpplException(
+                        "HaloCells::exchangeBoundaries",
+                        "Cannot do neighbour exchange when domain decomposition contains planes.");
                 }
             }
 
@@ -63,7 +63,7 @@ namespace ippl {
                 totalRequests += componentNeighbors.size();
             }
 
-            int me=Comm->rank();
+            int me = Comm->rank();
 
             using memory_space = typename view_type::memory_space;
             using buffer_type  = mpi::Communicator::buffer_type<memory_space>;

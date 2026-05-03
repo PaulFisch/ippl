@@ -201,7 +201,7 @@ public:
 using AccuracyTest3D = NUFFTAccuracyTest<double, 3>;
 
 TEST_F(AccuracyTest3D, ToleranceSweep) {
-    const size_t gridSize     = 16;  // 8^3 = 512 modes
+    const size_t gridSize     = 16;
     const size_t numParticles = 10240;
 
     setup(gridSize, numParticles);
@@ -237,42 +237,26 @@ TEST_F(AccuracyTest3D, ToleranceSweep) {
         std::cout << "FINUFFT:       " << (hasFinufft ? "enabled" : "disabled") << "\n";
         std::cout << "========================================================================\n";
 
-        if (hasFinufft) {
-            std::cout << std::setw(14) << "Tolerance"
-                      << std::setw(16) << "Native Err"
-                      << std::setw(16) << "FINUFFT Err"
-                      << std::setw(12) << "Err/Tol" << "\n";
-            std::cout << "------------------------------------------------------------------------\n";
-        } else {
-            std::cout << std::setw(14) << "Tolerance"
-                      << std::setw(16) << "Native Err"
-                      << std::setw(12) << "Err/Tol" << "\n";
-            std::cout << "------------------------------------------------------------------------\n";
-        }
+        std::cout << std::setw(14) << "Tolerance" << std::setw(16) << "Native Err";
+        if (hasFinufft)
+            std::cout << std::setw(16) << "FINUFFT Err";
+        std::cout << std::setw(12) << "Err/Tol" << "\n";
+        std::cout << "------------------------------------------------------------------------\n";
     }
 
     for (double tol : tolerances) {
-        double nativeError = runType1AndGetMaxError(tol, false);
+        double nativeError  = runType1AndGetMaxError(tol, false);
         double finufftError = hasFinufft ? runType1AndGetMaxError(tol, true) : -1.0;
-        double ratio = nativeError / tol;
+        double ratio        = nativeError / tol;
 
         results.push_back({tol, nativeError, finufftError});
 
         if (ippl::Comm->rank() == 0) {
-            if (hasFinufft) {
-                std::cout << std::scientific << std::setprecision(3)
-                          << std::setw(14) << tol
-                          << std::setw(16) << nativeError
-                          << std::setw(16) << finufftError
-                          << std::fixed << std::setprecision(2)
-                          << std::setw(12) << ratio << "\n";
-            } else {
-                std::cout << std::scientific << std::setprecision(3)
-                          << std::setw(14) << tol
-                          << std::setw(16) << nativeError
-                          << std::fixed << std::setprecision(2)
-                          << std::setw(12) << ratio << "\n";
-            }
+            std::cout << std::scientific << std::setprecision(3) << std::setw(14) << tol
+                      << std::setw(16) << nativeError;
+            if (hasFinufft)
+                std::cout << std::setw(16) << finufftError;
+            std::cout << std::fixed << std::setprecision(2) << std::setw(12) << ratio << "\n";
         }
 
         // Soft expectation: max error should be within 100x of tolerance

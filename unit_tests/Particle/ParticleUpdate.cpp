@@ -129,15 +129,18 @@ public:
         auto Q_host = b.Q.getHostMirror();
         auto t_host = b.tag.getHostMirror();
 
+        // Global unique id = rank * kRankIdStride + local index. The stride
+        // bounds the per-rank particle count; 10M is comfortably above any
+        // unit-test bunch size and stays well clear of int32 overflow.
+        constexpr long long kRankIdStride = 10'000'000LL;
         for (size_t i = 0; i < b.getLocalNum(); ++i) {
             position_type r;
             for (unsigned d = 0; d < Dim; d++)
                 r[d] = unif(eng) * domain[d];
             R_host(i) = r;
             Q_host(i) = T(1);
-            // global unique id = rank * large_offset + local index
-            t_host(i) =
-                static_cast<long long>(ippl::Comm->rank()) * 10000000LL + static_cast<long long>(i);
+            t_host(i) = static_cast<long long>(ippl::Comm->rank()) * kRankIdStride
+                        + static_cast<long long>(i);
         }
         Kokkos::deep_copy(b.R.getView(), R_host);
         Kokkos::deep_copy(b.Q.getView(), Q_host);

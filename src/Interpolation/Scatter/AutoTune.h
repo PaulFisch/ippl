@@ -53,6 +53,13 @@ namespace ippl::Interpolation::AutoTune {
     /// subsequent cache reload is consistent across ranks.
     bool runOnFirstUse(const std::string& output_path = "tile_sweep_sa_optimal.csv");
 
+    /// One-shot startup hook: seed the built-in defaults and, when
+    /// `IPPL_AUTO_TUNE` is set, run the sweep. Called from `ippl::initialize`.
+    inline void initialize() {
+        seedBuiltinDefaults();
+        runOnFirstUse();
+    }
+
 }  // namespace ippl::Interpolation::AutoTune
 
 #endif  // IPPL_INTERPOLATION_AUTO_TUNE_H

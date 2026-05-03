@@ -64,7 +64,7 @@ namespace ippl {
             return std::get<T>(params_m.at(key));
         }
 
-        auto contains(const std::string& key) const { return params_m.contains(key); }
+        bool contains(const std::string& key) const { return params_m.contains(key); }
 
         /*!
          * Obtain the value of a parameter. If the key is

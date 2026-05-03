@@ -1,11 +1,11 @@
 //
-// benchmarkParticleUpdateScaling.cpp
+// benchmarkParticleUpdate.cpp
 //
-// Scaling benchmark for particle update, testing RMA / P2P / Alltoall
-// count-exchange modes with warmup + timer reset.
+// Per-phase IpplTimings benchmark for particle update with selectable
+// count-exchange mode (RMA / P2P / Alltoall) and warmup steps.
 //
 // Usage:
-//   srun ./benchmarkParticleUpdateScaling Nx Ny Nz nParticles nSteps
+//   srun ./benchmarkParticleUpdate Nx Ny Nz nParticles nSteps
 //       [--warmup N] [--exchange rma|p2p|alltoall]
 //       [--overallocate F] [--info N]
 //
@@ -16,61 +16,12 @@
 #include <iostream>
 #include <random>
 #include <string>
-#include <vector>
 
+#include "BenchParticles.h"
 #include "Utility/IpplTimings.h"
 
-constexpr unsigned Dim = 3;
-
-typedef ippl::ParticleSpatialLayout<double, Dim> PLayout_t;
-typedef ippl::UniformCartesian<double, Dim> Mesh_t;
-typedef ippl::FieldLayout<Dim> FieldLayout_t;
-
-template <typename T, unsigned D>
-using Vector = ippl::Vector<T, D>;
-
-template <typename T>
-using ParticleAttrib = ippl::ParticleAttrib<T>;
-
-typedef Vector<double, Dim> Vector_t;
-
-// ---------------------------------------------------------------------------
-// Particle bunch — identical structure to the existing benchmark
-// ---------------------------------------------------------------------------
-template <class PLayout>
-class BenchParticles : public ippl::ParticleBase<PLayout> {
-public:
-    std::array<bool, Dim> isParallel_m;
-
-    ParticleAttrib<double> qm;
-    typename ippl::ParticleBase<PLayout>::particle_position_type P;
-    typename ippl::ParticleBase<PLayout>::particle_position_type E;
-
-    BenchParticles(PLayout& pl, std::array<bool, Dim> isParallel)
-        : ippl::ParticleBase<PLayout>(pl)
-        , isParallel_m(isParallel) {
-        this->addAttribute(qm);
-        this->addAttribute(P);
-        this->addAttribute(E);
-        this->setParticleBC(ippl::BC::PERIODIC);
-    }
-};
-
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
-static ippl::CountExchange parseMode(const std::string& s) {
-    if (s == "rma")
-        return ippl::CountExchange::RMA;
-    if (s == "p2p")
-        return ippl::CountExchange::P2P_GPU;
-    if (s == "alltoall")
-        return ippl::CountExchange::Alltoall_GPU;
-    throw std::invalid_argument("Unknown exchange mode: " + s);
-}
-
-// ---------------------------------------------------------------------------
 int main(int argc, char* argv[]) {
+    using namespace bench;
     ippl::initialize(argc, argv);
     {
         Inform msg(argv[0]);
@@ -89,7 +40,6 @@ int main(int argc, char* argv[]) {
         const unsigned int totalP = std::atoi(argv[4]);
         const unsigned int nt     = std::atoi(argv[5]);
 
-        // optional flags
         int warmupSteps         = 5;
         std::string exchangeStr = "alltoall";
         int infoEvery           = 0;
@@ -102,18 +52,14 @@ int main(int argc, char* argv[]) {
                 exchangeStr = argv[++i];
             else if (flag == "--info" && i + 1 < argc)
                 infoEvery = std::stoi(argv[++i]);
-            // --overallocate is accepted by ippl::initialize automatically
         }
 
         const ippl::CountExchange exchangeMode = parseMode(exchangeStr);
 
-        msg << "benchmarkParticleUpdateScaling" << endl
+        msg << "benchmarkParticleUpdate" << endl
             << "nt=" << nt << " Np=" << totalP << " grid=" << nr << " exchange=" << exchangeStr
             << " warmup=" << warmupSteps << endl;
 
-        // ---------------------------------------------------------------
-        // Domain / mesh / layout
-        // ---------------------------------------------------------------
         ippl::NDIndex<Dim> domain;
         for (unsigned i = 0; i < Dim; ++i)
             domain[i] = ippl::Index(nr[i]);
@@ -134,9 +80,6 @@ int main(int argc, char* argv[]) {
         FieldLayout_t FL(MPI_COMM_WORLD, domain, isParallel);
         PLayout_t PL(FL, mesh, /*fem=*/false, exchangeMode);
 
-        // ---------------------------------------------------------------
-        // Create particles
-        // ---------------------------------------------------------------
         using bunch_type = BenchParticles<PLayout_t>;
         auto P           = std::make_unique<bunch_type>(PL, isParallel);
 
@@ -147,7 +90,6 @@ int main(int argc, char* argv[]) {
 
         P->create(nloc);
 
-        // Initialise positions on host exactly as in the existing benchmark
         std::mt19937_64 eng[Dim];
         for (unsigned i = 0; i < Dim; ++i) {
             eng[i].seed(42 + i * Dim);
@@ -167,15 +109,11 @@ int main(int argc, char* argv[]) {
 
         IpplTimings::stopTimer(tCreate);
 
-        // Initial update to put particles on the right ranks
         static IpplTimings::TimerRef tUpdate = IpplTimings::getTimer("ParticleUpdate");
         IpplTimings::startTimer(tUpdate);
         P->update();
         IpplTimings::stopTimer(tUpdate);
 
-        // ---------------------------------------------------------------
-        // Warmup loop  — same body as the timed loop; discarded afterwards
-        // ---------------------------------------------------------------
         if (ippl::Comm->rank() == 0)
             std::cout << "Running " << warmupSteps << " warmup step(s)...\n";
 
@@ -198,26 +136,20 @@ int main(int argc, char* argv[]) {
             P->P = P->P + dt * P->qm * P->E;
         }
 
-        // Discard all warmup timing so measurements start clean
         IpplTimings::resetAllTimers();
 
         if (ippl::Comm->rank() == 0)
             std::cout << "Warmup done. Timers reset. Starting timed run.\n";
 
-        // ---------------------------------------------------------------
-        // Timed loop
-        // ---------------------------------------------------------------
         static IpplTimings::TimerRef tMain  = IpplTimings::getTimer("mainTimer");
         static IpplTimings::TimerRef tRandP = IpplTimings::getTimer("RandomP");
         static IpplTimings::TimerRef tPos   = IpplTimings::getTimer("positionUpdate");
         static IpplTimings::TimerRef tVel   = IpplTimings::getTimer("velocityUpdate");
-        // Re-get tUpdate after reset
         tUpdate = IpplTimings::getTimer("ParticleUpdate");
 
         IpplTimings::startTimer(tMain);
 
         for (unsigned int it = 0; it < nt; ++it) {
-            // randomise velocities on device
             IpplTimings::startTimer(tRandP);
             {
                 auto P_view = P->P.getView();
@@ -233,17 +165,14 @@ int main(int argc, char* argv[]) {
             }
             IpplTimings::stopTimer(tRandP);
 
-            // position update
             IpplTimings::startTimer(tPos);
             P->R = P->R + dt * P->P;
             IpplTimings::stopTimer(tPos);
 
-            // particle redistribution
             IpplTimings::startTimer(tUpdate);
             P->update();
             IpplTimings::stopTimer(tUpdate);
 
-            // velocity update
             IpplTimings::startTimer(tVel);
             P->P = P->P + dt * P->qm * P->E;
             IpplTimings::stopTimer(tVel);
@@ -256,9 +185,6 @@ int main(int argc, char* argv[]) {
 
         IpplTimings::stopTimer(tMain);
 
-        // ---------------------------------------------------------------
-        // Output
-        // ---------------------------------------------------------------
         IpplTimings::print();
         IpplTimings::print(std::string("timing_") + exchangeStr + ".dat");
     }

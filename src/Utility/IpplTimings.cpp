@@ -30,6 +30,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 
 #include "Utility/Inform.h"
@@ -142,7 +143,7 @@ const std::vector<double>& Timing::getMeasurements(const std::string& name) cons
 size_t Timing::getMeasurementCount(TimerRef t) const {
     if (t >= TimerList.size())
         return 0;
-    return TimerList[t]->measurement_count;
+    return TimerList[t]->measurements.size();
 }
 
 // Get all timer names
@@ -161,71 +162,65 @@ void Timing::dumpToCSV(const std::string& filename) {
 }
 
 // Dump all measurements to CSV with custom options
-void Timing::dumpToCSV(const std::string& filename, const std::string& delimiter, bool includeHeader) {
-    // Get MPI rank
-    int rank = ippl::Comm->rank();
-    int numRanks = ippl::Comm->size();
+void Timing::dumpToCSV(const std::string& filename, const std::string& delimiter,
+                       bool includeHeader) {
+    const int rank     = ippl::Comm->rank();
+    const int numRanks = ippl::Comm->size();
 
-    // Each rank writes to its own temporary buffer
+    // Each rank serialises its measurements into a local buffer.
     std::ostringstream localData;
-
     for (unsigned int i = 0; i < TimerList.size(); ++i) {
-        TimerInfo* tptr = TimerList[i].get();
-        const std::string& timerName = tptr->name;
+        TimerInfo* tptr                         = TimerList[i].get();
+        const std::string& timerName            = tptr->name;
         const std::vector<double>& measurements = tptr->measurements;
-
         for (size_t j = 0; j < measurements.size(); ++j) {
-            localData << timerName << delimiter
-                      << rank << delimiter
-                      << j << delimiter
+            localData << timerName << delimiter << rank << delimiter << j << delimiter
                       << std::setprecision(12) << measurements[j] << "\n";
         }
     }
+    const std::string localStr = localData.str();
 
-    std::string localStr = localData.str();
+    // Gather sizes from every rank using a single collective rather than
+    // O(P) point-to-point pairs.
+    MPI_Aint localSize = static_cast<MPI_Aint>(localStr.size());
+    std::vector<MPI_Aint> sizes(numRanks, 0);
+    MPI_Gather(&localSize, 1, MPI_AINT, sizes.data(), 1, MPI_AINT, 0,
+               ippl::Comm->getCommunicator());
 
-    // Gather all data to rank 0 and write
+    // Compute displacements and total size on rank 0; all ranks supply their
+    // bytes via MPI_Gatherv.
+    std::vector<int> intSizes(numRanks, 0);
+    std::vector<int> displs(numRanks, 0);
+    std::vector<char> all;
     if (rank == 0) {
-        std::ofstream outFile(filename);
-
-        if (includeHeader) {
-            outFile << "timer_name" << delimiter
-                    << "rank" << delimiter
-                    << "measurement_id" << delimiter
-                    << "duration_seconds" << "\n";
-        }
-
-        // Write rank 0's data
-        outFile << localStr;
-
-        // Receive and write data from other ranks
-        for (int r = 1; r < numRanks; ++r) {
-            // Receive size first
-            size_t dataSize = 0;
-            MPI_Status status;
-            MPI_Recv(&dataSize, 1, MPI_UNSIGNED_LONG, r, 0, ippl::Comm->getCommunicator(), &status);
-
-            if (dataSize > 0) {
-                std::vector<char> buffer(dataSize + 1);
-                MPI_Recv(buffer.data(), dataSize, MPI_CHAR, r, 1, ippl::Comm->getCommunicator(), &status);
-                buffer[dataSize] = '\0';
-                outFile << buffer.data();
+        long long total = 0;
+        for (int r = 0; r < numRanks; ++r) {
+            // The MPI standard limits Gatherv counts to int. Real CSV blobs
+            // never exceed INT_MAX in practice; refuse rather than silently
+            // truncate if they do.
+            if (sizes[r] > static_cast<MPI_Aint>(std::numeric_limits<int>::max())) {
+                std::cerr << "Timing::dumpToCSV: rank " << r << " has " << sizes[r]
+                          << " bytes (> INT_MAX); truncating\n";
             }
+            intSizes[r] = static_cast<int>(std::min<MPI_Aint>(
+                sizes[r], static_cast<MPI_Aint>(std::numeric_limits<int>::max())));
+            displs[r]   = static_cast<int>(total);
+            total += intSizes[r];
         }
-
-        outFile.close();
-    } else {
-        // Send size and data to rank 0
-        size_t dataSize = localStr.size();
-        MPI_Send(&dataSize, 1, MPI_UNSIGNED_LONG, 0, 0, ippl::Comm->getCommunicator());
-
-        if (dataSize > 0) {
-            MPI_Send(localStr.data(), dataSize, MPI_CHAR, 0, 1, ippl::Comm->getCommunicator());
-        }
+        all.resize(static_cast<size_t>(total));
     }
 
-    // Ensure all ranks are synchronized
-    ippl::Comm->barrier();
+    MPI_Gatherv(localStr.data(), static_cast<int>(localStr.size()), MPI_CHAR, all.data(),
+                intSizes.data(), displs.data(), MPI_CHAR, 0, ippl::Comm->getCommunicator());
+
+    if (rank == 0) {
+        std::ofstream outFile(filename);
+        if (includeHeader) {
+            outFile << "timer_name" << delimiter << "rank" << delimiter << "measurement_id"
+                    << delimiter << "duration_seconds" << "\n";
+        }
+        outFile.write(all.data(), static_cast<std::streamsize>(all.size()));
+    }
 }
 
 // print out the timing results
@@ -276,7 +271,7 @@ void Timing::print() {
         TimerInfo* tptr = TimerList[i].get();
         size_t lengthName = std::min(tptr->name.length(), 19lu);
         msg << tptr->name.substr(0, lengthName) << std::string().assign(20 - lengthName, '.')
-            << " Count = " << std::setw(10) << tptr->measurement_count << "\n";
+            << " Count = " << std::setw(10) << tptr->measurements.size() << "\n";
     }
 
     msg << "---------------------------------------------";
