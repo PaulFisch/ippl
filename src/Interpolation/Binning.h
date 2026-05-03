@@ -149,44 +149,48 @@ namespace ippl {
                     auto permute_sub =
                         Kokkos::subview(permute, std::make_pair(size_t(0), n_particles));
 
+                    // The CUB radix-sort fast path is only available when the
+                    // *execution space* is Kokkos::Cuda; on a CUDA-enabled
+                    // build the test fixture also instantiates Kokkos::Serial
+                    // (and possibly OpenMP), where ExecSpace().cuda_stream()
+                    // doesn't exist. Gate accordingly.
 #if defined(KOKKOS_ENABLE_CUDA)
-                    // --- reuse buffered output arrays & temp storage --------
-                    auto& bufs = ippl::detail::getDefaultBinSortBuffers<
-                        typename KeyViewType::memory_space>();
-                    bufs.ensureCapacity(n_particles, n_bins + 1);
-                    auto keys_out_sub =
-                        Kokkos::subview(bufs.keysOut(), std::make_pair(size_t(0), n_particles));
-                    auto perm_out_sub =
-                        Kokkos::subview(bufs.permOut(), std::make_pair(size_t(0), n_particles));
+                    if constexpr (std::is_same_v<ExecSpace, Kokkos::Cuda>) {
+                        auto& bufs = ippl::detail::getDefaultBinSortBuffers<
+                            typename KeyViewType::memory_space>();
+                        bufs.ensureCapacity(n_particles, n_bins + 1);
+                        auto keys_out_sub = Kokkos::subview(
+                            bufs.keysOut(), std::make_pair(size_t(0), n_particles));
+                        auto perm_out_sub = Kokkos::subview(
+                            bufs.permOut(), std::make_pair(size_t(0), n_particles));
 
-                    cudaStream_t cuda_stream = ExecSpace().cuda_stream();
+                        cudaStream_t cuda_stream = ExecSpace().cuda_stream();
 
-                    // Query required temp-storage size
-                    void* d_temp      = nullptr;
-                    size_t temp_bytes = 0;
-                    cub::DeviceRadixSort::SortPairs(
-                        d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
-                        permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles), 0,
-                        sizeof(key_type) * 8, cuda_stream);
+                        void* d_temp      = nullptr;
+                        size_t temp_bytes = 0;
+                        cub::DeviceRadixSort::SortPairs(
+                            d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
+                            permute_sub.data(), perm_out_sub.data(),
+                            static_cast<int>(n_particles), 0, sizeof(key_type) * 8, cuda_stream);
 
-                    bufs.ensureTempStorage(temp_bytes);
-                    d_temp = bufs.tempStorage().data();
+                        bufs.ensureTempStorage(temp_bytes);
+                        d_temp = bufs.tempStorage().data();
 
-                    // Sort into buffered output views on the same stream as
-                    // subsequent Kokkos kernels — avoids needing a global fence
-                    // before the deep_copy below.
-                    auto err = cub::DeviceRadixSort::SortPairs(
-                        d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
-                        permute_sub.data(), perm_out_sub.data(), static_cast<int>(n_particles), 0,
-                        sizeof(key_type) * 8, cuda_stream);
+                        auto err = cub::DeviceRadixSort::SortPairs(
+                            d_temp, temp_bytes, keys_sub.data(), keys_out_sub.data(),
+                            permute_sub.data(), perm_out_sub.data(),
+                            static_cast<int>(n_particles), 0, sizeof(key_type) * 8, cuda_stream);
 
-                    if (err != cudaSuccess) {
-                        printf("CUB SortPairs failed: %s\n", cudaGetErrorString(err));
-                        Kokkos::abort("CUB Radix Sort failed.");
+                        if (err != cudaSuccess) {
+                            printf("CUB SortPairs failed: %s\n", cudaGetErrorString(err));
+                            Kokkos::abort("CUB Radix Sort failed.");
+                        }
+
+                        Kokkos::deep_copy(ExecSpace(), keys_sub, keys_out_sub);
+                        Kokkos::deep_copy(ExecSpace(), permute_sub, perm_out_sub);
+                    } else {
+                        Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
                     }
-
-                    Kokkos::deep_copy(ExecSpace(), keys_sub, keys_out_sub);
-                    Kokkos::deep_copy(ExecSpace(), permute_sub, perm_out_sub);
 #else
                     Kokkos::Experimental::sort_by_key(ExecSpace(), keys_sub, permute_sub);
 #endif

@@ -173,7 +173,6 @@ public:
         RegionLayout_t rl   = playout_ptr->getRegionLayout();
         region_view regions = rl.getdLocalRegions();
         int myRank          = ippl::Comm->rank();
-        int nRanks          = ippl::Comm->size();
 
         auto R_host = b.R.getHostMirror();
         Kokkos::deep_copy(R_host, b.R.getView());
@@ -546,7 +545,7 @@ TYPED_TEST(TestParticleUpdate, ZeroParticleRanksDoNotDeadlock) {
         std::uniform_real_distribution<T> unif(T(0), T(1));
         auto R_host = bunch->R.getHostMirror();
         auto Q_host = bunch->Q.getHostMirror();
-        for (unsigned i = 0; i < N; ++i) {
+        for (int i = 0; i < N; ++i) {
             for (unsigned d = 0; d < TestFixture::Dim; d++)
                 R_host(i)[d] = unif(eng) * this->domain[d];
             Q_host(i) = T(1);
