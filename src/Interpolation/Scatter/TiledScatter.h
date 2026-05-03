@@ -48,7 +48,20 @@ namespace ippl::Interpolation::detail {
                 a.bin_offsets = binning.bin_offsets;
                 a.num_tiles   = binning.num_tiles;
                 a.tile_size   = config.get_tile_size();
-                a.team_size   = config.team_size;
+                // Defensive backend clamp: a CSV preset tagged for sm_xx may
+                // be loaded on a build where the test fixture also instantiates
+                // host execution spaces. Force team_size=1 there so we never
+                // construct a TeamPolicy<Serial> with team_size > 1, which
+                // aborts with "Requested Team Size is too large!". Scatter.h
+                // already routes Serial through Atomic, so this branch is
+                // belt-and-braces for any future host-only backend.
+#ifdef KOKKOS_ENABLE_SERIAL
+                constexpr bool host_only =
+                    std::is_same_v<execution_space, Kokkos::Serial>;
+#else
+                constexpr bool host_only = false;
+#endif
+                a.team_size = host_only ? 1 : config.team_size;
                 return a;
             }
         };

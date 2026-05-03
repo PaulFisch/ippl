@@ -47,7 +47,7 @@ namespace ippl {
             typename DeduceScatterTypes<Kernel, FieldType, PositionsType, ValuesType>::type;
 
         template <template <int, class, class> class Impl, unsigned Dim, typename RealType,
-                  [[maybe_unused]] bool IsComplex>
+                   bool IsComplex>
         TileSizeTuner<Dim, Vector<int, Dim>>& get_scatter_tuner() {
             // The IsComplex template parameter is only used as part of the
             // function template's mangled name, ensuring real and complex

@@ -78,7 +78,15 @@ namespace ippl::Interpolation::detail {
                 a.bin_offsets             = binning.bin_offsets;
                 a.num_tiles               = binning.num_tiles;
                 a.tile_size               = config.get_tile_size();
-                a.team_size               = config.team_size;
+                // Defensive: clamp team_size on host-only backends (see
+                // TiledScatter Arguments::create for rationale).
+#ifdef KOKKOS_ENABLE_SERIAL
+                constexpr bool host_only =
+                    std::is_same_v<execution_space, Kokkos::Serial>;
+#else
+                constexpr bool host_only = false;
+#endif
+                a.team_size               = host_only ? 1 : config.team_size;
                 a.oversubscription_factor = config.oversubscription_factor;
                 a.batch_np                = config.z_batches > 0 ? config.z_batches : 1;
                 return a;
@@ -173,7 +181,6 @@ namespace ippl::Interpolation::detail {
 
             const int hs0    = args.tile_size[0] + padded_extra;
             const int hs1    = args.tile_size[1] + padded_extra;
-            const int hs2    = args.tile_size[2] + padded_extra;
             const int pitch0 = hs0;
             const int pitch1 = hs0 * hs1;
 
@@ -447,7 +454,15 @@ namespace ippl::Interpolation::detail {
                 a.bin_offsets             = binning.bin_offsets;
                 a.num_tiles               = binning.num_tiles;
                 a.tile_size               = config.get_tile_size();
-                a.team_size               = config.team_size;
+                // Defensive: clamp team_size on host-only backends (see
+                // TiledScatter Arguments::create for rationale).
+#ifdef KOKKOS_ENABLE_SERIAL
+                constexpr bool host_only =
+                    std::is_same_v<execution_space, Kokkos::Serial>;
+#else
+                constexpr bool host_only = false;
+#endif
+                a.team_size               = host_only ? 1 : config.team_size;
                 a.oversubscription_factor = config.oversubscription_factor;
                 a.batch_np                = config.z_batches > 0 ? config.z_batches : 1;
                 return a;
