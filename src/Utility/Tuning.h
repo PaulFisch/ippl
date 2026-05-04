@@ -8,7 +8,7 @@
 #include <vector>
 
 // Kokkos's tuning interface is still exposed only through this internal
-// header in 5.0.x. When a public header (`Kokkos_Tools.hpp`) becomes
+// header in 5.0.x. When a public header (Kokkos_Tools.hpp) becomes
 // available across the supported version range, switch to it.
 #include <impl/Kokkos_Profiling_Interface.hpp>
 
@@ -179,7 +179,7 @@ private:
             }
         }
 
-        // Final fallback — smallest candidate. If even that overflows the
+        // Final fallback - smallest candidate. If even that overflows the
         // scratch budget the kernel cannot run; throw so the caller doesn't
         // get a confusing Kokkos::abort deeper in the dispatch.
         if (scratch_calc_(result) > max_scratch_) {

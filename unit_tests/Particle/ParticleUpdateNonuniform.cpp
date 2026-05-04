@@ -77,7 +77,7 @@ class TestParticleUpdateORB;
 template <typename T_, typename ExecSpace, unsigned Dim_>
 class TestParticleUpdateORB<Parameters<T_, ExecSpace, Rank<Dim_>>> : public ::testing::Test {
 public:
-    using T = T_;
+    using T                       = T_;
     static constexpr unsigned Dim = Dim_;
     // ---- type aliases --------------------------------------------------
     using flayout_type   = ippl::FieldLayout<Dim>;
@@ -339,12 +339,12 @@ TYPED_TEST_SUITE(TestParticleUpdateORB, Tests);
 // ============================================================
 //  Helper macro: skip test if rank count is below threshold
 // ============================================================
-#define REQUIRE_RANKS(n)                                                  \
-    do {                                                                  \
-        if (ippl::Comm->size() < (n)) {                                   \
-            GTEST_SKIP() << "Test requires at least " << (n) << " ranks"; \
-        }                                                                 \
-    } while (false)
+#define REQUIRE_RANKS(n)                                                                  \
+    if (const auto required_ranks = (n); ippl::Comm->size() < required_ranks) {           \
+        GTEST_SKIP() << "Test requires at least " << required_ranks << " ranks, but got " \
+                     << ippl::Comm->size();                                               \
+    } else                                                                                \
+        (void)0
 
 // ============================================================
 //  1. ORB with uniform density – baseline conservation
@@ -784,8 +784,7 @@ TYPED_TEST(TestParticleUpdateORB, ParticleInjectionBetweenOrbRepartitions) {
 
         auto total_particles = this->totalParticles(*bunch);
         if (ippl::Comm->rank() == 0) {
-            EXPECT_EQ(static_cast<size_t>(injectPerCycle), total_particles)
-                << "at cycle " << c;
+            EXPECT_EQ(static_cast<size_t>(injectPerCycle), total_particles) << "at cycle " << c;
         }
         EXPECT_EQ(0u, this->countMisplaced(*bunch)) << "at cycle " << c;
     }

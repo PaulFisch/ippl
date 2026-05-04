@@ -110,17 +110,13 @@ namespace ippl {
         //   * Host-accessible memory spaces (HostSpace, OpenMP, Serial, ...):
         //     a regular Kokkos::View<char*, MemorySpace> in `buffer_m`.
         //   * Device memory spaces (CudaSpace, HIPSpace): raw cuda/hipMalloc
-        //     in `buffer_ptr_m`. This avoids the HIP IPC-handle invalidation
-        //     bug on Cray MPICH where Kokkos's reallocation pattern releases
-        //     the device pointer and lets the GPU-aware MPI registration
-        //     cache return stale handles.
+        //     in `buffer_ptr_m`.
 
         template <class... Properties>
         void Archive<Properties...>::gpuAlloc(size_type size) {
             if (!uses_raw_device_alloc || size == 0) return;
 #if defined(KOKKOS_ENABLE_HIP)
-            // HSA IPC (used by Cray MPICH for large-message GPU transfers)
-            // requires allocation sizes to be multiples of the GPU page
+            // HSA IPC likes allocation sizes to be multiples of the GPU page
             // granularity (64 KB on MI250X / MI300X).
             static constexpr size_type kGranularity = 65536;
             size = ((size + kGranularity - 1) / kGranularity) * kGranularity;

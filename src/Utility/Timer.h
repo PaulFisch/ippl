@@ -8,8 +8,6 @@
 #define IPPL_TIMER_H
 
 #ifndef IPPL_ENABLE_TIMER_FENCES
-// Soften from #warning to #pragma message — Timer.h is transitively included
-// from many TUs and the warning was shouting on every translation unit.
 #pragma message("IPPL_ENABLE_TIMER_FENCES not set by CMake; defaulting to false.")
 #define IPPL_ENABLE_TIMER_FENCES false
 #endif
@@ -30,8 +28,6 @@ public:
 
 private:
     double elapsed_m;
-    // high_resolution_clock tick counts since epoch — kept as int64 in the
-    // header so consumers don't pay for <chrono>'s pull-in of <format>.
     std::int64_t start_m = 0, stop_m = 0;
 };
 

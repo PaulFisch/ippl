@@ -199,9 +199,6 @@ TYPED_TEST(TypedBufferHandlerTest, GetAllocatedAndFreeSize_AfterDeleteAllBuffers
     EXPECT_EQ(this->handler->getFreeSize(), 0);
 }
 
-// Test: Buffer sizes are correctly accounted for if a free buffer is available
-// but the request needs a strictly larger one. The new policy is to allocate
-// fresh and keep the smaller free buffer for a future smaller request.
 TYPED_TEST(TypedBufferHandlerTest, GetAllocatedAndFreeSize_ResizeBufferLargerThanAvailable) {
     constexpr size_t small = 50;
     constexpr size_t large = kBufferPageSize + 1;

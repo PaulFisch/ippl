@@ -297,6 +297,9 @@ namespace ippl {
         }
         Kokkos::realloc(tempQ_m, localNp);
 #else
+        (void)layout;
+        (void)localNp;
+
         throw std::runtime_error("FINUFFT is not activated. Rebuild with -DIPPL_ENABLE_FINUFFT=ON");
 #endif
     }
@@ -332,6 +335,7 @@ namespace ippl {
             throw IpplException("FFT<NUFFTransform>", "FINUFFT makeplan failed");
         }
 #else
+        (void)params;
         throw std::runtime_error("FINUFFT is not activated. Rebuild with -DIPPL_ENABLE_FINUFFT=ON");
 #endif  // ENABLE_FINUFFT
     }
@@ -517,7 +521,9 @@ namespace ippl {
         }
 #else
         throw std::runtime_error("FINUFFT is not activated. Rebuild with -DIPPL_ENABLE_FINUFFT=ON");
-
+        (void)R;
+        (void)Q;
+        (void)f;
 #endif  // ENABLE_FINUFFT
     }
 }  // namespace ippl

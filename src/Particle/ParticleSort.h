@@ -222,13 +222,13 @@ namespace ippl {
             auto perm_out = bufs.permOut();
 
             size_t temp_bytes = 0;
-            rocprim::radix_sort_pairs(nullptr, temp_bytes, keys.data(), keys_out.data(),
+            std::ignore = rocprim::radix_sort_pairs(nullptr, temp_bytes, keys.data(), keys_out.data(),
                                       permute.data(), perm_out.data(), n, 0, sizeof(uint64_t) * 8,
                                       Kokkos::HIP().hip_stream());
 
             bufs.ensureTempStorage(temp_bytes);
 
-            rocprim::radix_sort_pairs(bufs.tempStorage().data(), temp_bytes, keys.data(),
+            std::ignore = rocprim::radix_sort_pairs(bufs.tempStorage().data(), temp_bytes, keys.data(),
                                       keys_out.data(), permute.data(), perm_out.data(), n, 0,
                                       sizeof(uint64_t) * 8, Kokkos::HIP().hip_stream());
             Kokkos::fence();
