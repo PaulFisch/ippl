@@ -1,0 +1,87 @@
+========================================
+Single-Node NUFFT Benchmark
+========================================
+Mode:            density
+Kernel grid:     200^3
+Breakdown grids: 64,128,192,256
+Rhos (kernels):  10
+Tolerances:      1e-2,1e-3,1e-4,1e-5,1e-6,1e-7,1e-8
+Warmup:          5
+Runs:            20
+Density rhos:    0.1,0.5,1,2,5,10,20,50
+Density tol:     1.000000e-04
+Max GPU memory:  40 GB
+========================================
+
+============================================================
+DENSITY SWEEP (grid=200^3, tol=1e-04)
+============================================================
+
+--- rho = 0 ---
+  Np=800000  est. memory: 2.2 GB
+[Scatter] Cache hit: method=Atomic w=5 cx=1 rho=0.01 -> tile=(1,1,1) team=64 osub=4 zb=1 tp=9.1 Mpts/s (rho_csv=10.00)
+  Type1          Atomic  15.5 Mpts/s  (51.475 ms)
+[Scatter] Cache hit: method=Tiled w=5 cx=1 rho=0.01 -> tile=(5,5,2) team=64 osub=2 zb=1 tp=566.4 Mpts/s (rho_csv=10.00)
+  Type1           Tiled  2.1 Mpts/s  (388.000 ms)
+[Scatter] Cache hit: method=OutputFocused w=5 cx=1 rho=0.01 -> tile=(4,4,1) team=128 osub=1 zb=27 tp=356.6 Mpts/s (rho_csv=10.00)
+  Type1   Grid-Parallel  1.3 Mpts/s  (595.813 ms)
+  Type2          Direct  24.5 Mpts/s  (32.699 ms)
+  Type2          Sorted  23.9 Mpts/s  (33.492 ms)
+
+--- rho = 0.500 ---
+  Np=4000000  est. memory: 2.3 GB
+  Type1          Atomic  27.2 Mpts/s  (147.286 ms)
+  Type1           Tiled  9.4 Mpts/s  (424.301 ms)
+  Type1   Grid-Parallel  5.2 Mpts/s  (774.154 ms)
+  Type2          Direct  59.2 Mpts/s  (67.596 ms)
+  Type2          Sorted  62.4 Mpts/s  (64.054 ms)
+
+--- rho = 1.000 ---
+  Np=8000000  est. memory: 2.4 GB
+  Type1          Atomic  30.6 Mpts/s  (261.856 ms)
+  Type1           Tiled  16.7 Mpts/s  (478.324 ms)
+  Type1   Grid-Parallel  9.2 Mpts/s  (868.247 ms)
+  Type2          Direct  72.0 Mpts/s  (111.065 ms)
+  Type2          Sorted  93.0 Mpts/s  (86.022 ms)
+
+--- rho = 2.000 ---
+  Np=16000000  est. memory: 2.7 GB
+  Type1          Atomic  33.4 Mpts/s  (479.123 ms)
+  Type1           Tiled  27.4 Mpts/s  (583.064 ms)
+  Type1   Grid-Parallel  16.9 Mpts/s  (947.158 ms)
+  Type2          Direct  80.8 Mpts/s  (197.977 ms)
+  Type2          Sorted  132.8 Mpts/s  (120.477 ms)
+
+--- rho = 5.000 ---
+  Np=40000000  est. memory: 3.4 GB
+  Type1          Atomic  36.6 Mpts/s  (1091.561 ms)
+  Type1           Tiled  65.6 Mpts/s  (610.011 ms)
+  Type1   Grid-Parallel  40.0 Mpts/s  (1000.812 ms)
+  Type2          Direct  87.2 Mpts/s  (458.859 ms)
+  Type2          Sorted  190.2 Mpts/s  (210.304 ms)
+
+--- rho = 10.000 ---
+  Np=80000000  est. memory: 4.7 GB
+  Type1          Atomic  38.1 Mpts/s  (2097.106 ms)
+  Type1           Tiled  125.2 Mpts/s  (639.217 ms)
+  Type1   Grid-Parallel  76.9 Mpts/s  (1040.874 ms)
+  Type2          Direct  89.5 Mpts/s  (893.686 ms)
+  Type2          Sorted  248.3 Mpts/s  (322.251 ms)
+
+--- rho = 20.000 ---
+  Np=160000000  est. memory: 7.3 GB
+  Type1          Atomic  37.3 Mpts/s  (4294.127 ms)
+  Type1           Tiled  268.5 Mpts/s  (595.833 ms)
+  Type1   Grid-Parallel  152.5 Mpts/s  (1049.414 ms)
+  Type2          Direct  90.8 Mpts/s  (1762.762 ms)
+  Type2          Sorted  315.6 Mpts/s  (507.019 ms)
+
+--- rho = 50.000 ---
+  Np=400000000  est. memory: 14.9 GB
+  Type1          Atomic  1838.3 Mpts/s  (217.593 ms)
+  Type1           Tiled  455.7 Mpts/s  (877.825 ms)
+  Type1   Grid-Parallel  310.0 Mpts/s  (1290.427 ms)
+  Type2          Direct  91.5 Mpts/s  (4371.452 ms)
+  Type2          Sorted  395.9 Mpts/s  (1010.426 ms)
+
+Density results written to: bench_density.csv

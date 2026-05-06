@@ -1,0 +1,43 @@
+
+================================================================================
+NUFFT Scaling Benchmark
+================================================================================
+Number of ranks: 64
+Grid size:       1024^3
+Upsampled grid:  2048^3 (sigma=2)
+Particles:       8589934592 (8 per point)
+Tolerance:       0.0001
+CSV output:      results/nufft_scaling_64_upsampled.csv
+Component CSV:   results/nufft_components_64_upsampled.csv
+
+=== Benchmarking NUFFT Type 1 ===
+Grid size:       1024^3
+Upsampled grid:  2048^3 (sigma=2)
+Total particles: 8589934592
+Local particles: 134217728
+Spread method:   output_focused
+Tolerance:       0.0001
+Warmup runs:     3
+Benchmark runs:  10
+Running warmup...
+Running benchmark...
+
+NUFFT Type 1 Results:
+  Ranks:       64
+  Grid:        1024^3
+  Particles:   8589934592
+  Mean time:   3063.771 ms
+  Min time:    3059.916 ms
+  Max time:    3067.411 ms
+  Stddev:      2.230 ms
+  Throughput:  2803.71 Mpts/s
+
+=== Benchmarking NUFFT Type 2 ===
+Grid size:       1024^3
+Upsampled grid:  2048^3 (sigma=2.00)
+Total particles: 8589934592
+Local particles: 134217728
+Gather method:   atomic_sort
+Tolerance:       0.00
+Warmup runs:     3
+Benchmark runs:  10

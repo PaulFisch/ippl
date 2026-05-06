@@ -1,0 +1,157 @@
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0413:3055391] *** Process received signal ***
+[jwb0413:3055391] Signal: Aborted (6)
+[jwb0413:3055391] Signal code:  (-6)
+[jwb0413:3055391] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14f207fcfc30]
+[jwb0413:3055391] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14f20801d02c]
+[jwb0413:3055391] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14f207fcfb86]
+[jwb0413:3055391] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14f207fb9873]
+[jwb0413:3055391] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14f208274c3d]
+[jwb0413:3055391] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14f20828614a]
+[jwb0413:3055391] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14f2082747e9]
+[jwb0413:3055391] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14f2082863c7]
+[jwb0413:3055391] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x460ee4]
+[jwb0413:3055391] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFTterminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+/PaperBenchmarks/BenchmarkNUFFT[0x56fb96]
+[jwb0413:3055391] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x570c2e]
+[jwb0413:3055391] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x57281e]
+[jwb0413:3055391] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x5733e8]
+[jwb0413:3055391] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x447982]
+[jwb0413:3055391] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x42192b]
+[jwb0413:3055391] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14f207fba610]
+[jwb0413:3055391] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14f207fba6c0]
+[jwb0413:3055391] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x4221d5]
+[jwb0413:3055391] *** End of error message ***
+[jwb0412:3414480] *** Process received signal ***
+[jwb0412:3414480] Signal: Aborted (6)
+[jwb0412:3414480] Signal code:  (-6)
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0412:3414480] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14cd8c1bdc30]
+[jwb0412:3414480] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14cd8c20b02c]
+[jwb0412:3414480] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14cd8c1bdb86]
+[jwb0412:3414480] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14cd8c1a7873]
+[jwb0412:3414480] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14cd8c462c3d]
+[jwb0412:3414480] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14cd8c47414a]
+[jwb0412:3414480] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14cd8c4627e9]
+[jwb0412:3414480] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14cd8c4743c7]
+[jwb0412:3414480] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x460ee4]
+[jwb0413:3055389] *** Process received signal ***
+[jwb0413:3055389] Signal: Aborted (6)
+[jwb0413:3055389] Signal code:  (-6)
+[jwb0412:3414480] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT[jwb0413:3055389] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14abf6830c30]
+[jwb0413:3055389] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14abf687e02c]
+[jwb0413:3055389] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14abf6830b86]
+[jwb0413:3055389] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14abf681a873]
+[jwb0413:3055389] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14abf6ad5c3d]
+[jwb0413:3055389] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14abf6ae714a]
+[jwb0413:3055389] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14abf6ad57e9]
+[jwb0413:3055389] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14abf6ae73c7]
+[jwb0413:3055389] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x460ee4]
+/PaperBenchmarks/BenchmarkNUFFT[0x56fb96]
+[jwb0412:3414480] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x570c2e]
+[jwb0412:3414480] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x57281e]
+[jwb0412:3414480] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x5733e8]
+[jwb0412:3414480] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x447982]
+[jwb0412:3414480] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x42192b]
+[jwb0412:3414480] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14cd8c1a8610]
+[jwb0412:3414480] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14cd8c1a86c0]
+[jwb0412:3414480] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x4221d5]
+[jwb0412:3414480] *** End of error message ***
+[jwb0413:3055389] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFTterminate called after throwing an instance of 'std::runtime_error'
+/PaperBenchmarks/BenchmarkNUFFT[0x56fb96]
+[jwb0413:3055389] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x570c2e]
+[jwb0413:3055389] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x57281e]
+[jwb0413:3055389] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x5733e8]
+[jwb0413:3055389] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x447982]
+[jwb0413:3055389] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x42192b]
+[jwb0413:3055389] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14abf681b610]
+[jwb0413:3055389] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14abf681b6c0]
+[jwb0413:3055389] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x4221d5]
+[jwb0413:3055389] *** End of error message ***
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0412:3414478] *** Process received signal ***
+[jwb0412:3414478] Signal: Aborted (6)
+[jwb0412:3414478] Signal code:  (-6)
+[jwb0412:3414478] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1508d9b8ec30]
+[jwb0412:3414478] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1508d9bdc02c]
+[jwb0412:3414478] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1508d9b8eb86]
+[jwb0412:3414478] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1508d9b78873]
+[jwb0412:3414478] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1508d9e33c3d]
+[jwb0412:3414478] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1508d9e4514a]
+[jwb0412:3414478] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1508d9e337e9]
+[jwb0412:3414478] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1508d9e453c7]
+[jwb0412:3414478] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x460ee4]
+[jwb0412:3414478] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x56fb96]
+[jwb0412:3414478] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x570c2e]
+[jwb0412:3414478] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x57281e]
+[jwb0412:3414478] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x5733e8]
+[jwb0412:3414478] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x447982]
+[jwb0412:3414478] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x42192b]
+[jwb0412:3414478] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1508d9b79610]
+[jwb0412:3414478] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1508d9b796c0]
+[jwb0412:3414478] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT[0x4221d5]
+[jwb0412:3414478] *** End of error message ***
+srun: error: jwb0413: tasks 4,7: Aborted (core dumped)
+srun: error: jwb0413: tasks 5-6: Terminated
+srun: error: jwb0412: tasks 0,3: Aborted (core dumped)
+srun: error: jwb0412: tasks 1-2: Terminated
+srun: Force Terminated StepId=13466482.0

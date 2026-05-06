@@ -1,0 +1,339 @@
+Hostname=nid006356   , Rank=37   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006347   , Rank=13   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006391   , Rank=113  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006374   , Rank=72   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006350   , Rank=21   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid005449   , Rank=2    ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006382   , Rank=92   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006408   , Rank=165  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006372   , Rank=64   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006375   , Rank=78   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006435   , Rank=212  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006396   , Rank=128  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006448   , Rank=246  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006423   , Rank=192  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006358   , Rank=40   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006438   , Rank=224  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006392   , Rank=116  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006351   , Rank=27   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006439   , Rank=228  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006383   , Rank=97   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid005518   , Rank=4    ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006355   , Rank=33   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006421   , Rank=188  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid005449   , Rank=1    ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006400   , Rank=146  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006345   , Rank=8    ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006363   , Rank=48   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006415   , Rank=178  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006410   , Rank=171  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006349   , Rank=17   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006436   , Rank=216  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006451   , Rank=248  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006374   , Rank=73   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid005449   , Rank=3    ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006404   , Rank=157  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Slurm Job Hostlist: nid[005449,005518,006345,006347,006349-006351,006353,006355-006356,006358,006362-006363,006368,006370-006375,006377,006379,006381-006383,006386,006388-006389,006391-006392,006394-006402,006404,006407-006408,006410,006414-006415,006418,006420-006421,006423,006426,006429-006430,006434-006440,006443,006447-006448,006451,006453]
+Hostname=nid005449   , Rank=0    ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006430   , Rank=205  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006373   , Rank=68   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006368   , Rank=52   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006356   , Rank=38   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006374   , Rank=74   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006379   , Rank=87   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006414   , Rank=172  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006439   , Rank=229  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006438   , Rank=226  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006356   , Rank=39   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006420   , Rank=187  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006345   , Rank=9    ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006395   , Rank=125  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006418   , Rank=180  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006436   , Rank=217  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006370   , Rank=57   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006371   , Rank=60   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006356   , Rank=36   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006374   , Rank=75   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006362   , Rank=45   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006408   , Rank=167  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006372   , Rank=65   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006373   , Rank=69   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006448   , Rank=245  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006423   , Rank=193  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006383   , Rank=99   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006448   , Rank=244  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006350   , Rank=20   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006351   , Rank=25   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006434   , Rank=211  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006404   , Rank=159  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006363   , Rank=51   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006407   , Rank=161  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006396   , Rank=130  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006429   , Rank=202  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006375   , Rank=79   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006426   , Rank=196  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006375   , Rank=76   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006438   , Rank=225  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006351   , Rank=24   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006358   , Rank=42   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006440   , Rank=232  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006448   , Rank=247  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006382   , Rank=95   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006383   , Rank=98   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006363   , Rank=50   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006415   , Rank=176  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006435   , Rank=215  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006382   , Rank=94   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006368   , Rank=53   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006389   , Rank=108  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006400   , Rank=145  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006375   , Rank=77   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006371   , Rank=61   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006404   , Rank=158  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006383   , Rank=96   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006401   , Rank=151  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006353   , Rank=30   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006423   , Rank=195  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006351   , Rank=26   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006370   , Rank=59   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006398   , Rank=139  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006408   , Rank=166  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006377   , Rank=81   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006438   , Rank=227  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006404   , Rank=156  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006392   , Rank=117  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006394   , Rank=121  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006418   , Rank=181  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006372   , Rank=67   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006440   , Rank=235  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006363   , Rank=49   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006379   , Rank=85   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006368   , Rank=55   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006437   , Rank=220  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006373   , Rank=70   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006347   , Rank=12   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006426   , Rank=198  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006345   , Rank=10   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006408   , Rank=164  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006400   , Rank=144  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006439   , Rank=230  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006382   , Rank=93   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006389   , Rank=111  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006439   , Rank=231  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006396   , Rank=131  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006358   , Rank=43   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006372   , Rank=66   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006392   , Rank=119  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006436   , Rank=219  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006434   , Rank=209  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006396   , Rank=129  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006345   , Rank=11   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006371   , Rank=63   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006347   , Rank=14   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006436   , Rank=218  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006435   , Rank=214  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006362   , Rank=46   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006398   , Rank=136  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006358   , Rank=41   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006368   , Rank=54   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006435   , Rank=213  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006423   , Rank=194  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006355   , Rank=32   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006429   , Rank=201  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006400   , Rank=147  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006370   , Rank=58   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006395   , Rank=126  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006389   , Rank=109  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006426   , Rank=199  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006381   , Rank=89   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006414   , Rank=175  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006402   , Rank=153  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006370   , Rank=56   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006418   , Rank=182  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006350   , Rank=22   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006371   , Rank=62   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006434   , Rank=210  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006410   , Rank=170  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006379   , Rank=86   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006347   , Rank=15   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006355   , Rank=35   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006362   , Rank=47   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006386   , Rank=103  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006379   , Rank=84   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006410   , Rank=168  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006373   , Rank=71   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006350   , Rank=23   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006414   , Rank=174  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006392   , Rank=118  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006440   , Rank=234  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006389   , Rank=110  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006362   , Rank=44   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006443   , Rank=236  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006434   , Rank=208  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006426   , Rank=197  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006398   , Rank=138  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006395   , Rank=127  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006443   , Rank=239  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006418   , Rank=183  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006395   , Rank=124  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid005518   , Rank=6    ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006410   , Rank=169  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006355   , Rank=34   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006440   , Rank=233  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006397   , Rank=133  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006414   , Rank=173  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006420   , Rank=184  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006430   , Rank=206  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006443   , Rank=238  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006420   , Rank=186  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006415   , Rank=177  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid005518   , Rank=7    ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006398   , Rank=137  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006377   , Rank=82   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006415   , Rank=179  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006429   , Rank=200  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006381   , Rank=90   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006399   , Rank=140  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006407   , Rank=160  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006437   , Rank=222  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid005518   , Rank=5    ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006386   , Rank=101  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006443   , Rank=237  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006430   , Rank=207  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006407   , Rank=162  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006429   , Rank=203  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006430   , Rank=204  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006381   , Rank=88   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006353   , Rank=29   ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006377   , Rank=83   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006407   , Rank=163  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006420   , Rank=185  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006421   , Rank=190  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006421   , Rank=191  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006447   , Rank=240  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006353   , Rank=28   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006386   , Rank=102  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006377   , Rank=80   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006451   , Rank=249  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006421   , Rank=189  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006453   , Rank=254  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006437   , Rank=223  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006451   , Rank=251  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006386   , Rank=100  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006349   , Rank=16   ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006402   , Rank=155  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006394   , Rank=120  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006437   , Rank=221  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006394   , Rank=123  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006402   , Rank=152  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006388   , Rank=104  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006391   , Rank=112  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006349   , Rank=19   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006353   , Rank=31   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006391   , Rank=115  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006381   , Rank=91   ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006391   , Rank=114  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006451   , Rank=250  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006388   , Rank=107  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006388   , Rank=106  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006394   , Rank=122  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006349   , Rank=18   ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006402   , Rank=154  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006388   , Rank=105  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006399   , Rank=141  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006401   , Rank=149  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006401   , Rank=148  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006401   , Rank=150  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006397   , Rank=134  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006399   , Rank=142  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006399   , Rank=143  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006397   , Rank=135  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006397   , Rank=132  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006453   , Rank=252  ,Local=0   ,RPN=4   ,CPUs=0-71     ,GPU=0 ,NIC=cxi0 ,numa_nodes=0     ,first_numa=0  ,other_nodes=     
+Hostname=nid006453   , Rank=253  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+Hostname=nid006453   , Rank=255  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006447   , Rank=243  ,Local=3   ,RPN=4   ,CPUs=216-287  ,GPU=3 ,NIC=cxi3 ,numa_nodes=3     ,first_numa=3  ,other_nodes=     
+Hostname=nid006447   , Rank=242  ,Local=2   ,RPN=4   ,CPUs=144-215  ,GPU=2 ,NIC=cxi2 ,numa_nodes=2     ,first_numa=2  ,other_nodes=     
+Hostname=nid006447   , Rank=241  ,Local=1   ,RPN=4   ,CPUs=72-143   ,GPU=1 ,NIC=cxi1 ,numa_nodes=1     ,first_numa=1  ,other_nodes=     
+
+================================================================================
+NUFFT Scaling Benchmark
+================================================================================
+Number of ranks: 256
+Grid size:       1024^3
+Particles:       8589934592 (8 per point)
+Tolerance:       0.0001
+CSV output:      nufft_scaling_256.csv
+Component CSV:   nufft_components_256.csv
+
+=== Benchmarking NUFFT Type 1 ===
+Grid size:       1024^3
+Total particles: 8589934592
+Local particles: 33554432
+Spread method:   output_focused
+Tolerance:       0.0001
+Warmup runs:     3
+Benchmark runs:  10
+Running warmup...
+Running benchmark...
+
+NUFFT Type 1 Results:
+  Ranks:       256
+  Grid:        1024^3
+  Particles:   8589934592
+  Mean time:   303.867 ms
+  Min time:    300.693 ms
+  Max time:    306.828 ms
+  Stddev:      1.845 ms
+  Throughput:  28268.72 Mpts/s
+
+=== Benchmarking NUFFT Type 2 ===
+Grid size:       1024^3
+Total particles: 8589934592
+Local particles: 33554432
+Gather method:   atomic_sort
+Tolerance:       0.00
+Warmup runs:     3
+Benchmark runs:  10
+Running warmup...
+Running benchmark...
+
+NUFFT Type 2 Results:
+  Ranks:       256
+  Grid:        1024^3
+  Particles:   8589934592
+  Mean time:   159.825 ms
+  Min time:    155.954 ms
+  Max time:    167.187 ms
+  Stddev:      2.993 ms
+  Throughput:  53745.94 Mpts/s
+[CSV] Timings written to nufft_scaling_256.csv
+
+==================================================
+COMPONENT TIMING BREAKDOWN
+==================================================
+
+Type-1 (spreading):
+----------------------------------------
+Scatter (spreading)          159.08 ms
+FFT (forward)                139.72 ms
+Deconvolution                  0.39 ms
+
+Type-2 (interpolation):
+----------------------------------------
+Precorrection                  0.51 ms
+FFT (backward)               244.57 ms
+Gather (interpolation)        13.86 ms
+
+Total:
+----------------------------------------
+Complete Type-1              299.20 ms
+Complete Type-2              265.03 ms
+[CSV] Component timings written to nufft_components_256.csv
+
+================================================================================
+SUMMARY
+================================================================================
+Type 1: 303.867 ms (28268.72 Mpts/s)
+Type 2: 159.82 ms (53745.94 Mpts/s)
+================================================================================

@@ -1,0 +1,82 @@
+
+================================================================================
+NUFFT Scaling Benchmark
+================================================================================
+Number of ranks: 16
+Grid size:       512^3
+Particles:       1073741824 (8 per point)
+Tolerance:       0.0001
+CSV output:      results/nufft_scaling_16.csv
+Component CSV:   results/nufft_components_16.csv
+
+=== Benchmarking NUFFT Type 1 ===
+Grid size:       512^3
+Total particles: 1073741824
+Local particles: 67108864
+Spread method:   output_focused
+Tolerance:       0.0001
+Warmup runs:     3
+Benchmark runs:  10
+Running warmup...
+Running benchmark...
+
+NUFFT Type 1 Results:
+  Ranks:       16
+  Grid:        512^3
+  Particles:   1073741824
+  Mean time:   1910.926 ms
+  Min time:    1887.427 ms
+  Max time:    1931.987 ms
+  Stddev:      15.479 ms
+  Throughput:  561.90 Mpts/s
+
+=== Benchmarking NUFFT Type 2 ===
+Grid size:       512^3
+Total particles: 1073741824
+Local particles: 67108864
+Gather method:   atomic_sort
+Tolerance:       0.00
+Warmup runs:     3
+Benchmark runs:  10
+Running warmup...
+Running benchmark...
+
+NUFFT Type 2 Results:
+  Ranks:       16
+  Grid:        512^3
+  Particles:   1073741824
+  Mean time:   1391.587 ms
+  Min time:    1377.268 ms
+  Max time:    1403.929 ms
+  Stddev:      9.392 ms
+  Throughput:  771.60 Mpts/s
+[CSV] Timings written to results/nufft_scaling_16.csv
+
+==================================================
+COMPONENT TIMING BREAKDOWN
+==================================================
+
+Type-1 (spreading):
+----------------------------------------
+Scatter (spreading)          569.70 ms
+FFT (forward)               1319.00 ms
+Deconvolution                  0.25 ms
+
+Type-2 (interpolation):
+----------------------------------------
+Precorrection                  0.27 ms
+FFT (backward)              1358.61 ms
+Gather (interpolation)        62.78 ms
+
+Total:
+----------------------------------------
+Complete Type-1             1888.97 ms
+Complete Type-2             1421.69 ms
+[CSV] Component timings written to results/nufft_components_16.csv
+
+================================================================================
+SUMMARY
+================================================================================
+Type 1: 1910.926 ms (561.90 Mpts/s)
+Type 2: 1391.59 ms (771.60 Mpts/s)
+================================================================================

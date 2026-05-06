@@ -1,0 +1,83 @@
+libfabric:20814:1773668958::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:20821:1773668958::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:20817:1773668958::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:20819:1773668958::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:20820:1773668958::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:20818:1773668958::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:20816:1773668958::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:20815:1773668958::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+PE 0:  == Node nid006086 has 4 NIC(s) available
+PE 0:  == Node nid006101 has 4 NIC(s) available
+PE 0:  == Node nid006112 has 4 NIC(s) available
+PE 0:  == Node nid006115 has 4 NIC(s) available
+PE 0:  == Node nid006119 has 4 NIC(s) available
+PE 0:  == Node nid006132 has 4 NIC(s) available
+PE 0:  == Node nid006157 has 4 NIC(s) available
+PE 0:  == Node nid006253 has 4 NIC(s) available
+PE 0:  == Node nid006589 has 4 NIC(s) available
+PE 0:  == Node nid006599 has 4 NIC(s) available
+PE 0:  == Node nid006789 has 4 NIC(s) available
+PE 0:  == Node nid006846 has 4 NIC(s) available
+PE 0:  == Node nid006888 has 4 NIC(s) available
+PE 0:  == Node nid006929 has 4 NIC(s) available
+PE 0:  == Node nid006936 has 4 NIC(s) available
+PE 0:  == Node nid006938 has 4 NIC(s) available
+PE 0:  == Node nid007058 has 4 NIC(s) available
+PE 0:  == Node nid007076 has 4 NIC(s) available
+PE 0:  == Node nid007250 has 4 NIC(s) available
+PE 0:  == Node nid007339 has 4 NIC(s) available
+PE 0:  == Node nid007425 has 4 NIC(s) available
+PE 0:  == Node nid007440 has 4 NIC(s) available
+PE 0:  == Node nid007479 has 4 NIC(s) available
+PE 0:  == Node nid007517 has 4 NIC(s) available
+PE 0:  == Node nid007595 has 4 NIC(s) available
+PE 0:  == Node nid007608 has 4 NIC(s) available
+PE 0:  == Node nid007711 has 4 NIC(s) available
+PE 0:  == Node nid007789 has 4 NIC(s) available
+PE 0:  == Node nid007814 has 4 NIC(s) available
+PE 0:  == Node nid007817 has 4 NIC(s) available
+PE 0:  == Node nid007820 has 4 NIC(s) available
+PE 0:  == Node nid007828 has 3 NIC(s) available
+PE 0: 
+MPICH ERROR: All nodes in this job do not contain the same number of NICs. Aborting job as performance may be affected.
+Set MPICH_OFI_SKIP_NIC_SYMMETRY_TEST=1 to bypass this check.
+MPICH ERROR [Rank 0] [job id 16766400.0] [Mon Mar 16 15:49:18 2026] [nid006086] - Abort(-1) (rank 0 in comm 0): Inconsistent number of NICs across the job (Other MPI error)
+
+aborting job:
+Inconsistent number of NICs across the job
+srun: error: nid006086: task 0: Exited with exit code 255
+srun: Terminating StepId=16766400.0
+slurmstepd: error: *** STEP 16766400.0 ON nid006086 CANCELLED AT 2026-03-16T15:49:19 ***
+srun: error: nid007517: tasks 184-191: Terminated
+srun: error: nid007820: tasks 240-247: Terminated
+srun: error: nid007339: tasks 152-159: Terminated
+srun: error: nid006132: tasks 40-47: Terminated
+srun: error: nid006101: tasks 8-15: Terminated
+srun: error: nid006599: tasks 72-79: Terminated
+srun: error: nid007828: tasks 248-255: Terminated
+srun: error: nid007076: tasks 136-143: Terminated
+srun: error: nid007479: tasks 176-183: Terminated
+srun: error: nid006115: tasks 24-31: Terminated
+srun: error: nid006929: tasks 104-111: Terminated
+srun: error: nid006157: tasks 48-55: Terminated
+srun: error: nid007814: tasks 224-231: Terminated
+srun: error: nid007608: tasks 200-207: Terminated
+srun: error: nid007425: tasks 160-167: Terminated
+srun: error: nid007250: tasks 144-151: Terminated
+srun: error: nid006888: tasks 96-103: Terminated
+srun: error: nid006938: tasks 120-127: Terminated
+srun: error: nid006589: tasks 64-71: Terminated
+srun: error: nid007817: tasks 232-239: Terminated
+srun: error: nid007595: tasks 192-199: Terminated
+srun: error: nid007440: tasks 168-175: Terminated
+srun: error: nid006119: tasks 32-39: Terminated
+srun: error: nid007711: tasks 208-215: Terminated
+srun: error: nid006112: tasks 16-23: Terminated
+srun: error: nid006789: tasks 80-87: Terminated
+srun: error: nid006936: tasks 112-119: Terminated
+srun: error: nid007789: tasks 216-223: Terminated
+srun: error: nid006086: tasks 1-7: Terminated
+srun: error: nid006253: tasks 56-63: Terminated
+srun: error: nid007058: tasks 128-135: Terminated
+srun: error: nid006846: tasks 88-95: Terminated
+srun: Force Terminated StepId=16766400.0

@@ -1,0 +1,79 @@
+Message size exceeds range of int
+MPICH ERROR [Rank 0] [job id 2889310.0] [Sat Mar 14 14:59:52 2026] [nid005903] - Abort(-1) (rank 0 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, -1) - process 0
+
+aborting job:
+application called MPI_Abort(MPI_COMM_WORLD, -1) - process 0
+Message size exceeds range of int
+Kokkos::Cuda ERROR: Failed to call Kokkos::Cuda::finalize()
+MPICH ERROR [Rank 1] [job id 2889310.0] [Sat Mar 14 14:59:52 2026] [nid005903] - Abort(-1) (rank 1 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, -1) - process 1
+
+aborting job:
+application called MPI_Abort(MPI_COMM_WORLD, -1) - process 1
+Kokkos::Cuda ERROR: Failed to call Kokkos::Cuda::finalize()
+Message size exceeds range of int
+MPICH ERROR [Rank 2] [job id 2889310.0] [Sat Mar 14 14:59:52 2026] [nid005903] - Abort(-1) (rank 2 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, -1) - process 2
+
+aborting job:
+application called MPI_Abort(MPI_COMM_WORLD, -1) - process 2
+Kokkos::Cuda ERROR: Failed to call Kokkos::Cuda::finalize()
+Message size exceeds range of int
+MPICH ERROR [Rank 3] [job id 2889310.0] [Sat Mar 14 14:59:52 2026] [nid005903] - Abort(-1) (rank 3 in comm 0): application called MPI_Abort(MPI_COMM_WORLD, -1) - process 3
+
+aborting job:
+application called MPI_Abort(MPI_COMM_WORLD, -1) - process 3
+Kokkos::Cuda ERROR: Failed to call Kokkos::Cuda::finalize()
+(GTL DEBUG: 0) cuPointerGetAttribute: (null), (null), line no 327
+Assertion failed in file ../src/mpid/common/cray/cray_ch4_mem_utils.c at line 2082: mpi_errno == MPI_SUCCESS
+(GTL DEBUG: 3) cuPointerGetAttribute: (null), (null), line no 327
+Assertion failed in file ../src/mpid/common/cray/cray_ch4_mem_utils.c at line 2082: mpi_errno == MPI_SUCCESS
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(MPL_backtrace_show+0x18) [0x400028315d98]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1accf68) [0x400027becf68]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x20d1530) [0x4000281f1530]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1770e08) [0x400027890e08]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x17d72d4) [0x4000278f72d4]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x17040b4) [0x4000278240b4]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1a74dc) [0x4000262c74dc]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1a7660) [0x4000262c7660]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1938e14) [0x400027a58e14]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x192c9a4) [0x400027a4c9a4]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x17f59b8) [0x4000279159b8]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1b0aa08) [0x400027c2aa08]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(MPI_Finalize+0x68) [0x4000266710fc]
+/capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/build/src/libippl.so(_ZN4ippl3mpi11EnvironmentD1Ev+0x1c) [0x400022746e6c]
+/capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/build/test/FFT/PaperBenchmarks/BenchmarkNUFFT(_ZNSt10unique_ptrIN4ippl3mpi11EnvironmentESt14default_deleteIS2_EED1Ev+0x1c) [0x43c05c]
+/lib64/libc.so.6(__cxa_finalize+0x168) [0x40003a1ba910]
+/capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/build/src/libippl.so(+0x1ef00) [0x40002272ef00]
+/lib/ld-linux-aarch64.so.1(+0xee54) [0x40002269ee54]
+/lib64/libc.so.6(+0x3a2fc) [0x40003a1ba2fc]
+/lib64/libc.so.6(+0x3a434) [0x40003a1ba434]
+/user-environment/linux-neoverse_v2/cray-pmi-6.1.15-r3hwks4mgj4wcw4l6g3ndqi3beo5d3tw/lib/libpmi.so.0(PMI2_Finalize+0) [0x40003a7e91e4]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(MPL_backtrace_show+0x18) [0x40001a185d98]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1accf68) [0x400019a5cf68]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x20d1530) [0x40001a061530]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1770e08) [0x400019700e08]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x17d72d4) [0x4000197672d4]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x17040b4) [0x4000196940b4]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1a74dc) [0x4000181374dc]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1a7660) [0x400018137660]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1938e14) [0x4000198c8e14]
+MPICH ERROR [Rank 0] [job id 2889310.0] [Sat Mar 14 14:59:52 2026] [nid005903] - Abort(1): Internal error
+
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x192c9a4) [0x4000198bc9a4]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x17f59b8) [0x4000197859b8]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(+0x1b0aa08) [0x400019a9aa08]
+/user-environment/env/default/lib/libmpi_gnu_123.so.12(MPI_Finalize+0x68) [0x4000184e10fc]
+/capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/build/src/libippl.so(_ZN4ippl3mpi11EnvironmentD1Ev+0x1c) [0x4000145b6e6c]
+/capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/build/test/FFT/PaperBenchmarks/BenchmarkNUFFT(_ZNSt10unique_ptrIN4ippl3mpi11EnvironmentESt14default_deleteIS2_EED1Ev+0x1c) [0x43c05c]
+/lib64/libc.so.6(__cxa_finalize+0x168) [0x40002c02a910]
+/capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/build/src/libippl.so(+0x1ef00) [0x40001459ef00]
+/lib/ld-linux-aarch64.so.1(+0xee54) [0x40001450ee54]
+/lib64/libc.so.6(+0x3a2fc) [0x40002c02a2fc]
+/lib64/libc.so.6(+0x3a434) [0x40002c02a434]
+/user-environment/linux-neoverse_v2/cray-pmi-6.1.15-r3hwks4mgj4wcw4l6g3ndqi3beo5d3tw/lib/libpmi.so.0(PMI2_Finalize+0) [0x40002c6591e4]
+MPICH ERROR [Rank 3] [job id 2889310.0] [Sat Mar 14 14:59:52 2026] [nid005903] - Abort(1): Internal error
+
+srun: error: nid005903: tasks 0,3: Exited with exit code 1
+srun: Terminating StepId=2889310.0
+[2026-03-14T14:59:52.843] error: *** STEP 2889310.0 ON nid005903 CANCELLED AT 2026-03-14T14:59:52 DUE TO TASK FAILURE ***
+srun: error: nid005903: tasks 1-2: Killed
+srun: Force Terminated StepId=2889310.0

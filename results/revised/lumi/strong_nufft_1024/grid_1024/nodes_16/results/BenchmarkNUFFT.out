@@ -1,0 +1,21 @@
+
+================================================================================
+NUFFT Scaling Benchmark
+================================================================================
+Number of ranks: 128
+Grid size:       1024^3
+Particles:       8589934592 (8 per point)
+Tolerance:       0.0001
+CSV output:      nufft_scaling_128.csv
+Component CSV:   nufft_components_128.csv
+
+=== Benchmarking NUFFT Type 1 ===
+Grid size:       1024^3
+Total particles: 8589934592
+Local particles: 67108864
+Spread method:   output_focused
+Tolerance:       0.0001
+Warmup runs:     3
+Benchmark runs:  10
+Running warmup...
+Running benchmark...

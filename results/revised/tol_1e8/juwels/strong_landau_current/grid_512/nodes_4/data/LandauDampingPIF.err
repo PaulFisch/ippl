@@ -1,0 +1,596 @@
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.154 GiB (label="temp_storage").
+[jwb0353:2896636] *** Process received signal ***
+[jwb0353:2896636] Signal: Aborted (6)
+[jwb0353:2896636] Signal code:  (-6)
+[jwb0353:2896636] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14ceaed43c30]
+[jwb0353:2896636] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14ceaed9102c]
+[jwb0353:2896636] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14ceaed43b86]
+[jwb0353:2896636] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14ceaed2d873]
+[jwb0353:2896636] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14ceaefe8c3d]
+[jwb0353:2896636] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14ceaeffa14a]
+[jwb0353:2896636] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14ceaefe87e9]
+[jwb0353:2896636] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14ceaeffa3c7]
+[jwb0353:2896636] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x14ceaf488e05]
+[jwb0353:2896636] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x14ceaf49b319]
+[jwb0353:2896636] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x14ceaf49b395]
+[jwb0353:2896636] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x14ceaf49d260]
+[jwb0353:2896636] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0353:2896636] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0353:2896636] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0353:2896636] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0353:2896636] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0353:2896636] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0353:2896636] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0353:2896636] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0353:2896636] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0353:2896636] [21] /usr/lib64/libc.so.6(+0x2a610)[0x14ceaed2e610]
+[jwb0353:2896636] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14ceaed2e6c0]
+[jwb0353:2896636] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0353:2896636] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.154 GiB (label="temp_storage").
+[jwb0353:2896637] *** Process received signal ***
+[jwb0353:2896637] Signal: Aborted (6)
+[jwb0353:2896637] Signal code:  (-6)
+[jwb0353:2896637] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14b564959c30]
+[jwb0353:2896637] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14b5649a702c]
+[jwb0353:2896637] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14b564959b86]
+[jwb0353:2896637] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14b564943873]
+[jwb0353:2896637] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14b564bfec3d]
+[jwb0353:2896637] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14b564c1014a]
+[jwb0353:2896637] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14b564bfe7e9]
+[jwb0353:2896637] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14b564c103c7]
+[jwb0353:2896637] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x14b56509ee05]
+[jwb0353:2896637] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x14b5650b1319]
+[jwb0353:2896637] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x14b5650b1395]
+[jwb0353:2896637] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x14b5650b3260]
+[jwb0353:2896637] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0353:2896637] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0353:2896637] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0353:2896637] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0353:2896637] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0353:2896637] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0353:2896637] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0353:2896637] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0353:2896637] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0353:2896637] [21] /usr/lib64/libc.so.6(+0x2a610)[0x14b564944610]
+[jwb0353:2896637] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14b5649446c0]
+[jwb0353:2896637] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0353:2896637] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.083 GiB (label="temp_storage").
+[jwb0356:673115] *** Process received signal ***
+[jwb0356:673115] Signal: Aborted (6)
+[jwb0356:673115] Signal code:  (-6)
+[jwb0356:673115] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14fba1c08c30]
+[jwb0356:673115] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14fba1c5602c]
+[jwb0356:673115] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14fba1c08b86]
+[jwb0356:673115] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14fba1bf2873]
+[jwb0356:673115] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14fba1eadc3d]
+[jwb0356:673115] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14fba1ebf14a]
+[jwb0356:673115] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14fba1ead7e9]
+[jwb0356:673115] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14fba1ebf3c7]
+[jwb0356:673115] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x14fba234de05]
+[jwb0356:673115] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x14fba2360319]
+[jwb0356:673115] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x14fba2360395]
+[jwb0356:673115] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x14fba2362260]
+[jwb0356:673115] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0356:673115] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0356:673115] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0356:673115] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0356:673115] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0356:673115] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0356:673115] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0356:673115] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0356:673115] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0356:673115] [21] /usr/lib64/libc.so.6(+0x2a610)[0x14fba1bf3610]
+[jwb0356:673115] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14fba1bf36c0]
+[jwb0356:673115] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0356:673115] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.083 GiB (label="temp_storage").
+[jwb0353:2896638] *** Process received signal ***
+[jwb0353:2896638] Signal: Aborted (6)
+[jwb0353:2896638] Signal code:  (-6)
+[jwb0353:2896638] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14904558bc30]
+[jwb0353:2896638] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1490455d902c]
+[jwb0353:2896638] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14904558bb86]
+[jwb0353:2896638] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x149045575873]
+[jwb0353:2896638] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x149045830c3d]
+[jwb0353:2896638] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14904584214a]
+[jwb0353:2896638] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1490458307e9]
+[jwb0353:2896638] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1490458423c7]
+[jwb0353:2896638] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x149045cd0e05]
+[jwb0353:2896638] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x149045ce3319]
+[jwb0353:2896638] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x149045ce3395]
+[jwb0353:2896638] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x149045ce5260]
+[jwb0353:2896638] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0353:2896638] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0353:2896638] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0353:2896638] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0353:2896638] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0353:2896638] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0353:2896638] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0353:2896638] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0353:2896638] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0353:2896638] [21] /usr/lib64/libc.so.6(+0x2a610)[0x149045576610]
+[jwb0353:2896638] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1490455766c0]
+[jwb0353:2896638] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0353:2896638] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.154 GiB (label="temp_storage").
+[jwb0357:1430513] *** Process received signal ***
+[jwb0357:1430513] Signal: Aborted (6)
+[jwb0357:1430513] Signal code:  (-6)
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.083 GiB (label="temp_storage").
+[jwb0357:1430516] *** Process received signal ***
+[jwb0357:1430516] Signal: Aborted (6)
+[jwb0357:1430516] Signal code:  (-6)
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.083 GiB (label="temp_storage").
+[jwb0353:2896639] *** Process received signal ***
+[jwb0353:2896639] Signal: Aborted (6)
+[jwb0353:2896639] Signal code:  (-6)
+[jwb0357:1430513] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14906bb4bc30]
+[jwb0357:1430513] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14906bb9902c]
+[jwb0357:1430513] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14906bb4bb86]
+[jwb0357:1430513] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14906bb35873]
+[jwb0357:1430513] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14906bdf0c3d]
+[jwb0357:1430513] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14906be0214a]
+[jwb0357:1430513] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14906bdf07e9]
+[jwb0357:1430513] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14906be023c7]
+[jwb0357:1430513] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x14906c290e05]
+[jwb0357:1430513] [ 9] /pterminate called after throwing an instance of 'std::runtime_error'
+/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x14906c2a3319]
+[jwb0357:1430513] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x14906c2a3395]
+[jwb0357:1430513] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x14906c2a5260]
+[jwb0357:1430513] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0357:1430513] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.083 GiB (label="temp_storage").
+[jwb0357:1430513] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81c[jwb0356:673116] *** Process received signal ***
+[jwb0356:673116] Signal: Aborted (6)
+[jwb0356:673116] Signal code:  (-6)
+b]
+[jwb0357:1430516] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x148db5068c30]
+[jwb0357:1430516] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x148db50b602c]
+[jwb0357:1430516] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x148db5068b86]
+[jwb0357:1430516] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x148db5052873]
+[jwb0357:1430516] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x148db530dc3d]
+[jwb0357:1430516] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x148db531f14a]
+[jwb0357:1430516] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x148db530d7e9]
+[jwb0357:1430516] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x148db531f3c7]
+[jwb0357:1430516] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x148db57ade05]
+[jwb0357:1430516] [ 9] /p[jwb0357:1430513] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0357:1430513] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0357:1430513] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0357:1430513] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0357:1430513] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0357:1430513] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0353:2896639] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14fa62bb7c30]
+[jwb0353:2896639] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14fa62c0502c]
+[jwb0353:2896639] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14fa62bb7b86]
+[jwb0353:2896639] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14fa62ba1873]
+[jwb0353:2896639] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14fa62e5cc3d]
+[jwb0353:2896639] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14fa62e6e14a]
+[jwb0353:2896639] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14fa62e5c7e9]
+[jwb0353:2896639] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14fa62e6e3c7]
+[jwb0353:2896639] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x14fa632fce05]
+/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x148db57c0319]
+[jwb0357:1430516] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x148db57c0395]
+[jwb0357:1430516] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x148db57c2260]
+[jwb0357:1430516] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0357:1430516] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0353:2896639] [ 9] /p[jwb0357:1430516] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81c/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x14fa6330f319]
+[jwb0353:2896639] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x14fa6330f395]
+[jwb0353:2896639] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x14fa63311260]
+[jwb0353:2896639] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0353:2896639] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0357:1430513] [21] /usr/lib64/libc.so.6(+0x2a610)[0x14906bb36610]
+[jwb0357:1430513] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14906bb366c0]
+[jwb0357:1430513] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0357:1430513] *** End of error message ***
+[jwb0353:2896639] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0357:1430516] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0357:1430516] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0357:1430516] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0357:1430516] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0357:1430516] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0357:1430516] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0357:1430516] [21] /usr/lib64/libc.so.6(+0x2a610)[0x148db5053610]
+[jwb0357:1430516] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x148db50536c0]
+[jwb0357:1430516] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+b]
+[jwb0357:1430516] *** End of error message *[jwb0353:2896639] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0353:2896639] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0353:2896639] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+**
+[jwb0353:2896639] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0353:2896639] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0353:2896639] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0353:2896639] [21] /usr/lib64/libc.so.6(+0x2a610)[0x14fa62ba2610]
+[jwb0353:2896639] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14fa62ba26c0]
+[jwb0353:2896639] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0353:2896639] *** End of error message ***
+[jwb0356:673116] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x154cf1c52c30]
+[jwb0356:673116] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x154cf1ca002c]
+[jwb0356:673116] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x154cf1c52b86]
+[jwb0356:673116] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x154cf1c3c873]
+[jwb0356:673116] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x154cf1ef7c3d]
+[jwb0356:673116] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x154cf1f0914a]
+[jwb0356:673116] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x154cf1ef77e9]
+[jwb0356:673116] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x154cf1f093c7]
+[jwb0356:673116] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x154cf2397e05]
+[jwb0356:673116] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x154cf23aa319]
+[jwb0356:673116] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x154cf23aa395]
+[jwb0356:673116] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x154cf23ac260]
+[jwb0356:673116] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0356:673116] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0356:673116] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0356:673116] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0356:673116] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0356:673116] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0356:673116] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0356:673116] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0356:673116] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0356:673116] [21] /usr/lib64/libc.so.6(+0x2a610)[0x154cf1c3d610]
+[jwb0356:673116] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x154cf1c3d6c0]
+[jwb0356:673116] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0356:673116] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.083 GiB (label="temp_storage").
+[jwb0377:1087326] *** Process received signal ***
+[jwb0377:1087326] Signal: Aborted (6)
+[jwb0377:1087326] Signal code:  (-6)
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.154 GiB (label="temp_storage").
+[jwb0377:1087329] *** Process received signal ***
+[jwb0377:1087329] Signal: Aborted (6)
+[jwb0377:1087329] Signal code:  (-6)
+[jwb0377:1087326] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x15123096bc30]
+[jwb0377:1087326] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1512309b902c]
+[jwb0377:1087326] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x15123096bb86]
+[jwb0377:1087326] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x151230955873]
+[jwb0377:1087326] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x151230c10c3d]
+[jwb0377:1087326] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x151230c2214a]
+[jwb0377:1087326] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x151230c107e9]
+[jwb0377:1087326] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x151230c223c7]
+[jwb0377:1087326] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x1512310b0e05]
+[jwb0377:1087326] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x1512310c3319]
+[jwb0377:1087326] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x1512310c3395]
+[jwb0377:1087326] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x1512310c5260]
+[jwb0377:1087326] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0377:1087326] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0377:1087326] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0377:1087326] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0377:1087326] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0377:1087326] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0377:1087326] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0377:1087326] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0377:1087326] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0377:1087326] [21] /usr/lib64/libc.so.6(+0x2a610)[0x151230956610]
+[jwb0377:1087326] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1512309566c0]
+[jwb0377:1087326] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0377:1087326] *** End of error message ***
+[jwb0377:1087329] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14cff4037c30]
+[jwb0377:1087329] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14cff408502c]
+[jwb0377:1087329] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14cff4037b86]
+[jwb0377:1087329] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14cff4021873]
+[jwb0377:1087329] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14cff42dcc3d]
+[jwb0377:1087329] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14cff42ee14a]
+[jwb0377:1087329] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14cff42dc7e9]
+[jwb0377:1087329] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14cff42ee3c7]
+[jwb0377:1087329] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x14cff477ce05]
+[jwb0377:1087329] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x14cff478f319]
+[jwb0377:1087329] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x14cff478f395]
+[jwb0377:1087329] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x14cff4791260]
+[jwb0377:1087329] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0377:1087329] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0377:1087329] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0377:1087329] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0377:1087329] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0377:1087329] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0377:1087329] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0377:1087329] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0377:1087329] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0377:1087329] [21] /usr/lib64/libc.so.6(+0x2a610)[0x14cff4022610]
+[jwb0377:1087329] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14cff40226c0]
+[jwb0377:1087329] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0377:1087329] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.083 GiB (label="temp_storage").
+[jwb0357:1430514] *** Process received signal ***
+[jwb0357:1430514] Signal: Aborted (6)
+[jwb0357:1430514] Signal code:  (-6)
+[jwb0357:1430514] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14edb0a87c30]
+[jwb0357:1430514] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14edb0ad502c]
+[jwb0357:1430514] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14edb0a87b86]
+[jwb0357:1430514] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14edb0a71873]
+[jwb0357:1430514] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14edb0d2cc3d]
+[jwb0357:1430514] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14edb0d3e14a]
+[jwb0357:1430514] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14edb0d2c7e9]
+[jwb0357:1430514] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14edb0d3e3c7]
+[jwb0357:1430514] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x14edb11cce05]
+[jwb0357:1430514] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x14edb11df319]
+[jwb0357:1430514] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x14edb11df395]
+[jwb0357:1430514] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x14edb11e1260]
+[jwb0357:1430514] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0357:1430514] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0357:1430514] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0357:1430514] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0357:1430514] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0357:1430514] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0357:1430514] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0357:1430514] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0357:1430514] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0357:1430514] [21] /usr/lib64/libc.so.6(+0x2a610)[0x14edb0a72610]
+[jwb0357:1430514] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14edb0a726c0]
+[jwb0357:1430514] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0357:1430514] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.083 GiB (label="temp_storage").
+[jwb0377:1087328] *** Process received signal ***
+[jwb0377:1087328] Signal: Aborted (6)
+[jwb0377:1087328] Signal code:  (-6)
+[jwb0377:1087328] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14c288c1fc30]
+[jwb0377:1087328] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14c288c6d02c]
+[jwb0377:1087328] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14c288c1fb86]
+[jwb0377:1087328] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14c288c09873]
+[jwb0377:1087328] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14c288ec4c3d]
+[jwb0377:1087328] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14c288ed614a]
+[jwb0377:1087328] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14c288ec47e9]
+[jwb0377:1087328] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14c288ed63c7]
+[jwb0377:1087328] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x14c289364e05]
+[jwb0377:1087328] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x14c289377319]
+[jwb0377:1087328] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x14c289377395]
+[jwb0377:1087328] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x14c289379260]
+[jwb0377:1087328] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0377:1087328] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0377:1087328] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0377:1087328] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0377:1087328] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0377:1087328] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0377:1087328] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0377:1087328] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0377:1087328] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0377:1087328] [21] /usr/lib64/libc.so.6(+0x2a610)[0x14c288c0a610]
+[jwb0377:1087328] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14c288c0a6c0]
+[jwb0377:1087328] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0377:1087328] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.154 GiB (label="temp_storage").
+[jwb0356:673118] *** Process received signal ***
+[jwb0356:673118] Signal: Aborted (6)
+[jwb0356:673118] Signal code:  (-6)
+[jwb0356:673118] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x15483019fc30]
+[jwb0356:673118] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1548301ed02c]
+[jwb0356:673118] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x15483019fb86]
+[jwb0356:673118] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x154830189873]
+[jwb0356:673118] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x154830444c3d]
+[jwb0356:673118] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x15483045614a]
+[jwb0356:673118] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1548304447e9]
+[jwb0356:673118] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1548304563c7]
+[jwb0356:673118] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x1548308e4e05]
+[jwb0356:673118] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x1548308f7319]
+[jwb0356:673118] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x1548308f7395]
+[jwb0356:673118] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x1548308f9260]
+[jwb0356:673118] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0356:673118] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0356:673118] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0356:673118] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0356:673118] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0356:673118] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0356:673118] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0356:673118] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0356:673118] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0356:673118] [21] /usr/lib64/libc.so.6(+0x2a610)[0x15483018a610]
+[jwb0356:673118] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x15483018a6c0]
+[jwb0356:673118] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0356:673118] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.154 GiB (label="temp_storage").
+[jwb0356:673117] *** Process received signal ***
+[jwb0356:673117] Signal: Aborted (6)
+[jwb0356:673117] Signal code:  (-6)
+[jwb0356:673117] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14cc53ea3c30]
+[jwb0356:673117] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14cc53ef102c]
+[jwb0356:673117] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14cc53ea3b86]
+[jwb0356:673117] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14cc53e8d873]
+[jwb0356:673117] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14cc54148c3d]
+[jwb0356:673117] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14cc5415a14a]
+[jwb0356:673117] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14cc541487e9]
+[jwb0356:673117] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14cc5415a3c7]
+[jwb0356:673117] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x14cc545e8e05]
+[jwb0356:673117] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x14cc545fb319]
+[jwb0356:673117] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x14cc545fb395]
+[jwb0356:673117] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x14cc545fd260]
+[jwb0356:673117] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0356:673117] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0356:673117] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0356:673117] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0356:673117] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0356:673117] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0356:673117] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0356:673117] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0356:673117] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0356:673117] [21] /usr/lib64/libc.so.6(+0x2a610)[0x14cc53e8e610]
+[jwb0356:673117] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14cc53e8e6c0]
+[jwb0356:673117] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0356:673117] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.154 GiB (label="temp_storage").
+[jwb0377:1087327] *** Process received signal ***
+[jwb0377:1087327] Signal: Aborted (6)
+[jwb0377:1087327] Signal code:  (-6)
+[jwb0377:1087327] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14bb95831c30]
+[jwb0377:1087327] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14bb9587f02c]
+[jwb0377:1087327] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14bb95831b86]
+[jwb0377:1087327] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14bb9581b873]
+[jwb0377:1087327] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14bb95ad6c3d]
+[jwb0377:1087327] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14bb95ae814a]
+[jwb0377:1087327] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14bb95ad67e9]
+[jwb0377:1087327] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14bb95ae83c7]
+[jwb0377:1087327] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x14bb95f76e05]
+[jwb0377:1087327] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x14bb95f89319]
+[jwb0377:1087327] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x14bb95f89395]
+[jwb0377:1087327] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x14bb95f8b260]
+[jwb0377:1087327] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0377:1087327] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0377:1087327] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0377:1087327] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0377:1087327] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0377:1087327] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0377:1087327] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0377:1087327] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0377:1087327] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0377:1087327] [21] /usr/lib64/libc.so.6(+0x2a610)[0x14bb9581c610]
+[jwb0377:1087327] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14bb9581c6c0]
+[jwb0377:1087327] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0377:1087327] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos ERROR: Cuda memory space failed to allocate 1.154 GiB (label="temp_storage").
+[jwb0357:1430515] *** Process received signal ***
+[jwb0357:1430515] Signal: Aborted (6)
+[jwb0357:1430515] Signal code:  (-6)
+[jwb0357:1430515] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1461c1b2ec30]
+[jwb0357:1430515] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1461c1b7c02c]
+[jwb0357:1430515] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1461c1b2eb86]
+[jwb0357:1430515] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1461c1b18873]
+[jwb0357:1430515] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1461c1dd3c3d]
+[jwb0357:1430515] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1461c1de514a]
+[jwb0357:1430515] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1461c1dd37e9]
+[jwb0357:1430515] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1461c1de53c7]
+[jwb0357:1430515] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl15throw_bad_allocESt17basic_string_viewIcSt11char_traitsIcEEmS4_+0x115)[0x1461c2273e05]
+[jwb0357:1430515] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace13impl_allocateEPKcmm28Kokkos_Profiling_SpaceHandle+0x219)[0x1461c2286319]
+[jwb0357:1430515] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZNK6Kokkos9CudaSpace8allocateEPKcmm+0x65)[0x1461c2286395]
+[jwb0357:1430515] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/_deps/kokkos-build/core/src/libkokkoscore.so.5.0(_ZN6Kokkos4Impl44HostInaccessibleSharedAllocationRecordCommonINS_9CudaSpaceEEC2ERKS2_RKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEmPFvPNS0_22SharedAllocationRecordIvvEEE+0x30)[0x1461c2288260]
+[jwb0357:1430515] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x49cd3a]
+[jwb0357:1430515] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4d0480]
+[jwb0357:1430515] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x4e81cb]
+[jwb0357:1430515] [15] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5bee4d]
+[jwb0357:1430515] [16] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6093a7]
+[jwb0357:1430515] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x6095b5]
+[jwb0357:1430515] [18] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60c8d1]
+[jwb0357:1430515] [19] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x60d25b]
+[jwb0357:1430515] [20] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423759]
+[jwb0357:1430515] [21] /usr/lib64/libc.so.6(+0x2a610)[0x1461c1b19610]
+[jwb0357:1430515] [22] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1461c1b196c0]
+[jwb0357:1430515] [23] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0357:1430515] *** End of error message ***
+srun: error: jwb0356: tasks 4-7: Aborted (core dumped)
+srun: error: jwb0377: tasks 12-15: Aborted (core dumped)
+srun: error: jwb0357: tasks 8-11: Aborted (core dumped)
+srun: error: jwb0353: tasks 0-3: Aborted (core dumped)

@@ -1,0 +1,27 @@
+libfabric:23362:1773669075::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:23365:1773669075::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:23358:1773669075::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:23359:1773669075::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:23361:1773669075::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:23364:1773669075::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:23360:1773669075::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+libfabric:23363:1773669075::cxi:core:cxip_query_if_list():548<warn> nid007828: CXI retry handler not running for device: cxi1
+PE 0:  == Node nid007814 has 4 NIC(s) available
+PE 0:  == Node nid007817 has 4 NIC(s) available
+PE 0:  == Node nid007820 has 4 NIC(s) available
+PE 0:  == Node nid007828 has 3 NIC(s) available
+PE 0: 
+MPICH ERROR: All nodes in this job do not contain the same number of NICs. Aborting job as performance may be affected.
+Set MPICH_OFI_SKIP_NIC_SYMMETRY_TEST=1 to bypass this check.
+MPICH ERROR [Rank 0] [job id 16766397.0] [Mon Mar 16 15:51:15 2026] [nid007814] - Abort(-1) (rank 0 in comm 0): Inconsistent number of NICs across the job (Other MPI error)
+
+aborting job:
+Inconsistent number of NICs across the job
+srun: error: nid007814: task 0: Exited with exit code 255
+srun: Terminating StepId=16766397.0
+slurmstepd: error: *** STEP 16766397.0 ON nid007814 CANCELLED AT 2026-03-16T15:51:16 ***
+srun: error: nid007820: tasks 16-23: Terminated
+srun: error: nid007817: tasks 8-15: Terminated
+srun: error: nid007828: tasks 24-31: Terminated
+srun: error: nid007814: tasks 1-7: Terminated
+srun: Force Terminated StepId=16766397.0

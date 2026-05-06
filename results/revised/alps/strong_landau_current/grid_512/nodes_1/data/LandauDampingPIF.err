@@ -1,0 +1,54 @@
+cudaDeviceSynchronize() error( cudaErrorIllegalAddress): an illegal memory access was encountered /capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/build/_deps/kokkos-src/core/src/Cuda/Kokkos_Cuda_Instance.cpp:146
+Backtrace:
+[0x4000281019c8] Kokkos::Impl::save_stacktrace()
+[0x4000280d5fe8] Kokkos::Impl::host_abort(char const*)
+[0x400028108b38] Kokkos::Impl::cuda_internal_error_abort(cudaError, char const*, char const*, int)
+[0x400028108c44] Kokkos::Impl::cuda_device_synchronize(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+[0x4000280ed07c] Kokkos::Impl::ExecSpaceManager::static_fence(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+[0x5d4fb8] 
+[0x4d07a0] 
+[0x41bb20] 
+[0x400028603fa0] __libc_start_main
+[0x41d7d8] 
+cudaDeviceSynchronize() error( cudaErrorIllegalAddress): an illegal memory access was encountered /capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/build/_deps/kokkos-src/core/src/Cuda/Kokkos_Cuda_Instance.cpp:146
+Backtrace:
+[0x4000499619c8] Kokkos::Impl::save_stacktrace()
+[0x400049935fe8] Kokkos::Impl::host_abort(char const*)
+[0x400049968b38] Kokkos::Impl::cuda_internal_error_abort(cudaError, char const*, char const*, int)
+[0x400049968c44] Kokkos::Impl::cuda_device_synchronize(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+[0x40004994d07c] Kokkos::Impl::ExecSpaceManager::static_fence(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+[0x5d4fb8] 
+[0x4d07a0] 
+[0x41bb20] 
+[0x400049e63fa0] __libc_start_main
+[0x41d7d8] 
+cudaDeviceSynchronize() error( cudaErrorIllegalAddress): an illegal memory access was encountered /capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/build/_deps/kokkos-src/core/src/Cuda/Kokkos_Cuda_Instance.cpp:146
+Backtrace:
+[0x40004fa919c8] Kokkos::Impl::save_stacktrace()
+[0x40004fa65fe8] Kokkos::Impl::host_abort(char const*)
+[0x40004fa98b38] Kokkos::Impl::cuda_internal_error_abort(cudaError, char const*, char const*, int)
+[0x40004fa98c44] Kokkos::Impl::cuda_device_synchronize(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+[0x40004fa7d07c] Kokkos::Impl::ExecSpaceManager::static_fence(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+[0x5d4fb8] 
+[0x4d07a0] 
+[0x41bb20] 
+[0x40004ff93fa0] __libc_start_main
+[0x41d7d8] 
+cudaDeviceSynchronize() error( cudaErrorIllegalAddress): an illegal memory access was encountered /capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/build/_deps/kokkos-src/core/src/Cuda/Kokkos_Cuda_Instance.cpp:146
+Backtrace:
+[0x400052d819c8] Kokkos::Impl::save_stacktrace()
+[0x400052d55fe8] Kokkos::Impl::host_abort(char const*)
+[0x400052d88b38] Kokkos::Impl::cuda_internal_error_abort(cudaError, char const*, char const*, int)
+[0x400052d88c44] Kokkos::Impl::cuda_device_synchronize(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+[0x400052d6d07c] Kokkos::Impl::ExecSpaceManager::static_fence(std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&)
+[0x5d4fb8] 
+[0x4d07a0] 
+[0x41bb20] 
+[0x400053283fa0] __libc_start_main
+[0x41d7d8] 
+/capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/mpi_wrapper.sh: line 262: 57321 Aborted                 (core dumped) "$@"
+/capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/mpi_wrapper.sh: line 262: 57306 Aborted                 (core dumped) "$@"
+/capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/mpi_wrapper.sh: line 262: 57314 Aborted                 (core dumped) "$@"
+/capstor/scratch/cscs/pfischil/ippl_singlenode/ippl/mpi_wrapper.sh: line 262: 57316 Aborted                 (core dumped) "$@"
+srun: error: nid005783: tasks 0-3: Exited with exit code 134
+srun: Terminating StepId=2889296.0

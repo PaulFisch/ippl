@@ -1,0 +1,209 @@
+LandauDampingPIF{0}> Landau damping
+LandauDampingPIF{0}> nt 10 Np= 8589934592 Fourier modes = ( 1024 , 1024 , 1024 )
+LandauDampingPIF{0}> particles created and initial conditions assigned 
+LandauDampingPIF{0}> After init shape function 
+LandauDampingPIF{0}> After init NUFFT 
+LandauDampingPIF{0}> After update 
+[Scatter] Auto-select: OutputFocused (tp=747.1 Mpts/s) for w=5 rho=1.13 (was Atomic)
+[Scatter] Cache hit: method=OutputFocused w=5 cx=1 rho=1.13 -> tile=(5,3,5) team=128 osub=1 zb=29 tp=747.1 Mpts/s (rho_csv=1.25)
+LandauDampingPIF{0}> After scatter 
+LandauDampingPIF{0}> After gather 
+LandauDampingPIF{0}> Starting iterations ...
+LandauDampingPIF{0}> Finished time step: -2 time: 0.0122718
+LandauDampingPIF{0}> Finished time step: -1 time: 0.0245437
+LandauDampingPIF{0}> Finished time step: 0 time: 0.0368155
+LandauDampingPIF{0}> Finished time step: 1 time: 0.0490874
+LandauDampingPIF{0}> Finished time step: 2 time: 0.0613592
+LandauDampingPIF{0}> Finished time step: 3 time: 0.0736311
+LandauDampingPIF{0}> Finished time step: 4 time: 0.0859029
+LandauDampingPIF{0}> Finished time step: 5 time: 0.0981748
+LandauDampingPIF{0}> Finished time step: 6 time: 0.110447
+LandauDampingPIF{0}> Finished time step: 7 time: 0.122718
+LandauDampingPIF{0}> Finished time step: 8 time: 0.13499
+LandauDampingPIF{0}> Finished time step: 9 time: 0.147262
+LandauDampingPIF{0}> Finished time step: 10 time: 0.159534
+LandauDampingPIF{0}> LandauDamping: End.
+Timings{0}> ---------------------------------------------
+Timings{0}>      Timing results for 256 rank(s):
+Timings{0}> ---------------------------------------------
+Timings{0}> mainTimer........... Wall tot =    22.0635
+Timings{0}> 
+Timings{0}> particlesCreation... Wall max =          0
+Timings{0}>                      Wall avg =          0
+Timings{0}>                      Wall min =          0
+Timings{0}> 
+Timings{0}> dumpData............ Wall max =   0.180594
+Timings{0}>                      Wall avg =   0.133526
+Timings{0}>                      Wall min =   0.101031
+Timings{0}> 
+Timings{0}> kick................ Wall max =  0.0408162
+Timings{0}>                      Wall avg =  0.0360534
+Timings{0}>                      Wall min =  0.0317258
+Timings{0}> 
+Timings{0}> drift............... Wall max =  0.0200634
+Timings{0}>                      Wall avg =  0.0177863
+Timings{0}>                      Wall min =  0.0157155
+Timings{0}> 
+Timings{0}> particleBC.......... Wall max =  0.0406204
+Timings{0}>                      Wall avg =  0.0360934
+Timings{0}>                      Wall min =  0.0319059
+Timings{0}> 
+Timings{0}> initializeShapeFunc. Wall max =          0
+Timings{0}>                      Wall avg =          0
+Timings{0}>                      Wall min =          0
+Timings{0}> 
+Timings{0}> findInternal........ Wall max =          0
+Timings{0}>                      Wall avg =          0
+Timings{0}>                      Wall min =          0
+Timings{0}> 
+Timings{0}> findPeriodic........ Wall max =          0
+Timings{0}>                      Wall avg =          0
+Timings{0}>                      Wall min =          0
+Timings{0}> 
+Timings{0}> NativeNUFFT::init... Wall max =          0
+Timings{0}>                      Wall avg =          0
+Timings{0}>                      Wall min =          0
+Timings{0}> 
+Timings{0}> updateParticle...... Wall max =    0.16003
+Timings{0}>                      Wall avg =   0.154422
+Timings{0}>                      Wall min =    0.14909
+Timings{0}> 
+Timings{0}> locateParticles..... Wall max =  0.0224634
+Timings{0}>                      Wall avg =  0.0186244
+Timings{0}>                      Wall min =  0.0167237
+Timings{0}> 
+Timings{0}> sendPreprocess...... Wall max =   0.025918
+Timings{0}>                      Wall avg =  0.0155997
+Timings{0}>                      Wall min = 0.00262223
+Timings{0}> 
+Timings{0}> particleSend........ Wall max =  0.0166631
+Timings{0}>                      Wall avg =  0.0155737
+Timings{0}>                      Wall min =  0.0143873
+Timings{0}> 
+Timings{0}> particleRecv........ Wall max = 0.000931193
+Timings{0}>                      Wall avg = 0.000464205
+Timings{0}>                      Wall min = 0.000384955
+Timings{0}> 
+Timings{0}> particleDestroy..... Wall max =  0.0751064
+Timings{0}>                      Wall avg =  0.0632029
+Timings{0}>                      Wall min =  0.0563347
+Timings{0}> 
+Timings{0}> ScatterPIFNUFFT..... Wall max =    5.57257
+Timings{0}>                      Wall avg =    5.40936
+Timings{0}>                      Wall min =    5.35373
+Timings{0}> 
+Timings{0}> NativeNUFFT1........ Wall max =    5.51856
+Timings{0}>                      Wall avg =    5.35426
+Timings{0}>                      Wall min =    5.29673
+Timings{0}> 
+Timings{0}> scatterTimerNUFFT1.. Wall max =   0.409917
+Timings{0}>                      Wall avg =   0.395049
+Timings{0}>                      Wall min =   0.369632
+Timings{0}> 
+Timings{0}> binSort............. Wall max =   0.408966
+Timings{0}>                      Wall avg =   0.364271
+Timings{0}>                      Wall min =   0.323593
+Timings{0}> 
+Timings{0}> binComputeKeys...... Wall max =  0.0444807
+Timings{0}>                      Wall avg =  0.0395495
+Timings{0}>                      Wall min =  0.0350057
+Timings{0}> 
+Timings{0}> binSortByKey........ Wall max =   0.353228
+Timings{0}>                      Wall avg =   0.314433
+Timings{0}>                      Wall min =   0.279182
+Timings{0}> 
+Timings{0}> binComputeOffsets... Wall max =  0.0108847
+Timings{0}>                      Wall avg = 0.00989265
+Timings{0}>                      Wall min = 0.00898047
+Timings{0}> 
+Timings{0}> FFTNUFFT1........... Wall max =    5.12487
+Timings{0}>                      Wall avg =    4.95398
+Timings{0}>                      Wall min =    4.89908
+Timings{0}> 
+Timings{0}> deconvolutionNUFFT1. Wall max = 0.00823734
+Timings{0}>                      Wall avg = 0.00510533
+Timings{0}>                      Wall min = 0.00460529
+Timings{0}> 
+Timings{0}> GatherPIFNUFFT...... Wall max =    16.2741
+Timings{0}>                      Wall avg =    16.2265
+Timings{0}>                      Wall min =    16.0568
+Timings{0}> 
+Timings{0}> NativeNUFFT2........ Wall max =    16.1206
+Timings{0}>                      Wall avg =    16.0723
+Timings{0}>                      Wall min =    15.9042
+Timings{0}> 
+Timings{0}> PrecorrectionNUFFT2. Wall max =  0.0365702
+Timings{0}>                      Wall avg =  0.0274878
+Timings{0}>                      Wall min =  0.0261009
+Timings{0}> 
+Timings{0}> FFTNUFFT2........... Wall max =    15.2601
+Timings{0}>                      Wall avg =    14.9645
+Timings{0}>                      Wall min =    14.7784
+Timings{0}> 
+Timings{0}> GatherNUFFT2........ Wall max =    1.27716
+Timings{0}>                      Wall avg =    1.07972
+Timings{0}>                      Wall min =   0.728128
+Timings{0}> 
+Timings{0}> ---------------------------------------------
+Timings{0}>      Measurement counts:
+Timings{0}> ---------------------------------------------
+Timings{0}> mainTimer........... Count =          1
+Timings{0}> particlesCreation... Count =          0
+Timings{0}> dumpData............ Count =         10
+Timings{0}> kick................ Count =         20
+Timings{0}> drift............... Count =         10
+Timings{0}> particleBC.......... Count =         10
+Timings{0}> initializeShapeFunc. Count =          0
+Timings{0}> findInternal........ Count =          0
+Timings{0}> findPeriodic........ Count =          0
+Timings{0}> NativeNUFFT::init... Count =          0
+Timings{0}> updateParticle...... Count =         10
+Timings{0}> locateParticles..... Count =         10
+Timings{0}> sendPreprocess...... Count =         10
+Timings{0}> particleSend........ Count =         10
+Timings{0}> particleRecv........ Count =         10
+Timings{0}> particleDestroy..... Count =         10
+Timings{0}> ScatterPIFNUFFT..... Count =         20
+Timings{0}> NativeNUFFT1........ Count =         10
+Timings{0}> scatterTimerNUFFT1.. Count =         10
+Timings{0}> binSort............. Count =         40
+Timings{0}> binComputeKeys...... Count =         40
+Timings{0}> binSortByKey........ Count =         40
+Timings{0}> binComputeOffsets... Count =         40
+Timings{0}> FFTNUFFT1........... Count =         10
+Timings{0}> deconvolutionNUFFT1. Count =         10
+Timings{0}> GatherPIFNUFFT...... Count =         10
+Timings{0}> NativeNUFFT2........ Count =         30
+Timings{0}> PrecorrectionNUFFT2. Count =         30
+Timings{0}> FFTNUFFT2........... Count =         30
+Timings{0}> GatherNUFFT2........ Count =         30
+Timings{0}> ---------------------------------------------
+Timings{0}> ---------------------------------------------
+Timings{0}>      Per-occurrence statistics:
+Timings{0}> ---------------------------------------------
+Timings{0}> mainTimer........... n=    1  mean=   22.0635  std=         0  min=   22.0635  max=   22.0635
+Timings{0}> dumpData............ n=   10  mean= 0.0112611  std=0.00209984  min=0.00871039  max= 0.0148789
+Timings{0}> kick................ n=   20  mean=0.00203675  std=2.37827e-05  min=0.00198754  max=0.00205516
+Timings{0}> drift............... n=   10  mean=0.00200157  std=8.29803e-06  min=0.00199607  max= 0.0020244
+Timings{0}> particleBC.......... n=   10  mean=0.00406166  std=4.93338e-06  min= 0.0040546  max=0.00406815
+Timings{0}> updateParticle...... n=   10  mean= 0.0152738  std=0.000963223  min= 0.0139786  max= 0.0169889
+Timings{0}> locateParticles..... n=   10  mean=0.00187735  std=1.00489e-05  min=0.00186406  max=0.00189435
+Timings{0}> sendPreprocess...... n=   10  mean=0.000622093  std=3.33391e-05  min=0.000579245  max=0.000692956
+Timings{0}> particleSend........ n=   10  mean=0.00163601  std=9.52949e-05  min=0.00151669  max=0.00183918
+Timings{0}> particleRecv........ n=   10  mean=6.77206e-05  std=7.93139e-05  min= 3.673e-05  max=0.000293223
+Timings{0}> particleDestroy..... n=   10  mean=0.00629005  std=9.41314e-06  min=0.00627874  max=0.00631247
+Timings{0}> ScatterPIFNUFFT..... n=   20  mean=  0.269621  std=  0.275487  min= 0.0011095  max=  0.542634
+Timings{0}> NativeNUFFT1........ n=   10  mean=  0.533468  std=0.00245161  min=  0.530965  max=  0.538419
+Timings{0}> scatterTimerNUFFT1.. n=   10  mean= 0.0407305  std=0.000292763  min= 0.0404901  max=  0.041356
+Timings{0}> binSort............. n=   40  mean= 0.0102198  std=1.51449e-05  min= 0.0101735  max= 0.0102477
+Timings{0}> binComputeKeys...... n=   40  mean=0.00110991  std=2.30699e-06  min= 0.0011048  max=0.00111426
+Timings{0}> binSortByKey........ n=   40  mean=0.00882831  std=1.3555e-05  min= 0.0087922  max=0.00885223
+Timings{0}> binComputeOffsets... n=   40  mean=0.000271663  std=1.93613e-06  min=0.000267322  max=0.000274683
+Timings{0}> FFTNUFFT1........... n=   10  mean=  0.491905  std=0.00241624  min=  0.489619  max=  0.497014
+Timings{0}> deconvolutionNUFFT1. n=   10  mean=0.000821045  std=2.03626e-06  min=0.000818888  max=0.000825078
+Timings{0}> GatherPIFNUFFT...... n=   10  mean=   1.62508  std=0.00604829  min=   1.61931  max=   1.64012
+Timings{0}> NativeNUFFT2........ n=   30  mean=  0.536081  std=0.00671019  min=  0.527643  max=  0.550192
+Timings{0}> PrecorrectionNUFFT2. n=   30  mean=0.00121787  std=1.78736e-05  min=0.00120276  max=0.00124691
+Timings{0}> FFTNUFFT2........... n=   30  mean=  0.495457  std=  0.006751  min=  0.489173  max=  0.514095
+Timings{0}> GatherNUFFT2........ n=   30  mean= 0.0393863  std=0.00478343  min=  0.028319  max= 0.0477968
+Timings{0}> ---------------------------------------------

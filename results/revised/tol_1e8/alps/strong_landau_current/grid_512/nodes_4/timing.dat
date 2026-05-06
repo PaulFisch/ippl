@@ -1,0 +1,40 @@
+                      ranks  Wall tot
+=====================================
+mainTimer...........     16     10.67
+
+                      ranks  Wall max  Wall min  Wall avg
+=========================================================
+mainTimer...........     16     10.67     10.67     10.67
+particlesCreation...     16         0         0         0
+dumpData............     16    0.1053    0.0597    0.0811
+kick................     16 0.0007025 0.0004743 0.0006011
+drift...............     16 6.989e-05  3.99e-05 5.533e-05
+initializeShapeFunc.     16         0         0         0
+findInternal........     16         0         0         0
+findPeriodic........     16         0         0         0
+NativeNUFFT::init...     16         0         0         0
+particleBC..........     16 0.0001171 8.512e-05  0.000101
+updateParticle......     16     0.214    0.1354    0.1704
+locateParticles.....     16   0.07179   0.06731   0.06966
+sendPreprocess......     16  0.006741  0.002129  0.004394
+particleSend........     16  0.008549  0.007859  0.008261
+particleRecv........     16 0.0003772 0.0002627 0.0003052
+particleDestroy.....     16   0.05046   0.04199   0.04582
+ScatterPIFNUFFT.....     16     3.479     3.387     3.439
+NativeNUFFT1........     16     3.462      3.37     3.422
+scatterTimerNUFFT1..     16     1.937     1.852     1.899
+binSort.............     16    0.3299      0.31    0.3196
+binComputeKeys......     16   0.03235    0.0296    0.0309
+binSortByKey........     16    0.2825    0.2657    0.2739
+binComputeOffsets...     16   0.01543   0.01409   0.01469
+FFTNUFFT1...........     16     1.527     1.501     1.515
+TwiddleAdd..........     16 0.0006907 0.0004512 0.0005751
+subFFTs.............     16     1.526     1.499     1.514
+deconvolutionNUFFT1.     16  0.007673  0.007484  0.007565
+GatherPIFNUFFT......     16     6.972     6.913     6.937
+NativeNUFFT2........     16     6.961       6.9     6.925
+PrecorrectionNUFFT2.     16   0.07506   0.07082   0.07295
+FFTNUFFT2...........     16     4.621     4.483     4.563
+subIFFTs............     16     4.607      4.47      4.55
+StridedWrite........     16  0.002268   0.00149  0.001839
+GatherNUFFT2........     16    0.4753    0.3908    0.4324

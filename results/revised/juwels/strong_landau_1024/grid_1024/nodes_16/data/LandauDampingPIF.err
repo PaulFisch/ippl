@@ -1,0 +1,2000 @@
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+[jwb0678:453716] *** Process received signal ***
+[jwb0678:453716] Signal: Aborted (6)
+[jwb0678:453716] Signal code:  (-6)
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+[jwb0678:453714] *** Process received signal ***
+[jwb0678:453714] Signal: Aborted (6)
+[jwb0678:453714] Signal code:  (-6)
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+[jwb0678:453713] *** Process received signal ***
+[jwb0678:453713] Signal: Aborted (6)
+[jwb0678:453713] Signal code:  (-6)
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+[jwb0678:453715] *** Process received signal ***
+[jwb0678:453715] Signal: Aborted (6)
+[jwb0678:453715] Signal code:  (-6)
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+[jwb0678:453714] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x153c27711c30]
+[jwb0678:453714] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x153c2775f02c]
+[jwb0678:453714] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x153c27711b86]
+[jwb0678:453714] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x153c276fb873]
+[jwb0678:453714] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x153c279b6c3d]
+[jwb0678:453714] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x153c279c814a]
+[jwb0678:453714] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x153c279b67e9]
+[jwb0678:453714] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x153c279c83c7]
+[jwb0678:453714] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+[jwb0678:453714] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0678:453714] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0678:453714] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0678:453714] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0678:453714] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0678:453714] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0678:453714] [15] /usr/lib64/libc.so.6(+0x2a610)[0x153c276fc610]
+[jwb0678:453714] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x153c276fc6c0]
+[jwb0678:453714] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0678:453714] *** End of error message ***
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0678:453716] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x148626a2bc30]
+[jwb0678:453716] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x148626a7902c]
+[jwb0678:453716] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x148626a2bb86]
+[jwb0678:453716] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x148626a15873]
+[jwb0678:453716] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x148626cd0c3d]
+[jwb0678:453716] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x148626ce214a]
+[jwb0678:453716] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x148626cd07e9]
+[jwb0678:453716] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x148626ce23c7]
+[jwb0678:453716] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0840:2377204] *** Process received signal ***
+[jwb0840:2377204] Signal: Aborted (6)
+[jwb0840:2377204] Signal code:  (-6)
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0678:453716] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0835:2366915] *** Process received signal ***
+[jwb0835:2366915] Signal: Aborted (6)
+[jwb0835:2366915] Signal code:  (-6)
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0839:547793] *** Process received signal ***
+[jwb0839:547793] Signal: Aborted (6)
+[jwb0839:547793] Signal code:  (-6)
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0678:453716] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0678:453716] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0678:453716] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0678:453716] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0678:453716] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0678:453716] [15] /usr/lib64/libc.so.6(+0x2a610)[0x148626a16610]
+[jwb0678:453716] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x148626a166c0]
+[jwb0678:453716] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0678:453716] *** End of error message ***
+[jwb0693:918456] *** Process received signal ***
+[jwb0693:918456] Signal: Aborted (6)
+[jwb0693:918456] Signal code:  (-6)
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0700:3011155] *** Process received signal ***
+[jwb0700:3011155] Signal: Aborted (6)
+[jwb0700:3011155] Signal code:  (-6)
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0680:4046847] *** Process received signal ***
+[jwb0680:4046847] Signal: Aborted (6)
+[jwb0680:4046847] Signal code:  (-6)
+[jwb0699:3333654] *** Process received signal ***
+[jwb0699:3333654] Signal: Aborted (6)
+[jwb0699:3333654] Signal code:  (-6)
+[jwb0835:2366914] *** Process received signal ***
+[jwb0835:2366914] Signal: Aborted (6)
+[jwb0835:2366914] Signal code:  (-6)
+[jwb0853:769382] *** Process received signal ***
+[jwb0839:547791] *** Process received signal ***
+[jwb0839:547791] Signal: Aborted (6)
+[jwb0839:547791] Signal code:  (-6)
+[jwb0842:2189989] *** Process received signal ***
+[jwb0842:2189989] Signal: Aborted (6)
+[jwb0842:2189989] Signal code:  (-6)
+[jwb0836:494735] *** Process received signal ***
+[jwb0836:494735] Signal: Aborted (6)
+[jwb0836:494735] Signal code:  (-6)
+[jwb0678:453713] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14e5b4d77c30]
+[jwb0678:453713] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14e5b4dc502c]
+[jwb0678:453713] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14e5b4d77b86]
+[jwb0678:453713] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14e5b4d61873]
+[jwb0678:453713] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14e5b501cc3d]
+[jwb0678:453713] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14e5b502e14a]
+[jwb0678:453713] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14e5b501c7e9]
+[jwb0678:453713] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14e5b502e3c7]
+[jwb0678:453713] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0693:918455] *** Process received signal ***
+[jwb0693:918455] Signal: Aborted (6)
+[jwb0693:918455] Signal code:  (-6)
+[jwb0860:1224468] *** Process received signal ***
+[jwb0860:1224468] Signal: Aborted (6)
+[jwb0860:1224468] Signal code:  (-6)
+[jwb0841:1527310] *** Process received signal ***
+[jwb0841:1527310] Signal: Aborted (6)
+[jwb0841:1527310] Signal code:  (-6)
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0700:3011156] *** Process received signal ***
+[jwb0700:3011156] Signal: Aborted (6)
+[jwb0700:3011156] Signal code:  (-6)
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0680:4046848] *** Process received signal ***
+[jwb0680:4046848] Signal: Aborted (6)
+[jwb0680:4046848] Signal code:  (-6)
+[jwb0699:3333652] *** Process received signal ***
+[jwb0699:3333652] Signal: Aborted (6)
+[jwb0699:3333652] Signal code:  (-6)
+[jwb0835:2366913] *** Process received signal ***
+[jwb0835:2366913] Signal: Aborted (6)
+[jwb0835:2366913] Signal code:  (-6)
+[jwb0853:769384] *** Process received signal ***
+[jwb0853:769384] Signal: Aborted (6)
+[jwb0853:769384] Signal code:  (-6)
+[jwb0839:547792] *** Process received signal ***
+[jwb0839:547792] Signal: Aborted (6)
+[jwb0839:547792] Signal code:  (-6)
+[jwb0842:2189990] *** Process received signal ***
+[jwb0842:2189990] Signal: Aborted (6)
+[jwb0842:2189990] Signal code:  (-6)
+[jwb0836:494737] *** Process received signal ***
+[jwb0836:494737] Signal: Aborted (6)
+[jwb0836:494737] Signal code:  (-6)
+[jwb0678:453713] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta[jwb0693:918454] *** Process received signal ***
+[jwb0693:918454] Signal: Aborted (6)
+[jwb0693:918454] Signal code:  (-6)
+[jwb0860:1224470] *** Process received signal ***
+[jwb0860:1224470] Signal: Aborted (6)
+[jwb0860:1224470] Signal code:  (-6)
+[jwb0841:1527307] *** Process received signal ***
+[jwb0841:1527307] Signal: Aborted (6)
+[jwb0841:1527307] Signal code:  (-6)
+[jwb0844:3630381] *** Process received signal ***
+[jwb0844:3630381] Signal: Aborted (6)
+[jwb0844:3630381] Signal code:  (-6)
+[jwb0700:3011157] *** Process received signal ***
+[jwb0700:3011157] Signal: Aborted (6)
+[jwb0700:3011157] Signal code:  (-6)
+[jwb0840:2377205] *** Process received signal ***
+[jwb0840:2377205] Signal: Aborted (6)
+[jwb0840:2377205] Signal code:  (-6)
+[jwb0680:4046846] *** Process received signal ***
+[jwb0680:4046846] Signal: Aborted (6)
+[jwb0680:4046846] Signal code:  (-6)
+[jwb0699:3333655] *** Process received signal ***
+[jwb0699:3333655] Signal: Aborted (6)
+[jwb0699:3333655] Signal code:  (-6)
+[jwb0835:2366912] *** Process received signal ***
+[jwb0835:2366912] Signal: Aborted (6)
+[jwb0835:2366912] Signal code:  (-6)
+[jwb0853:769381] *** Process received signal ***
+[jwb0853:769381] Signal: Aborted (6)
+[jwb0853:769381] Signal code:  (-6)
+[jwb0839:547794] *** Process received signal ***
+[jwb0839:547794] Signal: Aborted (6)
+[jwb0839:547794] Signal code:  (-6)
+[jwb0842:2189991] *** Process received signal ***
+[jwb0842:2189991] Signal: Aborted (6)
+[jwb0842:2189991] Signal code:  (-6)
+[jwb0836:494736] *** Process received signal ***
+[jwb0836:494736] Signal: Aborted (6)
+[jwb0836:494736] Signal code:  (-6)
+[jwb0678:453715] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1538be602c30]
+[jwb0678:453715] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1538be65002c]
+[jwb0678:453715] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1538be602b86]
+[jwb0678:453715] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1538be5ec873]
+[jwb0678:453715] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1538be8a7c3d]
+[jwb0678:453715] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1538be8b914a]
+[jwb0678:453715] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1538be8a77e9]
+[jwb0678:453715] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1538be8b93c7]
+[jwb0678:453715] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0693:918453] *** Process received signal ***
+[jwb0693:918453] Signal: Aborted (6)
+[jwb0693:918453] Signal code:  (-6)
+[jwb0860:1224467] *** Process received signal ***
+[jwb0860:1224467] Signal: Aborted (6)
+[jwb0860:1224467] Signal code:  (-6)
+[jwb0841:1527309] *** Process received signal ***
+[jwb0841:1527309] Signal: Aborted (6)
+[jwb0841:1527309] Signal code:  (-6)
+[jwb0844:3630382] *** Process received signal ***
+[jwb0844:3630382] Signal: Aborted (6)
+[jwb0844:3630382] Signal code:  (-6)
+[jwb0700:3011154] *** Process received signal ***
+[jwb0700:3011154] Signal: Aborted (6)
+[jwb0700:3011154] Signal code:  (-6)
+[jwb0840:2377206] *** Process received signal ***
+[jwb0840:2377206] Signal: Aborted (6)
+[jwb0840:2377206] Signal code:  (-6)
+[jwb0680:4046845] *** Process received signal ***
+[jwb0680:4046845] Signal: Aborted (6)
+[jwb0680:4046845] Signal code:  (-6)
+[jwb0699:3333653] *** Process received signal ***
+[jwb0699:3333653] Signal: Aborted (6)
+[jwb0699:3333653] Signal code:  (-6)
+[jwb0835:2366914] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x146e7ae8bc30]
+[jwb0835:2366914] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x146e7aed902c]
+[jwb0835:2366914] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x146e7ae8bb86]
+[jwb0835:2366914] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x146e7ae75873]
+[jwb0835:2366914] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x146e7b130c3d]
+[jwb0835:2366914] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x146e7b14214a]
+[jwb0835:2366914] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x146e7b1307e9]
+[jwb0835:2366914] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x146e7b1423c7]
+[jwb0835:2366914] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0853:769383] *** Process received signal ***
+[jwb0853:769383] Signal: Aborted (6)
+[jwb0853:769383] Signal code:  (-6)
+[jwb0839:547791] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x151cabc83c30]
+[jwb0839:547791] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x151cabcd102c]
+[jwb0839:547791] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x151cabc83b86]
+[jwb0839:547791] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x151cabc6d873]
+[jwb0839:547791] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x151cabf28c3d]
+[jwb0839:547791] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x151cabf3a14a]
+[jwb0839:547791] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x151cabf287e9]
+[jwb0839:547791] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x151cabf3a3c7]
+[jwb0839:547791] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0842:2189988] *** Process received signal ***
+[jwb0842:2189988] Signal: Aborted (6)
+[jwb0842:2189988] Signal code:  (-6)
+[jwb0836:494734] *** Process received signal ***
+[jwb0836:494734] Signal: Aborted (6)
+[jwb0836:494734] Signal code:  (-6)
+[jwb0678:453715] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta[jwb0693:918455] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x153630493c30]
+[jwb0693:918455] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1536304e102c]
+[jwb0693:918455] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x153630493b86]
+[jwb0693:918455] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x15363047d873]
+[jwb0693:918455] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x153630738c3d]
+[jwb0693:918455] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x15363074a14a]
+[jwb0693:918455] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1536307387e9]
+[jwb0693:918455] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x15363074a3c7]
+[jwb0693:918455] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0860:1224469] *** Process received signal ***
+[jwb0860:1224469] Signal: Aborted (6)
+[jwb0860:1224469] Signal code:  (-6)
+[jwb0841:1527308] *** Process received signal ***
+[jwb0841:1527308] Signal: Aborted (6)
+[jwb0841:1527308] Signal code:  (-6)
+[jwb0844:3630380] *** Process received signal ***
+[jwb0844:3630380] Signal: Aborted (6)
+[jwb0844:3630380] Signal code:  (-6)
+[jwb0700:3011155] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14c60bc8fc30]
+[jwb0840:2377207] *** Process received signal ***
+[jwb0840:2377207] Signal: Aborted (6)
+[jwb0840:2377207] Signal code:  (-6)
+[jwb0680:4046845] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x148607bfac30]
+[jwb0680:4046845] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x148607c4802c]
+[jwb0680:4046845] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x148607bfab86]
+[jwb0680:4046845] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x148607be4873]
+[jwb0680:4046845] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x148607e9fc3d]
+[jwb0680:4046845] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x148607eb114a]
+[jwb0680:4046845] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x148607e9f7e9]
+[jwb0680:4046845] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x148607eb13c7]
+[jwb0680:4046845] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0699:3333655] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14cdcd947c30]
+[jwb0699:3333655] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14cdcd99502c]
+[jwb0699:3333655] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14cdcd947b86]
+[jwb0699:3333655] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14cdcd931873]
+[jwb0699:3333655] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14cdcdbecc3d]
+[jwb0699:3333655] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14cdcdbfe14a]
+[jwb0699:3333655] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14cdcdbec7e9]
+[jwb0699:3333655] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14cdcdbfe3c7]
+[jwb0699:3333655] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0835:2366914] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0853:769382] Signal: Aborted (6)
+[jwb0853:769382] Signal code:  (-6)
+[jwb0839:547792] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x147f9bbd0c30]
+[jwb0839:547792] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x147f9bc1e02c]
+[jwb0839:547792] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x147f9bbd0b86]
+[jwb0839:547792] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x147f9bbba873]
+[jwb0839:547792] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x147f9be75c3d]
+[jwb0839:547792] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x147f9be8714a]
+[jwb0839:547792] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x147f9be757e9]
+[jwb0839:547792] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x147f9be873c7]
+[jwb0839:547792] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0842:2189988] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14b5368f2c30]
+[jwb0842:2189988] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14b53694002c]
+[jwb0842:2189988] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14b5368f2b86]
+[jwb0842:2189988] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14b5368dc873]
+[jwb0842:2189988] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14b536b97c3d]
+[jwb0842:2189988] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14b536ba914a]
+[jwb0842:2189988] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14b536b977e9]
+[jwb0842:2189988] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14b536ba93c7]
+[jwb0842:2189988] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0836:494734] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14a8dcb1dc30]
+[jwb0836:494734] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14a8dcb6b02c]
+[jwb0836:494734] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14a8dcb1db86]
+[jwb0836:494734] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14a8dcb07873]
+[jwb0836:494734] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14a8dcdc2c3d]
+[jwb0836:494734] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14a8dcdd414a]
+[jwb0836:494734] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14a8dcdc27e9]
+[jwb0836:494734] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14a8dcdd43c7]
+[jwb0836:494734] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0678:453713] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0678:453713] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0678:453713] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0678:453713] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0678:453713] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0678:453713] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14e5b4d62610]
+[jwb0678:453713] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14e5b4d626c0]
+[jwb0678:453713] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0678:453713] *** End of error message ***
+[jwb0693:918456] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1456c1dffc30]
+[jwb0693:918456] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1456c1e4d02c]
+[jwb0693:918456] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1456c1dffb86]
+[jwb0693:918456] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1456c1de9873]
+[jwb0693:918456] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1456c20a4c3d]
+[jwb0693:918456] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1456c20b614a]
+[jwb0693:918456] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1456c20a47e9]
+[jwb0693:918456] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1456c20b63c7]
+[jwb0693:918456] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0860:1224467] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14ed2f0afc30]
+[jwb0860:1224467] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14ed2f0fd02c]
+[jwb0860:1224467] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14ed2f0afb86]
+[jwb0860:1224467] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14ed2f099873]
+[jwb0860:1224467] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14ed2f354c3d]
+[jwb0860:1224467] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14ed2f36614a]
+[jwb0860:1224467] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14ed2f3547e9]
+[jwb0860:1224467] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14ed2f3663c7]
+[jwb0860:1224467] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0841:1527309] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14c616799c30]
+[jwb0841:1527309] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14c6167e702c]
+[jwb0841:1527309] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14c616799b86]
+[jwb0841:1527309] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14c616783873]
+[jwb0841:1527309] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14c616a3ec3d]
+[jwb0841:1527309] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14c616a5014a]
+[jwb0844:3630383] *** Process received signal ***
+[jwb0844:3630383] Signal: Aborted (6)
+[jwb0844:3630383] Signal code:  (-6)
+[jwb0700:3011156] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14f9a872ac30]
+[jwb0700:3011156] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14f9a877802c]
+[jwb0700:3011156] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14f9a872ab86]
+[jwb0700:3011156] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14f9a8714873]
+[jwb0700:3011156] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14f9a89cfc3d]
+[jwb0700:3011156] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14f9a89e114a]
+[jwb0700:3011156] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14f9a89cf7e9]
+[jwb0700:3011156] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14f9a89e13c7]
+[jwb0700:3011156] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0840:2377204] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x145c32a0bc30]
+[jwb0840:2377204] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x145c32a5902c]
+[jwb0840:2377204] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x145c32a0bb86]
+[jwb0680:4046848] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14bf1dcfdc30]
+[jwb0680:4046848] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14bf1dd4b02c]
+[jwb0680:4046848] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14bf1dcfdb86]
+[jwb0680:4046848] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14bf1dce7873]
+[jwb0680:4046848] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14bf1dfa2c3d]
+[jwb0680:4046848] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14bf1dfb414a]
+[jwb0680:4046848] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14bf1dfa27e9]
+[jwb0680:4046848] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14bf1dfb43c7]
+[jwb0680:4046848] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0699:3333654] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x153989ed3c30]
+[jwb0699:3333654] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x153989f2102c]
+[jwb0699:3333654] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x153989ed3b86]
+[jwb0699:3333654] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x153989ebd873]
+[jwb0699:3333654] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x15398a178c3d]
+[jwb0699:3333654] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x15398a18a14a]
+[jwb0699:3333654] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x15398a1787e9]
+[jwb0699:3333654] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x15398a18a3c7]
+[jwb0699:3333654] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0835:2366912] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14fa4f7b4c30]
+[jwb0835:2366912] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14fa4f80202c]
+[jwb0835:2366912] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14fa4f7b4b86]
+[jwb0835:2366912] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14fa4f79e873]
+[jwb0835:2366912] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14fa4fa59c3d]
+[jwb0835:2366912] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14fa4fa6b14a]
+[jwb0835:2366912] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14fa4fa597e9]
+[jwb0835:2366912] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14fa4fa6b3c7]
+[jwb0835:2366912] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0853:769383] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x146656e5fc30]
+[jwb0853:769383] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x146656ead02c]
+[jwb0853:769383] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x146656e5fb86]
+[jwb0853:769383] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x146656e49873]
+[jwb0853:769383] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x146657104c3d]
+[jwb0853:769383] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14665711614a]
+[jwb0853:769383] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1466571047e9]
+[jwb0853:769383] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1466571163c7]
+[jwb0853:769383] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0839:547792] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta[jwb0842:2189989] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14628a6e7c30]
+[jwb0842:2189989] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14628a73502c]
+[jwb0842:2189989] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14628a6e7b86]
+[jwb0842:2189989] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14628a6d1873]
+[jwb0842:2189989] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14628a98cc3d]
+[jwb0842:2189989] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14628a99e14a]
+[jwb0842:2189989] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14628a98c7e9]
+[jwb0842:2189989] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14628a99e3c7]
+[jwb0842:2189989] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0836:494734] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0678:453715] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0678:453715] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0678:453715] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0678:453715] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0678:453715] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0678:453715] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1538be5ed610]
+[jwb0678:453715] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1538be5ed6c0]
+[jwb0678:453715] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0678:453715] *** End of error message ***
+[jwb0693:918454] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x145b62ba4c30]
+[jwb0693:918454] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x145b62bf202c]
+[jwb0693:918454] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x145b62ba4b86]
+[jwb0693:918454] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x145b62b8e873]
+[jwb0693:918454] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x145b62e49c3d]
+[jwb0693:918454] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x145b62e5b14a]
+[jwb0693:918454] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x145b62e497e9]
+[jwb0693:918454] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x145b62e5b3c7]
+[jwb0693:918454] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0860:1224467] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0841:1527307] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x145939825c30]
+[jwb0841:1527307] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14593987302c]
+[jwb0841:1527307] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x145939825b86]
+[jwb0841:1527307] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14593980f873]
+[jwb0841:1527307] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x145939acac3d]
+[jwb0841:1527307] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x145939adc14a]
+[jwb0841:1527307] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x145939aca7e9]
+[jwb0841:1527307] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x145939adc3c7]
+[jwb0841:1527307] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0844:3630380] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14983df7ec30]
+[jwb0844:3630380] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14983dfcc02c]
+[jwb0844:3630380] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14983df7eb86]
+[jwb0844:3630380] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14983df68873]
+[jwb0844:3630380] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14983e223c3d]
+[jwb0844:3630380] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14983e23514a]
+[jwb0844:3630380] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14983e2237e9]
+[jwb0844:3630380] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14983e2353c7]
+[jwb0844:3630380] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0700:3011156] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0840:2377206] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14af003aac30]
+[jwb0840:2377206] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14af003f802c]
+[jwb0840:2377206] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14af003aab86]
+[jwb0840:2377206] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14af00394873]
+[jwb0840:2377206] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14af0064fc3d]
+[jwb0840:2377206] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14af0066114a]
+[jwb0840:2377206] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14af0064f7e9]
+[jwb0840:2377206] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14af006613c7]
+[jwb0840:2377206] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0680:4046848] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0699:3333654] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0835:2366912] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0853:769383] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta[jwb0839:547791] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0839:547791] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0839:547791] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0839:547791] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0842:2189989] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ticPIF/LandauDampingPIF[0x5df596]
+[jwb0836:494734] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0693:918454] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0860:1224467] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0841:1527307] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0841:1527307] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0841:1527307] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0844:3630380] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0700:3011157] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x149119c78c30]
+[jwb0700:3011157] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x149119cc602c]
+[jwb0700:3011157] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x149119c78b86]
+[jwb0700:3011157] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x149119c62873]
+[jwb0700:3011157] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x149119f1dc3d]
+[jwb0700:3011157] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x149119f2f14a]
+[jwb0700:3011157] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x149119f1d7e9]
+[jwb0700:3011157] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x149119f2f3c7]
+[jwb0700:3011157] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0840:2377206] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/  what():  cudaMalloc() failed with message: out of memory
+[jwb0680:4046845] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0680:4046845] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0680:4046845] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0680:4046845] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0680:4046845] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0680:4046845] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0680:4046845] [15] /usr/lib64/libc.so.6(+0x2a610)[0x148607be5610]
+[jwb0680:4046845] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x148607be56c0]
+[jwb0680:4046845] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0699:3333654] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0699:3333654] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0699:3333654] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0699:3333654] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0699:3333654] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0835:2366915] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14e1e8353c30]
+[jwb0835:2366915] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14e1e83a102c]
+[jwb0835:2366915] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14e1e8353b86]
+[jwb0835:2366915] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14e1e833d873]
+[jwb0835:2366915] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14e1e85f8c3d]
+[jwb0835:2366915] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14e1e860a14a]
+[jwb0835:2366915] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14e1e85f87e9]
+[jwb0835:2366915] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14e1e860a3c7]
+[jwb0835:2366915] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0853:769381] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14fe7db8ec30]
+[jwb0853:769381] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14fe7dbdc02c]
+[jwb0853:769381] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14fe7db8eb86]
+[jwb0853:769381] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14fe7db78873]
+[jwb0853:769381] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14fe7de33c3d]
+[jwb0853:769381] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14fe7de4514a]
+[jwb0853:769381] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14fe7de337e9]
+[jwb0853:769381] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14fe7de453c7]
+[jwb0853:769381] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0839:547792] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0839:547792] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0842:2189990] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x152f5b05fc30]
+[jwb0842:2189990] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x152f5b0ad02c]
+[jwb0842:2189990] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x152f5b05fb86]
+[jwb0842:2189990] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x152f5b049873]
+[jwb0842:2189990] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x152f5b304c3d]
+[jwb0842:2189990] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x152f5b31614a]
+[jwb0842:2189990] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x152f5b3047e9]
+[jwb0842:2189990] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x152f5b3163c7]
+[jwb0842:2189990] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0836:494734] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0836:494734] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0836:494734] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0836:494734] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0836:494734] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14a8dcb08610]
+[jwb0836:494734] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14a8dcb086c0]
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0693:918454] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0693:918454] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0693:918454] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0860:1224470] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x151fa0a68c30]
+[jwb0860:1224470] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x151fa0ab602c]
+[jwb0860:1224470] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x151fa0a68b86]
+[jwb0860:1224470] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x151fa0a52873]
+[jwb0860:1224470] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x151fa0d0dc3d]
+[jwb0860:1224470] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x151fa0d1f14a]
+[jwb0860:1224470] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x151fa0d0d7e9]
+[jwb0860:1224470] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x151fa0d1f3c7]
+[jwb0860:1224470] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0841:1527308] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x151bc1a3ec30]
+[jwb0841:1527308] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x151bc1a8c02c]
+[jwb0841:1527308] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x151bc1a3eb86]
+[jwb0841:1527308] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x151bc1a28873]
+[jwb0841:1527308] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x151bc1ce3c3d]
+[jwb0841:1527308] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x151bc1cf514a]
+[jwb0841:1527308] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x151bc1ce37e9]
+[jwb0841:1527308] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x151bc1cf53c7]
+[jwb0841:1527308] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0844:3630380] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0844:3630380] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0844:3630380] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0700:3011157] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0840:2377206] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0840:2377206] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0680:4046845] *** End of error message ***
+[jwb0699:3333653] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1552b434cc30]
+[jwb0699:3333653] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1552b439a02c]
+[jwb0699:3333653] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1552b434cb86]
+[jwb0699:3333653] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1552b4336873]
+[jwb0699:3333653] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1552b45f1c3d]
+[jwb0699:3333653] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1552b460314a]
+[jwb0699:3333653] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1552b45f17e9]
+[jwb0699:3333653] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1552b46033c7]
+[jwb0699:3333653] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0835:2366915] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0853:769381] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta[jwb0839:547793] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x149e84819c30]
+[jwb0839:547793] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x149e8486702c]
+[jwb0839:547793] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x149e84819b86]
+[jwb0839:547793] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x149e84803873]
+[jwb0839:547793] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x149e84abec3d]
+[jwb0839:547793] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x149e84ad014a]
+[jwb0839:547793] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x149e84abe7e9]
+[jwb0839:547793] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x149e84ad03c7]
+[jwb0839:547793] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0842:2189990] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0836:494736] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14ff15e4bc30]
+[jwb0836:494736] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14ff15e9902c]
+[jwb0836:494736] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14ff15e4bb86]
+[jwb0836:494736] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14ff15e35873]
+[jwb0836:494736] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14ff160f0c3d]
+[jwb0836:494736] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14ff1610214a]
+[jwb0836:494736] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14ff160f07e9]
+[jwb0836:494736] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14ff161023c7]
+[jwb0836:494736] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0693:918453] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x145fe9357c30]
+[jwb0693:918453] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x145fe93a502c]
+[jwb0693:918453] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x145fe9357b86]
+[jwb0693:918453] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x145fe9341873]
+[jwb0693:918453] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x145fe95fcc3d]
+[jwb0693:918453] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x145fe960e14a]
+[jwb0693:918453] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x145fe95fc7e9]
+[jwb0693:918453] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x145fe960e3c7]
+[jwb0693:918453] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0860:1224470] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0841:1527308] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0844:3630382] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1550c97c1c30]
+[jwb0844:3630382] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1550c980f02c]
+[jwb0844:3630382] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1550c97c1b86]
+[jwb0844:3630382] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1550c97ab873]
+[jwb0844:3630382] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1550c9a66c3d]
+[jwb0844:3630382] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1550c9a7814a]
+[jwb0844:3630382] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1550c9a667e9]
+[jwb0844:3630382] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1550c9a783c7]
+[jwb0844:3630382] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0700:3011154] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x151a28cfbc30]
+[jwb0700:3011154] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x151a28d4902c]
+[jwb0700:3011154] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x151a28cfbb86]
+[jwb0700:3011154] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x151a28ce5873]
+[jwb0700:3011154] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x151a28fa0c3d]
+[jwb0700:3011154] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x151a28fb214a]
+[jwb0700:3011154] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x151a28fa07e9]
+[jwb0700:3011154] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x151a28fb23c7]
+[jwb0700:3011154] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0840:2377206] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0840:2377206] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0840:2377206] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0840:2377206] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14af00395610]
+[jwb0840:2377206] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14af003956c0]
+[jwb0840:2377206] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0840:2377206] *** End of error message ***
+[jwb0677:1882010] *** Process received signal ***
+[jwb0677:1882010] Signal: Aborted (6)
+[jwb0677:1882010] Signal code:  (-6)
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0680:4046848] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0680:4046848] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0699:3333653] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0835:2366914] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0835:2366914] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0853:769383] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0853:769383] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0853:769383] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0853:769383] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0853:769383] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0853:769383] [15] /usr/lib64/libc.so.6(+0x2a610)[0x146656e4a610]
+[jwb0853:769383] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x146656e4a6c0]
+[jwb0853:769383] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0853:769383] *** End of error message ***
+[jwb0839:547793] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0842:2189989] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0842:2189989] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0836:494736] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta[jwb0693:918453] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta[jwb0860:1224469] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14940f91ec30]
+[jwb0860:1224469] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14940f96c02c]
+[jwb0860:1224469] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14940f91eb86]
+[jwb0860:1224469] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14940f908873]
+[jwb0860:1224469] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14940fbc3c3d]
+[jwb0860:1224469] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14940fbd514a]
+[jwb0860:1224469] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14940fbc37e9]
+[jwb0860:1224469] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14940fbd53c7]
+[jwb0860:1224469] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0841:1527308] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0841:1527308] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0841:1527308] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0841:1527308] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0841:1527308] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0841:1527308] [15] /usr/lib64/libc.so.6(+0x2a610)[0x151bc1a29610]
+[jwb0841:1527308] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x151bc1a296c0]
+[jwb0841:1527308] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0841:1527308] *** End of error message ***
+[jwb0844:3630382] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0700:3011154] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0840:2377205] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x148076a66c30]
+[jwb0840:2377205] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x148076ab402c]
+[jwb0840:2377205] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x148076a66b86]
+[jwb0840:2377205] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x148076a50873]
+[jwb0840:2377205] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x148076d0bc3d]
+[jwb0840:2377205] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x148076d1d14a]
+[jwb0840:2377205] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x148076d0b7e9]
+[jwb0840:2377205] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x148076d1d3c7]
+[jwb0840:2377205] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0677:1882012] *** Process received signal ***
+[jwb0677:1882012] Signal: Aborted (6)
+[jwb0677:1882012] Signal code:  (-6)
+[jwb0680:4046847] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14f3f1149c30]
+[jwb0680:4046847] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14f3f119702c]
+[jwb0680:4046847] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14f3f1149b86]
+[jwb0680:4046847] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14f3f1133873]
+[jwb0680:4046847] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14f3f13eec3d]
+[jwb0680:4046847] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14f3f140014a]
+[jwb0680:4046847] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14f3f13ee7e9]
+[jwb0680:4046847] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14f3f14003c7]
+[jwb0680:4046847] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0699:3333652] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x151eb9db0c30]
+[jwb0699:3333652] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x151eb9dfe02c]
+[jwb0699:3333652] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x151eb9db0b86]
+[jwb0699:3333652] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x151eb9d9a873]
+[jwb0699:3333652] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x151eba055c3d]
+[jwb0699:3333652] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x151eba06714a]
+[jwb0699:3333652] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x151eba0557e9]
+[jwb0699:3333652] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x151eba0673c7]
+[jwb0699:3333652] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0835:2366912] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0835:2366912] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0835:2366912] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0835:2366912] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0853:769381] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0853:769381] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0853:769381] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0853:769381] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0853:769381] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0853:769381] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14fe7db79610]
+[jwb0853:769381] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14fe7db796c0]
+[jwb0853:769381] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0853:769381] *** End of error message ***
+[jwb0839:547794] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14fc41606c30]
+[jwb0839:547794] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14fc4165402c]
+[jwb0839:547794] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14fc41606b86]
+[jwb0839:547794] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14fc415f0873]
+[jwb0839:547794] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14fc418abc3d]
+[jwb0839:547794] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14fc418bd14a]
+[jwb0839:547794] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14fc418ab7e9]
+[jwb0839:547794] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14fc418bd3c7]
+[jwb0839:547794] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0842:2189990] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0842:2189990] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0842:2189990] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0842:2189990] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0836:494735] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x148df21afc30]
+[jwb0836:494735] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x148df21fd02c]
+[jwb0836:494735] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x148df21afb86]
+[jwb0836:494735] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x148df2199873]
+[jwb0836:494735] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x148df2454c3d]
+[jwb0836:494735] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x148df246614a]
+[jwb0836:494735] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x148df24547e9]
+[jwb0836:494735] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x148df24663c7]
+[jwb0836:494735] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0693:918456] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0693:918456] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0693:918456] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0693:918456] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0693:918456] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0693:918456] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0693:918456] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1456c1dea610]
+[jwb0693:918456] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1456c1dea6c0]
+[jwb0693:918456] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0860:1224469] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0841:1527310] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14c2f24bcc30]
+[jwb0841:1527310] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14c2f250a02c]
+[jwb0841:1527310] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14c2f24bcb86]
+[jwb0841:1527310] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14c2f24a6873]
+[jwb0841:1527310] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14c2f2761c3d]
+[jwb0841:1527310] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14c2f277314a]
+[jwb0841:1527310] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14c2f27617e9]
+[jwb0841:1527310] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14c2f27733c7]
+[jwb0841:1527310] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0844:3630381] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1552a2b0ac30]
+[jwb0844:3630381] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1552a2b5802c]
+[jwb0844:3630381] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1552a2b0ab86]
+[jwb0844:3630381] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1552a2af4873]
+[jwb0844:3630381] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1552a2dafc3d]
+[jwb0844:3630381] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1552a2dc114a]
+[jwb0844:3630381] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1552a2daf7e9]
+[jwb0844:3630381] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1552a2dc13c7]
+[jwb0844:3630381] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0700:3011155] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14c60bcdd02c]
+[jwb0700:3011155] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14c60bc8fb86]
+[jwb0700:3011155] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14c60bc79873]
+[jwb0700:3011155] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14c60bf34c3d]
+[jwb0700:3011155] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14c60bf4614a]
+[jwb0700:3011155] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14c60bf347e9]
+[jwb0700:3011155] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14c60bf463c7]
+[jwb0700:3011155] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0700:3011155] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0840:2377205] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0677:1882013] *** Process received signal ***
+[jwb0677:1882013] Signal: Aborted (6)
+[jwb0677:1882013] Signal code:  (-6)
+[jwb0680:4046847] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0699:3333652] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0835:2366915] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0835:2366915] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0835:2366915] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0835:2366915] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0835:2366915] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0853:769384] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14eef5845c30]
+[jwb0853:769384] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14eef589302c]
+[jwb0853:769384] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14eef5845b86]
+[jwb0853:769384] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14eef582f873]
+[jwb0853:769384] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14eef5aeac3d]
+[jwb0853:769384] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14eef5afc14a]
+[jwb0853:769384] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14eef5aea7e9]
+[jwb0853:769384] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14eef5afc3c7]
+[jwb0853:769384] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0839:547794] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta[jwb0842:2189991] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14960ececc30]
+[jwb0842:2189991] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14960ed3a02c]
+[jwb0842:2189991] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14960ececb86]
+[jwb0842:2189991] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14960ecd6873]
+[jwb0842:2189991] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14960ef91c3d]
+[jwb0842:2189991] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14960efa314a]
+[jwb0842:2189991] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14960ef917e9]
+[jwb0842:2189991] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14960efa33c7]
+[jwb0842:2189991] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0836:494735] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta[jwb0693:918456] *** End of error message ***
+[jwb0860:1224468] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x145cedaf3c30]
+[jwb0860:1224468] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x145cedb4102c]
+[jwb0860:1224468] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x145cedaf3b86]
+[jwb0860:1224468] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x145cedadd873]
+[jwb0860:1224468] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x145cedd98c3d]
+[jwb0860:1224468] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x145ceddaa14a]
+[jwb0860:1224468] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x145cedd987e9]
+[jwb0860:1224468] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x145ceddaa3c7]
+[jwb0860:1224468] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0841:1527310] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0844:3630381] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0700:3011155] [10] /p/[jwb0840:2377207] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14a895741c30]
+[jwb0840:2377207] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14a89578f02c]
+[jwb0840:2377207] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14a895741b86]
+[jwb0840:2377207] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14a89572b873]
+[jwb0840:2377207] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14a8959e6c3d]
+[jwb0840:2377207] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14a8959f814a]
+[jwb0840:2377207] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14a8959e67e9]
+[jwb0840:2377207] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14a8959f83c7]
+[jwb0840:2377207] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0677:1882011] *** Process received signal ***
+[jwb0677:1882011] Signal: Aborted (6)
+[jwb0677:1882011] Signal code:  (-6)
+[jwb0680:4046846] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x15118de02c30]
+[jwb0680:4046846] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x15118de5002c]
+[jwb0680:4046846] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x15118de02b86]
+[jwb0680:4046846] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x15118ddec873]
+[jwb0680:4046846] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x15118e0a7c3d]
+[jwb0680:4046846] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x15118e0b914a]
+[jwb0680:4046846] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x15118e0a77e9]
+[jwb0680:4046846] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x15118e0b93c7]
+[jwb0680:4046846] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0699:3333655] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0699:3333655] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0699:3333655] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0699:3333655] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0699:3333655] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0699:3333655] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0699:3333655] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14cdcd932610]
+[jwb0699:3333655] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14cdcd9326c0]
+[jwb0699:3333655] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0835:2366913] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1551724cac30]
+[jwb0835:2366913] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x15517251802c]
+[jwb0835:2366913] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1551724cab86]
+[jwb0835:2366913] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1551724b4873]
+[jwb0835:2366913] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x15517276fc3d]
+[jwb0835:2366913] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x15517278114a]
+[jwb0835:2366913] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x15517276f7e9]
+[jwb0835:2366913] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1551727813c7]
+[jwb0835:2366913] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0853:769384] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/Electrosta[jwb0839:547791] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0839:547791] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0839:547791] [15] /usr/lib64/libc.so.6(+0x2a610)[0x151cabc6e610]
+[jwb0839:547791] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x151cabc6e6c0]
+[jwb0839:547791] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0842:2189991] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0836:494734] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0836:494734] *** End of error message ***
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0693:918453] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0693:918453] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0693:918453] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0693:918453] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0693:918453] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0693:918453] [15] /usr/lib64/libc.so.6(+0x2a610)[0x145fe9342610]
+[jwb0693:918453] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x145fe93426c0]
+[jwb0693:918453] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0693:918453] *** End of error message ***
+[jwb0860:1224468] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0841:1527309] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14c616a3e7e9]
+[jwb0841:1527309] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14c616a503c7]
+[jwb0841:1527309] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0841:1527309] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0841:1527309] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0841:1527309] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0841:1527309] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0844:3630383] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14ece875fc30]
+[jwb0844:3630383] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14ece87ad02c]
+[jwb0844:3630383] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14ece875fb86]
+[jwb0844:3630383] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14ece8749873]
+[jwb0844:3630383] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14ece8a04c3d]
+[jwb0844:3630383] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14ece8a1614a]
+[jwb0844:3630383] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14ece8a047e9]
+[jwb0844:3630383] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14ece8a163c7]
+[jwb0844:3630383] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0700:3011156] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0700:3011156] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0700:3011156] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0700:3011156] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0700:3011156] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0700:3011156] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14f9a8715610]
+[jwb0700:3011156] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14f9a87156c0]
+[jwb0700:3011156] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0840:2377207] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0677:1882010] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1541a49dac30]
+[jwb0677:1882010] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1541a4a2802c]
+[jwb0677:1882010] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1541a49dab86]
+[jwb0677:1882010] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1541a49c4873]
+[jwb0677:1882010] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1541a4c7fc3d]
+[jwb0677:1882010] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1541a4c9114a]
+[jwb0677:1882010] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1541a4c7f7e9]
+[jwb0677:1882010] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1541a4c913c7]
+[jwb0677:1882010] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0680:4046846] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0699:3333655] *** End of error message ***
+[jwb0835:2366913] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0853:769382] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14d06a129c30]
+[jwb0853:769382] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14d06a17702c]
+[jwb0853:769382] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14d06a129b86]
+[jwb0853:769382] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14d06a113873]
+[jwb0853:769382] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14d06a3cec3d]
+[jwb0853:769382] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14d06a3e014a]
+[jwb0853:769382] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14d06a3ce7e9]
+[jwb0853:769382] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14d06a3e03c7]
+[jwb0853:769382] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0839:547792] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0839:547792] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0839:547792] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0839:547792] [15] /usr/lib64/libc.so.6(+0x2a610)[0x147f9bbbb610]
+[jwb0839:547792] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x147f9bbbb6c0]
+[jwb0839:547792] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0839:547792] *** End of error message ***
+[jwb0842:2189989] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0842:2189989] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0842:2189989] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0842:2189989] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14628a6d2610]
+[jwb0842:2189989] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14628a6d26c0]
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0836:494736] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0836:494736] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0836:494736] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0836:494736] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0836:494736] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0836:494736] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14ff15e36610]
+[jwb0836:494736] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14ff15e366c0]
+[jwb0836:494736] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0836:494736] *** End of error message ***
+[jwb0693:918454] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0693:918454] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0693:918454] [15] /usr/lib64/libc.so.6(+0x2a610)[0x145b62b8f610]
+[jwb0693:918454] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x145b62b8f6c0]
+[jwb0693:918454] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0693:918454] *** End of error message ***
+[jwb0860:1224467] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0860:1224467] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0860:1224467] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0841:1527309] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0841[jwb0844:3630383] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0700:3011157] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0700:3011157] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0700:3011157] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0700:3011157] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0700:3011157] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0700:3011157] [15] /usr/lib64/libc.so.6(+0x2a610)[0x149119c63610]
+[jwb0700:3011157] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x149119c636c0]
+[jwb0700:3011157] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0700:3011157] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0840:2377205] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0840:2377205] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0840:2377205] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0840:2377205] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0840:2377205] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0840:2377205] [15] /usr/lib64/libc.so.6(+0x2a610)[0x148076a51610]
+[jwb0840:2377205] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x148076a516c0]
+[jwb0840:2377205] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0840:2377205] *** End of error message ***
+[jwb0677:1882012] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x146aa2447c30]
+[jwb0677:1882012] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x146aa249502c]
+[jwb0677:1882012] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x146aa2447b86]
+[jwb0677:1882012] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x146aa2431873]
+[jwb0677:1882012] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x146aa26ecc3d]
+[jwb0677:1882012] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x146aa26fe14a]
+[jwb0677:1882012] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x146aa26ec7e9]
+[jwb0677:1882012] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x146aa26fe3c7]
+[jwb0677:1882012] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0680:4046848] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0680:4046848] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0680:4046848] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0680:4046848] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14bf1dce8610]
+[jwb0680:4046848] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14bf1dce86c0]
+[jwb0680:4046848] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0680:4046848] *** End of error message ***
+[jwb0699:3333654] [15] /usr/lib64/libc.so.6(+0x2a610)[0x153989ebe610]
+[jwb0699:3333654] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x153989ebe6c0]
+[jwb0699:3333654] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0699:3333654] *** End of error message ***
+[jwb0835:2366914] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0835:2366914] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0835:2366914] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0835:2366914] [15] /usr/lib64/libc.so.6(+0x2a610)[0x146e7ae76610]
+[jwb0835:2366914] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x146e7ae766c0]
+[jwb0835:2366914] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0835:2366914] *** End of error message ***
+[jwb0853:769382] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0839:547793] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0839:547793] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0839:547793] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0839:547793] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0839:547793] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0839:547793] [15] /usr/lib64/libc.so.6(+0x2a610)[0x149e84804610]
+[jwb0839:547793] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x149e848046c0]
+[jwb0839:547793] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0839:547793] *** End of error message ***
+[jwb0842:2189990] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0842:2189990] [15] /usr/lib64/libc.so.6(+0x2a610)[0x152f5b04a610]
+[jwb0842:2189990] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x152f5b04a6c0]
+[jwb0842:2189990] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0842:2189990] *** End of error message ***
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0836:494735] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0836:494735] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0836:494735] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0836:494735] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0836:494735] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0836:494735] [15] /usr/lib64/libc.so.6(+0x2a610)[0x148df219a610]
+[jwb0836:494735] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x148df219a6c0]
+[jwb0836:494735] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0836:494735] *** End of error message ***
+[jwb0693:918455] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0693:918455] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0693:918455] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0693:918455] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0693:918455] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0693:918455] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0693:918455] [15] /usr/lib64/libc.so.6(+0x2a610)[0x15363047e610]
+[jwb0693:918455] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x15363047e6c0]
+[jwb0693:918455] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0860:1224470] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0860:1224470] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0860:1224470] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0860:1224470] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0860:1224470] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0860:1224470] [15] /usr/lib64/libc.so.6(+0x2a610)[0x151fa0a53610]
+[jwb0860:1224470] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x151fa0a536c0]
+[jwb0860:1224470] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0860:1224470] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0841:1527310] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0841:1527310] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0841:1527310] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0841:1527310] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0841:1527310] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0841:1527310] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14c2f24a7610]
+[jwb0841:1527310] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14c2f24a76c0]
+[jwb0841:1527310] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0844:3630380] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0844:3630380] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0844:3630380] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14983df69610]
+[jwb0844:3630380] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14983df696c0]
+[jwb0844:3630380] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0844:3630380] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0700:3011154] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0700:3011154] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0700:3011154] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0700:3011154] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0700:3011154] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0700:3011154] [15] /usr/lib64/libc.so.6(+0x2a610)[0x151a28ce6610]
+[jwb0700:3011154] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x151a28ce66c0]
+[jwb0700:3011154] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0700:3011154] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0840:2377207] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0840:2377207] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0840:2377207] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0840:2377207] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0840:2377207] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0840:2377207] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14a89572c610]
+[jwb0840:2377207] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14a89572c6c0]
+[jwb0840:2377207] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0840:2377207] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0680:4046847] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0680:4046847] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0680:4046847] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0680:4046847] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0680:4046847] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0680:4046847] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14f3f1134610]
+[jwb0680:4046847] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14f3f11346c0]
+[jwb0680:4046847] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0680:4046847] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0699:3333653] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0699:3333653] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0699:3333653] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0699:3333653] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0699:3333653] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0699:3333653] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1552b4337610]
+[jwb0699:3333653] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1552b43376c0]
+[jwb0699:3333653] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0699:3333653] *** End of error message ***
+[jwb0835:2366912] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0835:2366912] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14fa4f79f610]
+[jwb0835:2366912] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14fa4f79f6c0]
+[jwb0835:2366912] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0835:2366912] *** End of error message ***
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0853:769384] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0853:769384] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0853:769384] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0853:769384] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0853:769384] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0853:769384] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14eef5830610]
+[jwb0853:769384] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14eef58306c0]
+[jwb0853:769384] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0853:769384] *** End of error message ***
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0839:547794] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0839:547794] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0839:547794] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0839:547794] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0839:547794] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0839:547794] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14fc415f1610]
+[jwb0839:547794] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14fc415f16c0]
+[jwb0839:547794] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0839:547794] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0842:2189991] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0842:2189991] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0842:2189991] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0842:2189991] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0842:2189991] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0842:2189991] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14960ecd7610]
+[jwb0842:2189991] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14960ecd76c0]
+[jwb0842:2189991] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0836:494737] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1541b8ae4c30]
+[jwb0836:494737] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1541b8b3202c]
+[jwb0836:494737] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1541b8ae4b86]
+[jwb0836:494737] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1541b8ace873]
+[jwb0836:494737] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1541b8d89c3d]
+[jwb0836:494737] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1541b8d9b14a]
+[jwb0836:494737] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1541b8d897e9]
+[jwb0836:494737] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1541b8d9b3c7]
+[jwb0836:494737] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0693:918455] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0860:1224469] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0860:1224469] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0860:1224469] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0860:1224469] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0860:1224469] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0860:1224469] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14940f909610]
+[jwb0860:1224469] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14940f9096c0]
+[jwb0860:1224469] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0860:1224469] *** End of error message ***
+:1527309] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0841:1527309] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14c616784610]
+[jwb0841:1527309] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14c6167846c0]
+[jwb0841:1527309] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0841:1527309] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0844:3630382] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0844:3630382] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0844:3630382] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0844:3630382] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0844:3630382] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0844:3630382] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1550c97ac610]
+[jwb0844:3630382] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1550c97ac6c0]
+[jwb0844:3630382] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0844:3630382] *** End of error message ***
+home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0700:3011155] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0700:3011155] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0700:3011155] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0700:3011155] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0700:3011155] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14c60bc7a610]
+[jwb0700:3011155] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14c60bc7a6c0]
+[jwb0700:3011155] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0700:3011155] *** End of error message ***
+[jwb0840:2377204] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x145c329f5873]
+[jwb0840:2377204] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x145c32cb0c3d]
+[jwb0840:2377204] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x145c32cc214a]
+[jwb0840:2377204] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x145c32cb07e9]
+[jwb0840:2377204] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x145c32cc23c7]
+[jwb0840:2377204] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0840:2377204] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0840:2377204] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0680:4046846] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0680:4046846] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0680:4046846] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0680:4046846] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0680:4046846] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0680:4046846] [15] /usr/lib64/libc.so.6(+0x2a610)[0x15118dded610]
+[jwb0680:4046846] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x15118dded6c0]
+[jwb0680:4046846] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0680:4046846] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0699:3333652] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0699:3333652] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0699:3333652] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0699:3333652] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0699:3333652] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0699:3333652] [15] /usr/lib64/libc.so.6(+0x2a610)[0x151eb9d9b610]
+[jwb0699:3333652] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x151eb9d9b6c0]
+[jwb0699:3333652] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0835:2366915] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14e1e833e610]
+[jwb0835:2366915] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14e1e833e6c0]
+[jwb0835:2366915] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0835:2366915] *** End of error message ***
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0853:769382] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0853:769382] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0853:769382] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0853:769382] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0853:769382] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0853:769382] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14d06a114610]
+[jwb0853:769382] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14d06a1146c0]
+[jwb0853:769382] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0853:769382] *** End of error message ***
+[jwb0839:547791] *** End of error message ***
+[jwb0842:2189988] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0842:2189988] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0842:2189988] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0842:2189988] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0842:2189988] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0842:2189988] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0842:2189988] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14b5368dd610]
+[jwb0842:2189988] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14b5368dd6c0]
+[jwb0842:2189988] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0836:494737] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0860:1224468] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0860:1224468] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0860:1224468] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0860:1224468] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0860:1224468] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0860:1224468] [15] /usr/lib64/libc.so.6(+0x2a610)[0x145cedade610]
+[jwb0860:1224468] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x145cedade6c0]
+[jwb0860:1224468] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0860:1224468] *** End of error message ***
+[jwb0841:1527307] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0841:1527307] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0841:1527307] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0841:1527307] [15] /usr/lib64/libc.so.6(+0x2a610)[0x145939810610]
+[jwb0841:1527307] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1459398106c0]
+[jwb0841:1527307] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0841:1527307] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0844:3630381] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0844:3630381] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0844:3630381] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0844:3630381] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0844:3630381] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0844:3630381] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1552a2af5610]
+[jwb0844:3630381] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1552a2af56c0]
+[jwb0844:3630381] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0844:3630381] *** End of error message ***
+[jwb0700:3011156] *** End of error message ***
+[jwb0840:2377204] [11] /p/home/jusers/fischill1[jwb0699:3333652] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0835:2366913] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0835:2366913] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0835:2366913] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0835:2366913] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0835:2366913] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0835:2366913] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1551724b5610]
+[jwb0835:2366913] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1551724b56c0]
+[jwb0835:2366913] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0835:2366913] *** End of error message ***
+[jwb0842:2189988] *** End of error message ***
+ticPIF/LandauDampingPIF[0x5df596]
+[jwb0836:494737] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0836:494737] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0836:494737] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0836:494737] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0836:494737] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0836:494737] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1541b8acf610]
+[jwb0836:494737] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1541b8acf6c0]
+[jwb0836:494737] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0836:494737] *** End of error message ***
+[jwb0860:1224467] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0860:1224467] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14ed2f09a610]
+[jwb0860:1224467] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14ed2f09a6c0]
+[jwb0860:1224467] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0860:1224467] *** End of error message ***
+[jwb0841:1527310] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0844:3630383] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0844:3630383] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0844:3630383] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0844:3630383] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0844:3630383] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0844:3630383] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14ece874a610]
+[jwb0844:3630383] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14ece874a6c0]
+[jwb0844:3630383] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0840:2377204] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0840:2377204] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0840:2377204] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0840:2377204] [15] /usr/lib64/libc.so.6(+0x2a610)[0x145c329f6610]
+[jwb0840:2377204] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x145c329f66c0]
+[jwb0840:2377204] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0840:2377204] *** End of error message ***
+[jwb0842:2189989] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0842:2189989] *** End of error message ***
+[jwb0844:3630383] *** End of error message ***
+[jwb0842:2189991] *** End of error message ***
+[jwb0677:1882012] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0677:1882013] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14e7726dec30]
+[jwb0677:1882013] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14e77272c02c]
+[jwb0677:1882013] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14e7726deb86]
+[jwb0677:1882013] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14e7726c8873]
+[jwb0677:1882013] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14e772983c3d]
+[jwb0677:1882013] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14e77299514a]
+[jwb0677:1882013] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14e7729837e9]
+[jwb0677:1882013] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14e7729953c7]
+[jwb0677:1882013] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0677:1882013] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0677:1882011] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x145eee513c30]
+[jwb0677:1882011] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x145eee56102c]
+[jwb0677:1882011] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x145eee513b86]
+[jwb0677:1882011] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x145eee4fd873]
+[jwb0677:1882011] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x145eee7b8c3d]
+[jwb0677:1882011] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x145eee7ca14a]
+[jwb0677:1882011] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x145eee7b87e9]
+[jwb0677:1882011] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x145eee7ca3c7]
+[jwb0677:1882011] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0677:1882011] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/[jwb0677:1882010] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0677:1882010] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0677:1882010] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0677:1882010] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0677:1882010] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0677:1882010] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0677:1882010] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1541a49c5610]
+[jwb0677:1882010] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1541a49c56c0]
+[jwb0677:1882010] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0677:1882010] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0677:1882012] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0677:1882012] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0677:1882012] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0677:1882012] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0677:1882012] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0677:1882012] [15] /usr/lib64/libc.so.6(+0x2a610)[0x146aa2432610]
+[jwb0677:1882012] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x146aa24326c0]
+[jwb0677:1882012] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0677:1882012] *** End of error message ***
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0677:1882013] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0677:1882013] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0677:1882013] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0677:1882013] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0677:1882011] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0677:1882011] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0677:1882011] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0677:1882011] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0677:1882011] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0677:1882011] [15] /usr/lib64/libc.so.6(+0x2a610)[0x145eee4fe610]
+[jwb0677:1882011] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x145eee4fe6c0]
+[jwb0677:1882011] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0677:1882011] *** End of error message ***
+[jwb0677:1882013] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0677:1882013] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14e7726c9610]
+[jwb0677:1882013] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14e7726c96c0]
+[jwb0677:1882013] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0677:1882013] *** End of error message ***
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+  what():  cudaMalloc() failed with message: out of memory
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  cudaMalloc() failed with message: out of memory
+[jwb0862:3412756] *** Process received signal ***
+[jwb0862:3412756] Signal: Aborted (6)
+[jwb0862:3412756] Signal code:  (-6)
+[jwb0862:3412759] *** Process received signal ***
+[jwb0862:3412759] Signal: Aborted (6)
+[jwb0862:3412759] Signal code:  (-6)
+[jwb0862:3412758] *** Process received signal ***
+[jwb0862:3412758] Signal: Aborted (6)
+[jwb0862:3412758] Signal code:  (-6)
+[jwb0862:3412757] *** Process received signal ***
+[jwb0862:3412757] Signal: Aborted (6)
+[jwb0862:3412757] Signal code:  (-6)
+[jwb0862:3412759] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1491d4beac30]
+[jwb0862:3412759] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1491d4c3802c]
+[jwb0862:3412759] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1491d4beab86]
+[jwb0862:3412758] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x1542cf724c30]
+[jwb0862:3412758] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x1542cf77202c]
+[jwb0862:3412758] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x1542cf724b86]
+[jwb0862:3412758] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1542cf70e873]
+[jwb0862:3412758] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1542cf9c9c3d]
+[jwb0862:3412758] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1542cf9db14a]
+[jwb0862:3412758] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1542cf9c97e9]
+[jwb0862:3412758] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1542cf9db3c7]
+[jwb0862:3412758] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0862:3412758] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0862:3412758] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0862:3412758] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0862:3412758] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0862:3412758] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0862:3412756] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14a2cf9c5c30]
+[jwb0862:3412756] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14a2cfa1302c]
+[jwb0862:3412756] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14a2cf9c5b86]
+[jwb0862:3412756] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14a2cf9af873]
+[jwb0862:3412756] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14a2cfc6ac3d]
+[jwb0862:3412756] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14a2cfc7c14a]
+[jwb0862:3412756] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14a2cfc6a7e9]
+[jwb0862:3412756] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14a2cfc7c3c7]
+[jwb0862:3412756] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0862:3412756] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0862:3412756] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0862:3412756] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0862:3412756] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0862:3412756] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0862:3412756] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0862:3412756] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14a2cf9b0610]
+[jwb0862:3412756] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14a2cf9b06c0]
+[jwb0862:3412756] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0862:3412756] *** End of error message ***
+[jwb0862:3412758] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0862:3412758] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1542cf70f610]
+[jwb0862:3412758] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1542cf70f6c0]
+[jwb0862:3412758] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0862:3412758] *** End of error message ***
+[jwb0862:3412757] [ 0] /usr/lib64/libc.so.6(+0x3fc30)[0x14a9683e0c30]
+[jwb0862:3412757] [ 1] /usr/lib64/libc.so.6(+0x8d02c)[0x14a96842e02c]
+[jwb0862:3412757] [ 2] /usr/lib64/libc.so.6(raise+0x16)[0x14a9683e0b86]
+[jwb0862:3412757] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x14a9683ca873]
+[jwb0862:3412757] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x14a968685c3d]
+[jwb0862:3412757] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x14a96869714a]
+[jwb0862:3412757] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x14a9686857e9]
+[jwb0862:3412757] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x14a9686973c7]
+[jwb0862:3412757] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0862:3412757] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0862:3412757] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0862:3412757] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0862:3412759] [ 3] /usr/lib64/libc.so.6(abort+0xd3)[0x1491d4bd4873]
+[jwb0862:3412759] [ 4] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xadc3d)[0x1491d4e8fc3d]
+[jwb0862:3412759] [ 5] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf14a)[0x1491d4ea114a]
+[jwb0862:3412759] [ 6] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(_ZSt10unexpectedv+0x0)[0x1491d4e8f7e9]
+[jwb0862:3412759] [ 7] /p/software/default/stages/2026/software/GCCcore/14.3.0/lib64/libstdc++.so.6(+0xbf3c7)[0x1491d4ea13c7]
+[jwb0862:3412759] [ 8] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF(_ZN6heffte4cuda11check_errorE9cudaErrorPKc+0xb4)[0x462aa4]
+[jwb0862:3412759] [ 9] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5df596]
+[jwb0862:3412759] [10] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e062e]
+[jwb0862:3412759] [11] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e220b]
+[jwb0862:3412759] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0862:3412759] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0862:3412759] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0862:3412759] [15] /usr/lib64/libc.so.6(+0x2a610)[0x1491d4bd5610]
+[jwb0862:3412759] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x1491d4bd56c0]
+[jwb0862:3412759] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0862:3412759] *** End of error message ***
+[jwb0862:3412757] [12] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e2e68]
+[jwb0862:3412757] [13] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x5e3837]
+[jwb0862:3412757] [14] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x423714]
+[jwb0862:3412757] [15] /usr/lib64/libc.so.6(+0x2a610)[0x14a9683cb610]
+[jwb0862:3412757] [16] /usr/lib64/libc.so.6(__libc_start_main+0x80)[0x14a9683cb6c0]
+[jwb0862:3412757] [17] /p/home/jusers/fischill1/juwels/ippl/build_fin/alpine/ElectrostaticPIF/LandauDampingPIF[0x425995]
+[jwb0862:3412757] *** End of error message ***
+srun: error: jwb0841: tasks 40-43: Aborted (core dumped)
+srun: error: jwb0839: tasks 32-35: Aborted (core dumped)
+srun: error: jwb0693: tasks 12-15: Aborted (core dumped)
+srun: error: jwb0678: tasks 4-7: Aborted (core dumped)
+srun: error: jwb0853: tasks 52-55: Aborted (core dumped)
+srun: error: jwb0835: tasks 24-27: Aborted (core dumped)
+srun: error: jwb0700: tasks 20-23: Aborted (core dumped)
+srun: error: jwb0862: tasks 60-63: Aborted (core dumped)
+srun: error: jwb0844: tasks 48-51: Aborted (core dumped)
+srun: error: jwb0680: tasks 8-11: Aborted (core dumped)
+srun: error: jwb0699: tasks 16-19: Aborted (core dumped)
+srun: error: jwb0860: tasks 56-59: Aborted (core dumped)
+srun: error: jwb0840: tasks 36-39: Aborted (core dumped)
+srun: error: jwb0842: tasks 44-47: Aborted (core dumped)
+srun: error: jwb0836: tasks 28-31: Aborted (core dumped)
+srun: error: jwb0677: tasks 0-3: Aborted (core dumped)

@@ -1,0 +1,85 @@
+
+================================================================================
+NUFFT Scaling Benchmark
+================================================================================
+Number of ranks: 64
+Grid size:       1024^3
+Particles:       8589934592 (8 per point)
+Tolerance:       0.0001
+CSV output:      nufft_scaling_64.csv
+Component CSV:   nufft_components_64.csv
+
+=== Benchmarking NUFFT Type 1 ===
+Grid size:       1024^3
+Total particles: 8589934592
+Local particles: 134217728
+Spread method:   output_focused
+Tolerance:       0.0001
+Warmup runs:     3
+Benchmark runs:  10
+Running warmup...
+Running benchmark...
+
+NUFFT Type 1 Results:
+  Ranks:       64
+  Grid:        1024^3
+  Particles:   8589934592
+  Mean time:   5144.406 ms
+  Min time:    5137.513 ms
+  Max time:    5157.125 ms
+  Stddev:      6.670 ms
+  Throughput:  1669.76 Mpts/s
+
+=== Benchmarking NUFFT Type 2 ===
+Grid size:       1024^3
+Total particles: 8589934592
+Local particles: 134217728
+Gather method:   atomic_sort
+Tolerance:       0.00
+Warmup runs:     3
+Benchmark runs:  10
+Running warmup...
+Running benchmark...
+
+NUFFT Type 2 Results:
+  Ranks:       64
+  Grid:        1024^3
+  Particles:   8589934592
+  Mean time:   1547.129 ms
+  Min time:    1543.027 ms
+  Max time:    1551.881 ms
+  Stddev:      2.841 ms
+  Throughput:  5552.18 Mpts/s
+[CSV] Timings written to nufft_scaling_64.csv
+
+==================================================
+COMPONENT TIMING BREAKDOWN
+==================================================
+
+Type-1 (spreading):
+----------------------------------------
+Scatter (spreading)         4038.50 ms
+FFT (forward)               1084.08 ms
+Deconvolution                  0.52 ms
+
+Type-2 (interpolation):
+----------------------------------------
+Precorrection                  0.53 ms
+FFT (backward)              1093.89 ms
+Gather (interpolation)       432.46 ms
+
+Total:
+----------------------------------------
+Complete Type-1             5123.10 ms
+Complete Type-2             1526.89 ms
+[CSV] Component timings written to nufft_components_64.csv
+
+================================================================================
+SUMMARY
+================================================================================
+Type 1: 5144.406 ms (1669.76 Mpts/s)
+Type 2: 1547.13 ms (5552.18 Mpts/s)
+================================================================================
+
+MPICH Slingshot Network Summary: 6 network timeouts
+

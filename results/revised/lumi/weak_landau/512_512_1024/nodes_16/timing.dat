@@ -1,0 +1,36 @@
+                      ranks  Wall tot
+=====================================
+mainTimer...........    128     16.21
+
+                      ranks  Wall max  Wall min  Wall avg
+=========================================================
+mainTimer...........    128     16.21     16.21     16.21
+particlesCreation...    128         0         0         0
+dumpData............    128    0.4673   0.04683    0.2622
+kick................    128   0.02527   0.01882   0.02142
+drift...............    128   0.01216  0.009302   0.01054
+particleBC..........    128   0.03448   0.02764   0.03093
+initializeShapeFunc.    128         0         0         0
+findInternal........    128         0         0         0
+findPeriodic........    128         0         0         0
+NativeNUFFT::init...    128         0         0         0
+updateParticle......    128    0.2186    0.1936    0.2052
+locateParticles.....    128   0.05286   0.04002   0.04481
+sendPreprocess......    128   0.02701  0.001898    0.0173
+particleSend........    128   0.02902   0.01786   0.02301
+particleRecv........    128 0.0007671 0.0004298 0.0004963
+particleDestroy.....    128    0.1044   0.07942   0.08895
+ScatterPIFNUFFT.....    128     2.643     2.501     2.567
+NativeNUFFT1........    128     2.613      2.47     2.537
+scatterTimerNUFFT1..    128    0.8384    0.8076    0.8234
+binSort.............    128   0.07926   0.06421   0.07145
+binComputeKeys......    128  0.006042  0.004762  0.005399
+binSortByKey........    128   0.07126   0.05754   0.06418
+binComputeOffsets...    128  0.002083  0.001672  0.001834
+FFTNUFFT1...........    128     1.776     1.658      1.71
+deconvolutionNUFFT1.    128  0.005227  0.003377  0.003683
+GatherPIFNUFFT......    128      13.3     12.85      13.1
+NativeNUFFT2........    128     13.19     12.76     12.99
+PrecorrectionNUFFT2.    128   0.02455   0.01818   0.01929
+FFTNUFFT2...........    128     7.626     6.577     7.146
+GatherNUFFT2........    128     6.592     5.154     5.829

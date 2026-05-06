@@ -1,0 +1,111 @@
+========================================
+Single-Node NUFFT Benchmark
+========================================
+Mode:            all
+Kernel grid:     200^3
+Breakdown grids: 64,128,192,256
+Rhos (kernels):  10
+Tolerances:      1e-2,1e-3,1e-4,1e-5,1e-6,1e-7,1e-8
+Warmup:          5
+Runs:            20
+Max GPU memory:  40 GB
+========================================
+
+============================================================
+KERNEL THROUGHPUT vs TOLERANCE (grid=200^3)
+============================================================
+
+--- rho = 10 ---
+  Np=80000000  est. memory: 4.7 GB
+[Scatter] Cache hit: method=Atomic w=3 cx=1 rho=0.60 -> tile=(1,1,1) team=64 osub=4 zb=1 tp=14.5 Mpts/s (rho_csv=10.00)
+  Type1          Atomic tol=1e-02  115.7 Mpts/s  (691.677 ms)
+[Scatter] Cache hit: method=Tiled w=3 cx=1 rho=0.60 -> tile=(6,5,3) team=64 osub=1 zb=1 tp=1029.3 Mpts/s (rho_csv=10.00)
+  Type1           Tiled tol=1e-02  376.1 Mpts/s  (212.728 ms)
+[Scatter] Cache hit: method=OutputFocused w=3 cx=1 rho=0.60 -> tile=(3,6,1) team=64 osub=1 zb=30 tp=591.3 Mpts/s (rho_csv=10.00)
+  Type1   Grid-Parallel tol=1e-02  143.1 Mpts/s  (559.007 ms)
+  Type2          Direct tol=1e-02  357.5 Mpts/s  (223.797 ms)
+  Type2          Sorted tol=1e-02  432.0 Mpts/s  (185.186 ms)
+[Scatter] Cache hit: method=Atomic w=4 cx=1 rho=0.60 -> tile=(1,1,1) team=64 osub=4 zb=1 tp=12.9 Mpts/s (rho_csv=10.00)
+  Type1          Atomic tol=1e-03  80.3 Mpts/s  (996.528 ms)
+[Scatter] Cache hit: method=Tiled w=4 cx=1 rho=0.60 -> tile=(5,4,3) team=64 osub=2 zb=1 tp=833.8 Mpts/s (rho_csv=10.00)
+  Type1           Tiled tol=1e-03  248.6 Mpts/s  (321.844 ms)
+[Scatter] Cache hit: method=OutputFocused w=4 cx=1 rho=0.60 -> tile=(5,3,2) team=64 osub=1 zb=32 tp=575.0 Mpts/s (rho_csv=10.00)
+  Type1   Grid-Parallel tol=1e-03  240.6 Mpts/s  (332.447 ms)
+  Type2          Direct tol=1e-03  167.4 Mpts/s  (477.946 ms)
+  Type2          Sorted tol=1e-03  382.0 Mpts/s  (209.436 ms)
+[Scatter] Cache hit: method=Atomic w=5 cx=1 rho=0.60 -> tile=(1,1,1) team=64 osub=4 zb=1 tp=9.1 Mpts/s (rho_csv=10.00)
+  Type1          Atomic tol=1e-04  38.2 Mpts/s  (2096.260 ms)
+[Scatter] Cache hit: method=Tiled w=5 cx=1 rho=0.60 -> tile=(5,5,2) team=64 osub=2 zb=1 tp=566.4 Mpts/s (rho_csv=10.00)
+  Type1           Tiled tol=1e-04  126.4 Mpts/s  (633.109 ms)
+[Scatter] Cache hit: method=OutputFocused w=5 cx=1 rho=0.60 -> tile=(4,4,1) team=128 osub=1 zb=27 tp=356.6 Mpts/s (rho_csv=10.00)
+  Type1   Grid-Parallel tol=1e-04  85.3 Mpts/s  (937.366 ms)
+  Type2          Direct tol=1e-04  89.5 Mpts/s  (893.400 ms)
+  Type2          Sorted tol=1e-04  246.6 Mpts/s  (324.388 ms)
+[Scatter] Cache hit: method=Atomic w=6 cx=1 rho=0.60 -> tile=(1,1,1) team=64 osub=4 zb=1 tp=8.0 Mpts/s (rho_csv=10.00)
+  Type1          Atomic tol=1e-05  29.2 Mpts/s  (2743.190 ms)
+[Scatter] Cache hit: method=Tiled w=6 cx=1 rho=0.60 -> tile=(4,4,3) team=64 osub=5 zb=1 tp=347.1 Mpts/s (rho_csv=10.00)
+  Type1           Tiled tol=1e-05  69.7 Mpts/s  (1148.411 ms)
+[Scatter] Cache hit: method=OutputFocused w=6 cx=1 rho=0.60 -> tile=(4,3,4) team=256 osub=1 zb=28 tp=285.6 Mpts/s (rho_csv=10.00)
+  Type1   Grid-Parallel tol=1e-05  114.3 Mpts/s  (699.628 ms)
+  Type2          Direct tol=1e-05  53.0 Mpts/s  (1508.459 ms)
+  Type2          Sorted tol=1e-05  162.6 Mpts/s  (491.911 ms)
+[Scatter] Cache hit: method=Atomic w=7 cx=1 rho=0.60 -> tile=(1,1,1) team=64 osub=4 zb=1 tp=6.3 Mpts/s (rho_csv=10.00)
+  Type1          Atomic tol=1e-06  20.2 Mpts/s  (3952.249 ms)
+[Scatter] Cache hit: method=Tiled w=7 cx=1 rho=0.60 -> tile=(4,5,4) team=64 osub=6 zb=1 tp=181.8 Mpts/s (rho_csv=10.00)
+  Type1           Tiled tol=1e-06  81.0 Mpts/s  (987.901 ms)
+[Scatter] Cache hit: method=OutputFocused w=7 cx=1 rho=0.60 -> tile=(6,3,1) team=512 osub=1 zb=32 tp=154.0 Mpts/s (rho_csv=10.00)
+  Type1   Grid-Parallel tol=1e-06  25.0 Mpts/s  (3205.866 ms)
+  Type2          Direct tol=1e-06  32.5 Mpts/s  (2459.121 ms)
+  Type2          Sorted tol=1e-06  104.2 Mpts/s  (767.464 ms)
+[Scatter] Cache hit: method=Atomic w=8 cx=1 rho=0.60 -> tile=(1,1,1) team=64 osub=4 zb=1 tp=5.1 Mpts/s (rho_csv=10.00)
+  Type1          Atomic tol=1e-07  15.5 Mpts/s  (5177.860 ms)
+[Scatter] Cache hit: method=Tiled w=8 cx=1 rho=0.60 -> tile=(6,3,2) team=64 osub=7 zb=1 tp=89.1 Mpts/s (rho_csv=10.00)
+  Type1           Tiled tol=1e-07  28.0 Mpts/s  (2856.713 ms)
+[Scatter] Cache hit: method=OutputFocused w=8 cx=1 rho=0.60 -> tile=(3,5,2) team=256 osub=1 zb=32 tp=112.2 Mpts/s (rho_csv=10.00)
+  Type1   Grid-Parallel tol=1e-07  47.7 Mpts/s  (1675.475 ms)
+  Type2          Direct tol=1e-07  22.0 Mpts/s  (3638.224 ms)
+  Type2          Sorted tol=1e-07  72.4 Mpts/s  (1105.483 ms)
+  Type1          Atomic tol=1e-08  9.1 Mpts/s  (8821.802 ms)
+  Type1           Tiled tol=1e-08  5.4 Mpts/s  (14681.613 ms)
+  Type1   Grid-Parallel tol=1e-08  5.9 Mpts/s  (13547.929 ms)
+  Type2          Direct tol=1e-08  15.9 Mpts/s  (5018.518 ms)
+  Type2          Sorted tol=1e-08  51.6 Mpts/s  (1550.668 ms)
+
+============================================================
+NUFFT TIMING BREAKDOWN (rho=10.000, tol=1e-04)
+============================================================
+
+--- grid = 64^3 ---
+  Type1        Spreading: 17.157 ms  (92.4%)
+  Type1              FFT: 1.378 ms  (7.4%)
+  Type1    Deconvolution: 0.026 ms  (0.1%)
+  Type2    Precorrection: 0.026 ms  (0.3%)
+  Type2              FFT: 1.524 ms  (19.0%)
+  Type2    Interpolation: 6.468 ms  (80.7%)
+
+--- grid = 128^3 ---
+  Type1        Spreading: 136.110 ms  (95.6%)
+  Type1              FFT: 6.211 ms  (4.4%)
+  Type1    Deconvolution: 0.080 ms  (0.1%)
+  Type2    Precorrection: 0.081 ms  (0.1%)
+  Type2              FFT: 7.370 ms  (12.4%)
+  Type2    Interpolation: 51.979 ms  (87.5%)
+
+--- grid = 192^3 ---
+  Type1        Spreading: 892.678 ms  (98.0%)
+  Type1              FFT: 18.213 ms  (2.0%)
+  Type1    Deconvolution: 0.224 ms  (0.0%)
+  Type2    Precorrection: 0.225 ms  (0.1%)
+  Type2              FFT: 22.792 ms  (7.7%)
+  Type2    Interpolation: 271.624 ms  (92.2%)
+
+--- grid = 256^3 ---
+  Type1        Spreading: 1020.369 ms  (95.2%)
+  Type1              FFT: 50.685 ms  (4.7%)
+  Type1    Deconvolution: 0.518 ms  (0.0%)
+  Type2    Precorrection: 0.519 ms  (0.1%)
+  Type2              FFT: 59.493 ms  (10.7%)
+  Type2    Interpolation: 496.277 ms  (89.2%)
+
+Kernel results written to: bench_kernels.csv
+Breakdown results written to: bench_breakdown.csv

@@ -1,0 +1,50 @@
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Kokkos::OpenMP::initialize WARNING: OMP_PROC_BIND environment variable not set
+  In general, for best performance with OpenMP 4.0 or better set OMP_PROC_BIND=spread and OMP_PLACES=threads
+  For best performance with OpenMP 3.1 set OMP_PROC_BIND=true
+  For unit testing set OMP_PROC_BIND=false
+
+MPI detected: For OpenMP binding to work as intended, MPI ranks must be bound to exclusive CPU sets.
+
+Message size exceeds range of int
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 2 in communicator MPI_COMM_WORLD
+  Proc: [[3219,0],2]
+  Errorcode: -1
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------
+[jwb0384:2650204] [0] func:/p/software/default/stages/2026/software/OpenMPI/5.0.8-GCC-14.3.0/lib/libopen-pal.so.80(opal_backtrace_buffer+0x20) [0x14e55007f830]
+[jwb0384:2650204] [1] func:/p/software/default/stages/2026/software/OpenMPI/5.0.8-GCC-14.3.0/lib/libmpi.so.40(ompi_mpi_abort+0x11f) [0x14e5628692ff]
+[jwb0384:2650204] [2] func:/p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT() [0x4918e5]
+[jwb0384:2650204] [3] func:/p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT() [0x4f762c]
+[jwb0384:2650204] [4] func:/p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT() [0x4470ff]
+[jwb0384:2650204] [5] func:/p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT() [0x421882]
+[jwb0384:2650204] [6] func:/usr/lib64/libc.so.6(+0x2a610) [0x14e5503ee610]
+[jwb0384:2650204] [7] func:/usr/lib64/libc.so.6(__libc_start_main+0x80) [0x14e5503ee6c0]
+[jwb0384:2650204] [8] func:/p/home/jusers/fischill1/juwels/ippl/build_fin/test/FFT/PaperBenchmarks/BenchmarkNUFFT() [0x422385]
+pspmix_service_abort: on users request from rank 2
+srun: error: jwb0384: tasks 0-3: Terminated
+srun: Force Terminated StepId=13455701.0
