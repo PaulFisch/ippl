@@ -52,6 +52,11 @@ FFT_GRID_DIRS = {
     2048: FFT_DIR / 'benchmark_results_20251209_2048',
 }
 
+# Older single-shot Alps NUFFT components benchmark — used by Fig 8 because
+# it includes the accumulateHaloNUFFT1 / FillHaloNUFFT2 halo-exchange timers
+# that the newer upsampled benchmark does not export.
+ALPS_COMPONENTS_DIR = BASE.parent / 'scaling' / 'benchmark_results_alps'
+
 # ════════════════════════════════════════════════════════════════════════
 # Style — ACM-compliant
 # ════════════════════════════════════════════════════════════════════════
@@ -811,58 +816,92 @@ def fig_comparison_scaling_combined(output_dir, grid_key='current', max_gpus=Non
 
 
 # ════════════════════════════════════════════════════════════════════════
-# Figure 8: upsampled (full FFT) NUFFT components on Alps at 512^3
+# Figure 8: NUFFT components on Alps at 512^3 (full-FFT benchmark)
+#
+# Uses the older results/scaling/benchmark_results_alps/ run because it
+# exports the halo-exchange timers (accumulateHaloNUFFT1, FillHaloNUFFT2)
+# that the newer upsampled benchmark dropped.
 # ════════════════════════════════════════════════════════════════════════
+
+# Per-type timer name -> stack-order component label
+_FIG8_TIMER_T1 = {
+    'scatterTimerNUFFT1':   'Spreading',
+    'accumulateHaloNUFFT1': 'Halo',
+    'FFTNUFFT1':            'FFT',
+    'deconvolutionNUFFT1':  'Deconvolution',
+}
+_FIG8_TIMER_T2 = {
+    'GatherNUFFT2':         'Interpolation',
+    'FillHaloNUFFT2':       'Halo',
+    'FFTNUFFT2':            'FFT',
+    'PrecorrectionNUFFT2':  'Precorrection',
+}
+
 
 def fig_nufft_scaling_components(output_dir, clusters):
     setup_style()
     print('\n=== Fig 8: full-FFT NUFFT components ===')
 
-    comp_data = _load_components_data('current', upsampled=True)
-    if not comp_data:
+    if 'alps' not in clusters:
         return
-    comp_data = {c: comp_data[c] for c in clusters if c in comp_data}
+    if not ALPS_COMPONENTS_DIR.exists():
+        print(f'  [skip] {ALPS_COMPONENTS_DIR} missing')
+        return
 
-    for cluster, df in comp_data.items():
-        gpu_counts = sorted(df['gpus'].unique())
+    frames = []
+    for path in sorted(ALPS_COMPONENTS_DIR.glob('nufft_components_*.csv')):
+        df = pd.read_csv(path)
+        df.columns = df.columns.str.strip()
+        frames.append(df)
+    if not frames:
+        return
+    df = pd.concat(frames, ignore_index=True)
 
-        fig, axes = plt.subplots(1, 2, figsize=(6.5, 2.8))
-        x = np.arange(len(gpu_counts))
-        bw = 0.7
+    # Skip warm-up: the first run is the one with multi-second halo outliers.
+    df = df[df['run'] > 0].copy()
+    df['time_ms'] = df['time_s'] * 1000
 
-        for ax, timer_map, comp_order, title in [
-            (axes[0], TIMER_MAP_T1, COMP_ORDER_T1, 'Type‑1 (spreading)'),
-            (axes[1], TIMER_MAP_T2, COMP_ORDER_T2, 'Type‑2 (interpolation)'),
-        ]:
-            for gi, gpus in enumerate(gpu_counts):
-                gdf = df[df['gpus'] == gpus]
-                bottom = 0.0
-                for comp in comp_order:
-                    timer_names = [k for k, v in timer_map.items() if v == comp]
-                    total = 0.0
-                    for tn in timer_names:
-                        tdf = gdf[gdf['timer'] == tn]
-                        if not tdf.empty:
-                            total += tdf['time_s'].mean() * 1000
-                    if total == 0:
-                        continue
-                    lbl = comp if gi == 0 else None
-                    ax.bar(x[gi], total, bw, bottom=bottom,
-                           color=COMP_COLORS.get(comp, '#999'),
-                           hatch=COMP_HATCHES.get(comp, ''),
-                           edgecolor='black', linewidth=0.3, label=lbl)
-                    bottom += total
+    # Cap at 256 GPUs to match the original Fig 8 layout.
+    df = df[df['num_ranks'] <= 256]
+    gpu_counts = sorted(df['num_ranks'].unique())
 
-            ax.set_xticks(x)
-            ax.set_xticklabels([str(g) for g in gpu_counts], fontsize=6)
-            ax.set_xlabel('Number of GPUs')
-            ax.set_ylabel('Time (ms)')
-            ax.set_title(title, fontsize=9)
-            ax.set_ylim(bottom=0)
-            ax.legend(loc='upper right', fontsize=6)
+    fig, axes = plt.subplots(1, 2, figsize=(5.5, 2.5))
+    x = np.arange(len(gpu_counts))
+    bw = 0.65
 
-        plt.tight_layout()
-        _save(fig, os.path.join(output_dir, f'nufft_scaling_components_{cluster}'))
+    for ax, timer_map, comp_order, title in [
+        (axes[0], _FIG8_TIMER_T1, COMP_ORDER_T1, 'Type‑1 (spreading)'),
+        (axes[1], _FIG8_TIMER_T2, COMP_ORDER_T2, 'Type‑2 (interpolation)'),
+    ]:
+        for gi, gpus in enumerate(gpu_counts):
+            gdf = df[df['num_ranks'] == gpus]
+            bottom = 0.0
+            for comp in comp_order:
+                timer_names = [k for k, v in timer_map.items() if v == comp]
+                total = 0.0
+                for tn in timer_names:
+                    tdf = gdf[gdf['timer'] == tn]
+                    if not tdf.empty:
+                        total += tdf['time_ms'].mean()
+                if total == 0:
+                    continue
+                lbl = comp if gi == 0 else None
+                ax.bar(x[gi], total, bw, bottom=bottom,
+                       color=COMP_COLORS.get(comp, '#999'),
+                       hatch=COMP_HATCHES.get(comp, ''),
+                       edgecolor='black', linewidth=0.3, label=lbl)
+                bottom += total
+
+        ax.set_xticks(x)
+        ax.set_xticklabels([str(g) for g in gpu_counts], fontsize=7)
+        ax.set_xlabel('Number of GPUs')
+        ax.set_ylabel('Time (ms)')
+        ax.set_title(title, fontsize=9)
+        ax.set_ylim(bottom=0)
+        ax.legend(loc='upper right', fontsize=6)
+
+    plt.tight_layout()
+    _save(fig, os.path.join(output_dir, 'nufft_scaling_components_alps'))
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -1055,9 +1094,6 @@ def fig_nufft_pif_components(output_dir, grid_key='current', pruned=False,
             ax.set_ylim(bottom=0)
             ax.legend(loc='upper right', fontsize=6)
 
-        plt.suptitle(
-            f'{CLUSTER_LABELS[cluster]} — Grid ${grid_label}^3$ ({fft_label} FFT, from PIF)',
-            fontsize=9, y=1.02)
         plt.tight_layout()
         _save(fig, os.path.join(
             output_dir,
