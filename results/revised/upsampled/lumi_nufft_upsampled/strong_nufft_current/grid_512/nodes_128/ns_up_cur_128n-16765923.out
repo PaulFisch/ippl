@@ -1,7 +1,0 @@
-[ 12%] Built target Heffte
-[ 62%] Built target kokkoscore
-[ 62%] Built target kokkossimd
-[ 62%] Built target kokkosalgorithms
-[ 68%] Built target kokkoscontainers
-[ 93%] Built target ippl
-[100%] Built target BenchmarkNUFFT

@@ -1,2 +1,0 @@
-Running SingleNode --mode all --grid 144 --grids 64,96,128,160 --breakdown-rho 5
-Running SingleNode --mode density --grid 112
