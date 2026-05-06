@@ -1,0 +1,50 @@
+{
+  "title": "IPPL — A Performance-Portable, Massively Parallel Distributed Nonuniform FFT (PASC '26 reproducibility artifact)",
+  "description": "<p>Reproducibility artifact accompanying the PASC '26 paper <em>A Performance-Portable, Massively Parallel Distributed Nonuniform FFT</em> by Fischill, Adelmann, and Muralikrishnan. This snapshot of the IPPL framework contains the distributed NUFFT and Particle-in-Fourier solver, together with the raw benchmark data and a single self-contained plotting script (<code>results/revised/plot_paper.py</code>) that regenerates the twelve figures used in the manuscript.</p><p>Tested on Alps (CSCS, NVIDIA GH200), JUWELS Booster (JSC, NVIDIA A100), and LUMI (CSC, AMD MI250X).</p>",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Fischill, Paul",
+      "affiliation": "ETH Zürich",
+      "orcid": "0009-0005-9850-9415"
+    },
+    {
+      "name": "Adelmann, Andreas",
+      "affiliation": "PSI Center for Scientific Computing, Theory and Data",
+      "orcid": "0000-0002-7230-7007"
+    },
+    {
+      "name": "Muralikrishnan, Sriramkrishnan",
+      "affiliation": "Jülich Supercomputing Centre, Forschungszentrum Jülich GmbH",
+      "orcid": "0000-0002-5494-1880"
+    }
+  ],
+  "keywords": [
+    "nonuniform FFT",
+    "NUFFT",
+    "particle-in-Fourier",
+    "performance portability",
+    "distributed parallelism",
+    "Kokkos",
+    "HeFFTe",
+    "GPU",
+    "reproducibility"
+  ],
+  "license": "GPL-3.0-only",
+  "access_right": "open",
+  "related_identifiers": [
+    {
+      "scheme": "doi",
+      "identifier": "10.1145/XXXXXXX.XXXXXXX",
+      "relation": "isSupplementTo",
+      "resource_type": "publication-conferencepaper"
+    },
+    {
+      "scheme": "doi",
+      "identifier": "10.5281/zenodo.5940225",
+      "relation": "isPartOf",
+      "resource_type": "software"
+    }
+  ],
+  "communities": []
+}

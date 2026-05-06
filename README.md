@@ -36,7 +36,8 @@ massively parallel toolkit for particle-mesh methods. IPPL supports simulations 
 **[CI/CD](#cicd-and-pr-testing)** |
 **[Citing IPPL](#citing-ippl)** |
 **[SLURM Job scripts](#slurm-job-scripts)** |
-**[Profiling](#profiling)**
+**[Profiling](#profiling)** |
+**[PASC '26 NUFFT artifact](#reproducing-the-pasc-26-nufft-paper)**
 
 # Installation
 We compiled installation [instructions](./INSTALLATION.md) for many HPC systems. 
@@ -77,6 +78,38 @@ Please see [Code Formatting Setup](doc/extras/CodeFormattingSetup.md) for furthe
   organization={SIAM}
 }
 ```
+
+# Reproducing the PASC '26 NUFFT paper
+
+This branch (`pif-pr-results`) is the reproducibility artifact for
+
+> P. Fischill, A. Adelmann, S. Muralikrishnan,
+> *A Performance-Portable, Massively Parallel Distributed Nonuniform FFT*,
+> PASC '26.
+
+The framework code (NUFFT solver, Particle-in-Fourier driver, BO-tuned
+spreading kernels, pruned distributed FFT) lives in `src/` and `test/`. The
+raw benchmark data and a single self-contained plotting script live under
+`results/`:
+
+```
+results/
+├── fft/                          # Standalone forward-FFT timings (Fig 5)
+└── revised/
+    ├── plot_paper.py             # Regenerates all 12 paper figures
+    ├── plots/                    # Output: 12 PDF + 12 PNG figures
+    ├── alps/   juwels/   lumi/   # Per-cluster benchmark CSVs
+    ├── tol_1e8/                  # PIF Landau runs at ε=10⁻⁸
+    └── upsampled/                # Full-FFT NUFFT scaling runs
+```
+
+To regenerate the figures from the bundled CSVs:
+
+```bash
+cd results/revised
+python plot_paper.py        # writes ./plots/{pdf,png} for all 12 figures
+```
+
 
 # SLURM Job scripts
 

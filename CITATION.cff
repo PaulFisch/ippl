@@ -1,0 +1,65 @@
+cff-version: 1.2.0
+message: >-
+  If you use this artifact, please cite both the IPPL framework and
+  the accompanying paper (preferred-citation, below).
+title: >-
+  IPPL — A Performance-Portable, Massively Parallel Distributed Nonuniform FFT
+  (PASC '26 reproducibility artifact)
+type: software
+version: pasc26-artifact
+date-released: 2026-05-06
+license: GPL-3.0-only
+repository-code: https://github.com/PaulFisch/ippl
+url: https://github.com/PaulFisch/ippl/tree/pif-pr-results
+keywords:
+  - nonuniform FFT
+  - NUFFT
+  - particle-in-Fourier
+  - performance portability
+  - distributed parallelism
+  - Kokkos
+  - HeFFTe
+  - GPU
+authors:
+  - given-names: Paul
+    family-names: Fischill
+    email: pfischill@ethz.ch
+    orcid: https://orcid.org/0009-0005-9850-9415
+    affiliation: ETH Zürich
+  - given-names: Andreas
+    family-names: Adelmann
+    email: andreas.adelmann@psi.ch
+    orcid: https://orcid.org/0000-0002-7230-7007
+    affiliation: >-
+      PSI Center for Scientific Computing, Theory and Data
+  - given-names: Sriramkrishnan
+    family-names: Muralikrishnan
+    email: s.muralikrishnan@fz-juelich.de
+    orcid: https://orcid.org/0000-0002-5494-1880
+    affiliation: >-
+      Jülich Supercomputing Centre, Forschungszentrum Jülich GmbH
+preferred-citation:
+  type: conference-paper
+  title: >-
+    A Performance-Portable, Massively Parallel Distributed Nonuniform FFT
+  authors:
+    - given-names: Paul
+      family-names: Fischill
+      orcid: https://orcid.org/0009-0005-9850-9415
+    - given-names: Andreas
+      family-names: Adelmann
+      orcid: https://orcid.org/0000-0002-7230-7007
+    - given-names: Sriramkrishnan
+      family-names: Muralikrishnan
+      orcid: https://orcid.org/0000-0002-5494-1880
+  conference:
+    name: >-
+      PASC '26 — Platform for Advanced Scientific Computing Conference
+    city: Bern
+    country: CH
+    date-start: 2026-06-29
+    date-end: 2026-07-01
+  year: 2026
+  publisher:
+    name: ACM
+  doi: 10.1145/XXXXXXX.XXXXXXX
