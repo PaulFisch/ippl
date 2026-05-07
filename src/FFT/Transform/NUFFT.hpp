@@ -189,7 +189,7 @@ namespace ippl {
     //=========================================================================
 
     template <typename RealField>
-    FFT<NUFFTransform, RealField>::FFT(const Layout_t& layout, std::size_t localNp, int type,
+    FFT<NUFFTransform, RealField>::FFT(const Layout_t& layout, detail::size_type localNp, int type,
                                        const ParameterList& params)
         : type_m(type)
         , tol_m(params.get<T>("tolerance", T(1e-6)))
@@ -295,7 +295,7 @@ namespace ippl {
 
     template <typename RealField>
     void FFT<NUFFTransform, RealField>::allocateFinufftBuffers(const Layout_t& layout,
-                                                               std::size_t localNp) {
+                                                               detail::size_type localNp) {
 #ifdef ENABLE_FINUFFT
         const auto& lDom = layout.getLocalNDIndex();
         Kokkos::realloc(tempField_m, lDom[0].length(), lDom[1].length(), lDom[2].length());

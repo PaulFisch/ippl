@@ -240,7 +240,8 @@ namespace ippl {
          * @param type Transform type (1 or 2)
          * @param params Configuration parameters
          */
-        FFT(const Layout_t& layout, std::size_t localNp, int type, const ParameterList& params);
+        FFT(const Layout_t& layout, detail::size_type localNp, int type,
+            const ParameterList& params);
 
         ~FFT();
 
@@ -286,7 +287,7 @@ namespace ippl {
         //! Build the FINUFFT plan and configure tolerances/options.
         void initFinufft(const ParameterList& params);
         //! Allocate the LayoutLeft scratch views FINUFFT consumes.
-        void allocateFinufftBuffers(const Layout_t& layout, std::size_t localNp);
+        void allocateFinufftBuffers(const Layout_t& layout, detail::size_type localNp);
     };
 
 }  // namespace ippl
