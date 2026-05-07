@@ -70,8 +70,8 @@ namespace ippl {
             size_t size = intersect.size();
             nsends      = size;
             if (buffer.size() < size) {
-                const int overalloc = ippl::Comm->getDefaultOverallocation();
-                Kokkos::realloc(buffer, size * overalloc);
+                const double overalloc = ippl::Comm->getDefaultOverallocation();
+                Kokkos::realloc(buffer, static_cast<size_t>(size * overalloc));
             }
 
             const int first0 = intersect[0].first() + nghost - ldom[0].first();
@@ -114,8 +114,8 @@ namespace ippl {
             size_t size = intersect.size();
             nsends      = size;
             if (buffer.size() < size) {
-                const int overalloc = ippl::Comm->getDefaultOverallocation();
-                Kokkos::realloc(buffer, size * overalloc);
+                const double overalloc = ippl::Comm->getDefaultOverallocation();
+                Kokkos::realloc(buffer, static_cast<size_t>(size * overalloc));
             }
 
             const int first0 = intersect[0].first() + nghost - ldom[0].first();
