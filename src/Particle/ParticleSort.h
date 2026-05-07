@@ -248,7 +248,7 @@ namespace ippl {
 #endif
 
         /**
-         * @brief Generic sort dispatcher — selects CUDA/HIP/host implementation
+         * @brief Generic sort dispatcher -- selects CUDA/HIP/host implementation
          */
         template <unsigned Dim, typename ExecSpace, typename T>
         Kokkos::View<size_t*, typename ExecSpace::memory_space> sortParticles(
@@ -324,7 +324,7 @@ namespace ippl {
         }
 
         /**
-         * @brief Scatter src → dst using inverse permutation (dst[permute[i]] = src[i])
+         * @brief Scatter src -> dst using inverse permutation (dst[permute[i]] = src[i])
          */
         template <typename ExecSpace, typename DataView, typename IndexView>
         void applyInversePermutation(const DataView& src, DataView& dst, const IndexView& permute,

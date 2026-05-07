@@ -116,7 +116,7 @@ namespace ippl {
             const size_t n_particles = positions.getParticleCount();
 
             // The halo must be valid before any stencil reads it, and is
-            // independent of the runtime kernel width — fill once outside
+            // independent of the runtime kernel width -- fill once outside
             // the WidthDispatcher.
             field.fillHalo();
 

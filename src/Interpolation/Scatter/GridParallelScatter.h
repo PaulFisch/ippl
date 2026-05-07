@@ -37,9 +37,9 @@ namespace ippl::Interpolation::detail {
         static constexpr bool fixed_oversubscription = Policy::fixed_oversubscription;
     };
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------------
     // 3D optimized implementation
-    // ─────────────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------------
 
     /*!
      * @struct GridParallelScatterImpl3D
@@ -120,7 +120,7 @@ namespace ippl::Interpolation::detail {
         size_t sub_teams_per_tile_ = 1;
 
         // binning flattens with dimension 2 fastest:
-        //   bin = tx*(ny*nz) + ty*nz + tz → decode in order z, y, x.
+        //   bin = tx*(ny*nz) + ty*nz + tz -> decode in order z, y, x.
         KOKKOS_INLINE_FUNCTION void decode_tile_base(const size_t tile_id_in, int& tx, int& ty,
                                                      int& tz) const {
             size_t t         = tile_id_in;
@@ -423,9 +423,9 @@ namespace ippl::Interpolation::detail {
         }
     };
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------------
     // Generic Dim != 3 fallback
-    // ─────────────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------------
 
     /*!
      * @struct GridParallelScatterImplND
@@ -762,9 +762,9 @@ namespace ippl::Interpolation::detail {
         }
     };
 
-    // ─────────────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------------
     // Public selector
-    // ─────────────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------------
 
     template <int W, class Types, class Policy>
     using GridParallelScatter =

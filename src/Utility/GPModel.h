@@ -5,7 +5,7 @@
 //   selection via gradient ascent on the log-marginal-likelihood.
 //
 //   Designed for low-dimensional Bayesian optimization of discrete kernel
-//   configurations: a small number of inputs (<200), 1–10 dimensions, and
+//   configurations: a small number of inputs (<200), 1-10 dimensions, and
 //   per-observation noise variance derived from benchmark run-to-run
 //   variance (heteroscedastic).
 //

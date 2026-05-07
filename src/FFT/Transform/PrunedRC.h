@@ -142,7 +142,7 @@ namespace ippl {
         std::array<long long, 3> lowReal, highReal;
         fft::domainToBounds<Dim>(layoutReal.getLocalNDIndex(), lowReal, highReal);
 
-        // Outbox: custom — aligned to pruned in r2c_dir, full extent everywhere else
+        // Outbox: custom -- aligned to pruned in r2c_dir, full extent everywhere else
         //
         // In r2c_dir d_r:
         //   outbox lo = pruned lo   (so fi = gi_p is always within this rank's buffer)
@@ -220,7 +220,7 @@ namespace ippl {
         const long long N1 = globalRealDims_[1];
         const long long N2 = globalRealDims_[2];
 
-        // outbox origins — only non-zero in r2c_dir
+        // outbox origins -- only non-zero in r2c_dir
         const long long lcf0 = lowComplexFull_[0];
         const long long lcf1 = lowComplexFull_[1];
         const long long lcf2 = lowComplexFull_[2];
@@ -229,7 +229,7 @@ namespace ippl {
         auto owned = g.getOwned();  // ghost-free extent of pruned field
 
         if (direction == FORWARD) {
-            // 1. Strip ghosts → tempReal_
+            // 1. Strip ghosts -> tempReal_
             auto tempreal = tempReal_;
             Kokkos::parallel_for(
                 "r2c_copy_real_fwd",
@@ -241,10 +241,10 @@ namespace ippl {
                 });
             Kokkos::fence();
 
-            // 2. Distributed R2C FFT → tempComplexFull_
+            // 2. Distributed R2C FFT -> tempComplexFull_
             backend_->forward(tempReal_.data(), tempComplexFull_.data());
 
-            // 3. Extract pruned modes from tempComplexFull_ → pruned output field
+            // 3. Extract pruned modes from tempComplexFull_ -> pruned output field
             //
             //    Every access is local by construction of the outbox:
             //      fi0_l = gi0 - lcf0  (R2C dim 0 assumed here; generalises below)

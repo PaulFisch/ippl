@@ -121,7 +121,7 @@ namespace ippl {
          * @brief Reallocate the underlying view, discarding existing entries.
          *
          * Capacity-only operation. Does not apply the default overallocation
-         * factor — call `alloc()` instead from the outside.
+         * factor -- call `alloc()` instead from the outside.
          */
         void realloc(size_type n) { Kokkos::realloc(dview_m, n); }
 

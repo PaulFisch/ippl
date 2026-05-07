@@ -238,7 +238,7 @@ namespace ippl::Interpolation::detail {
 
             // -------------------------
             // Dimension-specialized paths (LayoutLeft only)
-            // Compute (base, g0) only where they’re needed and keep live ranges tight.
+            // Compute (base, g0) only where they're needed and keep live ranges tight.
             // -------------------------
             if constexpr (Dim == 1) {
                 // compute dim0 and immediately fill weights

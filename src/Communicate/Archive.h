@@ -132,7 +132,7 @@ namespace ippl {
             using memory_space = typename buffer_type::memory_space;
 
             //! True iff this Archive's memory space is host-inaccessible
-            //! (CUDA device or HIP device). UVM is excluded — it works with
+            //! (CUDA device or HIP device). UVM is excluded -- it works with
             //! the regular Kokkos::View path because the host can address
             //! the memory directly. For a HostSpace archive the host-side
             //! memcpy in serialize() requires a host-accessible buffer, so

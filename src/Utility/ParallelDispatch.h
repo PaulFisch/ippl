@@ -219,7 +219,7 @@ namespace ippl {
 
         // Dispatches F(i) for i in [0, n) either in parallel (OpenMP host)
         // when MPI_THREAD_MULTIPLE is available, or serially otherwise.
-        // `f(i)` must be synchronous w.r.t. its own work — this dispatcher
+        // `f(i)` must be synchronous w.r.t. its own work -- this dispatcher
         // fences after the parallel_for so the caller's next operation sees
         // a consistent state.
         template <typename F>

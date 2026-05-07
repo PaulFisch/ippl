@@ -174,7 +174,7 @@ bool TileSizeCache::parse_uniform_row(const std::string& line, bool has_rho) {
     if (width <= 0 || tile <= 0)
         return false;
 
-    // Uniform has no value_type column → insert for both
+    // Uniform has no value_type column -> insert for both
     for (bool cx : {false, true}) {
         TileCacheEntry e;
         e.tile.fill(tile);

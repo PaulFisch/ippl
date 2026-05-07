@@ -45,7 +45,7 @@ namespace ippl {
             using PosTr   = ippl::detail::AttribTraits<std::decay_t<PositionsType>>;
             using ValTr   = ippl::detail::AttribTraits<std::decay_t<ValuesType>>;
 
-            // RealType from the kernel's value_type — see Gather.h for the
+            // RealType from the kernel's value_type -- see Gather.h for the
             // rationale (avoids float-position downcasting the mesh spacing).
             using RealType = typename std::decay_t<Kernel>::value_type;
 
@@ -122,7 +122,7 @@ namespace ippl {
 
             constexpr bool is_complex_field = ippl::detail::is_kokkos_complex<FieldT>::value;
 
-            // ── Estimate particle density (rho = local particles / local grid pts) ──
+            // -- Estimate particle density (rho = local particles / local grid pts) --
             const size_t n_particles = positions.getParticleCount();
             const double rho_est     = estimate_rho(field, n_particles);
 
@@ -242,9 +242,9 @@ namespace ippl {
         // when locked, or switched by get_best() in operator()).
         //
         // Priority:
-        //   1. enable_tuning → return config_m unchanged (runtime tuner)
-        //   2. cache hit     → apply tile, team_size, osub, z_batches
-        //   3. no hit        → return config_m unchanged
+        //   1. enable_tuning -> return config_m unchanged (runtime tuner)
+        //   2. cache hit     -> apply tile, team_size, osub, z_batches
+        //   3. no hit        -> return config_m unchanged
         // ------------------------------------------------------------------
         template <template <int, class, class> class Impl, int W, class Types, class Policy,
                   bool IsComplex>
@@ -347,7 +347,7 @@ namespace ippl {
             const size_t n_particles = positions.getParticleCount();
 
             Interpolation::WidthDispatcher<1, std::decay_t<decltype(kernel_m)>::max_width>::dispatch(width, [&]<int W>() {
-                // ── Step 1: Resolve config from cache (density-aware) ──────────
+                // -- Step 1: Resolve config from cache (density-aware) ----------
                 auto tuned_config = resolve_config<Impl, W, Types, Policy, is_complex>(rho_est);
 
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
@@ -359,12 +359,12 @@ namespace ippl {
                     }
                 }
 
-                // ── Step 1b: Safety clamp (asymmetric, dimension-aware) ────────
+                // -- Step 1b: Safety clamp (asymmetric, dimension-aware) --------
                 clamp_tile_to_shmem<Impl, W, Types, Policy, is_complex>(tuned_config);
 
                 const Vector<int, Dim> tile_size = tuned_config.get_tile_size();
 
-                // ── Step 2: Binning ────────────────────────────────────────────
+                // -- Step 2: Binning --------------------------------------------
                 Interpolation::detail::BinningResult<Dim, memory_space> binning;
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     binning = performBinning<Types>(positions, field, tile_size);
@@ -372,7 +372,7 @@ namespace ippl {
                     binning = performBinning<Types>(positions, field, tile_size);
                 }
 
-                // ── Step 3: Run functor ────────────────────────────────────────
+                // -- Step 3: Run functor ----------------------------------------
                 auto args = Impl<W, Types, Policy>::Arguments::create(
                     field, positions, values, kernel_m, tuned_config, binning);
                 Impl<W, Types, Policy> functor{std::move(args)};
@@ -382,7 +382,7 @@ namespace ippl {
                 functor.run(n_particles);
                 Kokkos::fence();
 
-                // ── Step 4: End tuning context ─────────────────────────────────
+                // -- Step 4: End tuning context ---------------------------------
                 if constexpr (Impl<W, Types, Policy>::requires_binning) {
                     if (config_m.enable_tuning) {
                         auto& tuner = Interpolation::detail::get_scatter_tuner<Impl, Dim, RealType,

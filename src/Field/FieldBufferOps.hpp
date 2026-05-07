@@ -146,7 +146,7 @@ namespace ippl {
 
         // Unpack a linear buffer into a 3D view region, with per-axis conditional
         // reflection of the buffer index. Setting x / y / z to true reverses the
-        // buffer ordering along that axis as it is placed into the view — the
+        // buffer ordering along that axis as it is placed into the view -- the
         // primitive operation behind `mirrorField` and behind the Vico solver's
         // reflected-quadrant assembly.
         template <int tensorRank, typename Tb, typename Tf>

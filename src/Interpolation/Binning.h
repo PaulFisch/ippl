@@ -90,7 +90,7 @@ namespace ippl {
              *
              * The downstream consumer (TiledScatter / GridParallelScatter) only
              * needs particles *grouped* per bin, not sorted. A radix sort over
-             * the keys is the wrong primitive for that — it does ~8 N bytes of
+             * the keys is the wrong primitive for that -- it does ~8 N bytes of
              * key/perm traffic and ~5 N bytes of scratch. The counting sort
              * implemented here is the textbook bucket-sort and runs in three
              * memory-bandwidth-bounded kernels:
@@ -107,8 +107,8 @@ namespace ippl {
              *            offset and is incremented once per particle landing
              *            in that bin.
              *
-             * For 268 M particles on H100 this is ~50× faster than the CUB
-             * radix-sort path it replaces (~120 ms → ~3-5 ms), because the
+             * For 268 M particles on H100 this is ~50x faster than the CUB
+             * radix-sort path it replaces (~120 ms -> ~3-5 ms), because the
              * total memory traffic shrinks from ~64 N bytes to ~24 N bytes
              * and the out-of-place sort scratch + deep_copy round-trip is
              * gone.
