@@ -1,3 +1,11 @@
+/*!
+ * @file PrunedRC.h
+ * @brief Pruned real-to-complex FFT (PrunedRCTransform tag).
+ *
+ * The outbox layout is chosen so the mapping from pruned-global index to
+ * local index is communication-free; see the comment above the class
+ * declaration for the index-arithmetic details.
+ */
 #ifndef IPPL_FFT_TRANSFORM_PRUNEDRC_H
 #define IPPL_FFT_TRANSFORM_PRUNEDRC_H
 
@@ -35,6 +43,16 @@ namespace ippl {
     // pruned global index with no inter-rank communication.
     //=========================================================================
 
+    /*!
+     * @class FFT<PrunedRCTransform, RealField>
+     * @brief Pruned R2C FFT keeping only the lowest n_modes per axis.
+     *
+     * Currently 3D-only. Forward maps a real field to a pruned complex field;
+     * backward goes the other way. Internally uses a full-size complex
+     * scratch view so the index arithmetic stays local.
+     *
+     * @tparam RealField IPPL Field of real values.
+     */
     template <typename RealField>
     class FFT<PrunedRCTransform, RealField> {
     public:
@@ -58,11 +76,27 @@ namespace ippl {
         using TempReal_t    = Kokkos::View<T***, Kokkos::LayoutLeft, MemSpace>;
         using TempComplex_t = Kokkos::View<Complex_t***, Kokkos::LayoutLeft, MemSpace>;
 
+        /*!
+         * @brief Build the pruned R2C plan.
+         * @param layoutReal          Real-input field layout.
+         * @param layoutComplexFull   Kept for API compatibility; the outbox is
+         *                            actually recomputed internally.
+         * @param layoutComplexPruned Pruned complex-output layout.
+         * @param pruning             Per-axis number of modes to retain.
+         * @param params              Backend parameters; reads
+         *                            @c "r2c_direction" (default 0).
+         */
         FFT(const Layout_t& layoutReal,
             const Layout_t& layoutComplexFull,  // kept for API compatibility; outbox is recomputed
             const Layout_t& layoutComplexPruned, const PruningParams<Dim>& pruning,
             const ParameterList& params);
 
+        /*!
+         * @brief Forward (real->pruned complex) or backward transform.
+         * @param direction FORWARD or BACKWARD.
+         * @param f         Real field (input on FORWARD, output on BACKWARD).
+         * @param g         Pruned complex field (output on FORWARD, input on BACKWARD).
+         */
         void transform(TransformDirection direction, RealField& f, ComplexField& g);
 
     private:

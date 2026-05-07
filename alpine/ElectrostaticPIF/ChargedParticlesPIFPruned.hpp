@@ -87,6 +87,13 @@ void dumpVTK(Field_t& rho, int nx, int ny, int nz, int iteration, double dx, dou
     }
 }
 
+/*!
+ * @class ChargedParticlesPIF (pruned variant)
+ * @brief Particle bunch for the pruned-NUFFT Particle-in-Fourier examples.
+ *
+ * Same role as ChargedParticlesPIF.hpp, but the NUFFT plans use the pruned
+ * mode pipeline (only the lowest n_modes per axis are transformed).
+ */
 template <class PLayout>
 class ChargedParticlesPIF : public ippl::ParticleBase<PLayout> {
 public:

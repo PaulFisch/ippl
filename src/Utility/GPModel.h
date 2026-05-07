@@ -37,6 +37,15 @@
 namespace ippl {
     namespace detail {
 
+        /*!
+         * @class GPModel
+         * @brief ARD Gaussian-process regressor with gradient-ascent hyperparameter fit.
+         *
+         * Used by the auto-tune sweep for low-dim Bayesian optimization over
+         * tile / team / oversubscription configurations.
+         *
+         * @tparam D Number of input dimensions (small: 1..10).
+         */
         template <int D>
         class GPModel {
         public:

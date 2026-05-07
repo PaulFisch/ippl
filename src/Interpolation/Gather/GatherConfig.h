@@ -1,3 +1,8 @@
+/*!
+ * @file GatherConfig.h
+ * @brief User-facing configuration knobs for gather operations and the
+ *        density-aware GatherCache singleton.
+ */
 #ifndef IPPL_GATHER_CONFIG_H
 #define IPPL_GATHER_CONFIG_H
 

@@ -87,6 +87,18 @@ void dumpVTK(Field_t& rho, int nx, int ny, int nz, int iteration, double dx, dou
     }
 }
 
+/*!
+ * @class ChargedParticlesPIF
+ * @brief Particle bunch used by the Particle-in-Fourier example apps.
+ *
+ * Holds Fourier-mode density fields (@c rho_m, @c rhoDFT_m, ...), the
+ * forward / inverse NUFFT plans, and per-particle attributes for charge,
+ * velocity, and the gathered electric field. Used by LandauDampingPIF /
+ * BumponTailInstabilityPIF / PenningTrapPIF.
+ *
+ * @tparam PLayout Particle spatial layout type (typically
+ *                 ippl::ParticleSpatialLayout<double, 3>).
+ */
 template <class PLayout>
 class ChargedParticlesPIF : public ippl::ParticleBase<PLayout> {
 public:

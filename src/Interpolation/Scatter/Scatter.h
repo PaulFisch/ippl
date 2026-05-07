@@ -1,3 +1,8 @@
+/*!
+ * @file Scatter.h
+ * @brief Public Scatter facade dispatching to atomic / tiled / output-tile-parallel
+ *        backends based on the runtime ScatterConfig.
+ */
 #ifndef IPPL_SCATTER_H
 #define IPPL_SCATTER_H
 
@@ -17,16 +22,23 @@ namespace ippl {
 
     namespace Interpolation::detail {
 
+        //! Tag policy: particles are scattered in their natural order (no sort).
         struct UnsortedPolicy {
             static constexpr bool use_sorting      = false;
             static constexpr bool requires_binning = false;
         };
 
+        //! Tag policy: particles are first bin-sorted, then scattered tile-by-tile.
         struct SortedPolicy {
             static constexpr bool use_sorting      = true;
             static constexpr bool requires_binning = true;
         };
 
+        /*!
+         * @struct DeduceScatterTypes
+         * @brief Resolve a ScatterTypes bundle from the user-facing field /
+         *        positions / values views and the kernel.
+         */
         template <typename Kernel, typename FieldType, typename PositionsType, typename ValuesType>
         struct DeduceScatterTypes {
             using FieldTr = ippl::detail::FieldTraits<std::decay_t<FieldType>>;
@@ -65,9 +77,25 @@ namespace ippl {
         struct is_kokkos_complex<Kokkos::complex<T>> : std::true_type {};
     }  // namespace detail
 
+    /*!
+     * @class Scatter
+     * @brief Public functor that scatters particle values onto a Field.
+     *
+     * Constructed with a kernel and a (possibly default) ScatterConfig; the
+     * call operator dispatches to AtomicScatter, TiledScatter or
+     * GridParallelScatter at runtime, optionally re-selecting the method
+     * via TileSizeCache when @c enable_tuning is on.
+     *
+     * @tparam Kernel Interpolation kernel (NGPKernel, LinearKernel, ESKernel, ...).
+     * @tparam Dim    Spatial dimension.
+     */
     template <typename Kernel, unsigned Dim>
     class Scatter {
     public:
+        /*!
+         * @param kernel Kernel instance used for stencil evaluation.
+         * @param config Tile sizes / team / method overrides (optional).
+         */
         Scatter(const Kernel& kernel, const Interpolation::ScatterConfig<Dim>& config = {})
             : kernel_m(kernel)
             , config_m(config) {}

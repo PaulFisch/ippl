@@ -1,6 +1,12 @@
-// ============================================================================
-// Width-2 scatter auto-tuner — see AutoTune.h for the user-visible contract.
-// ============================================================================
+/*!
+ * @file AutoTune.cpp
+ * @brief Width-2 (CIC) scatter / gather auto-tuner implementation.
+ *
+ * See AutoTune.h for the user-visible contract. Internally builds candidate
+ * (tile, team_size, oversubscription, z_batch) configurations, measures each
+ * via short benchmark runs, fits a Gaussian-process surrogate when running
+ * the @c full sweep, and writes the optimal rows to the tile-sweep CSV.
+ */
 
 #include "Ippl.h"
 

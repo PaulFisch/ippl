@@ -1,7 +1,10 @@
-// ============================================================================
-// TileSizeCache — IO and CSV parsing implementation.
-// Header-only API surface lives in TileSizeCache.h.
-// ============================================================================
+/*!
+ * @file TileSizeCache.cpp
+ * @brief CSV parsing and file IO for the singleton tile-size cache.
+ *
+ * Header-only API lives in TileSizeCache.h; this TU keeps everything that
+ * pulls in @c <fstream> / @c <sstream>.
+ */
 
 #include "Interpolation/Scatter/TileSizeCache.h"
 

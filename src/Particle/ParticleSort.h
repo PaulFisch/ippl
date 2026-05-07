@@ -1,3 +1,13 @@
+/*!
+ * @file ParticleSort.h
+ * @brief Morton-code (Z-order) particle sort.
+ *
+ * Computes a per-particle Morton code from grid-clamped positions and
+ * radix-sorts the particles to improve cache locality of subsequent
+ * scatter / gather kernels. Uses CUB on CUDA, rocPRIM on HIP, and
+ * @c Kokkos::sort_by_key elsewhere. Persistent scratch lives in
+ * @c BinSortBuffers (SortBuffer.h).
+ */
 #ifndef IPPL_PARTICLE_SORT_H
 #define IPPL_PARTICLE_SORT_H
 

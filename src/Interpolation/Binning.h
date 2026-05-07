@@ -1,3 +1,11 @@
+/*!
+ * @file Binning.h
+ * @brief Particle-to-tile binning for tiled scatter / gather.
+ *
+ * Provides the per-particle bin computer, a counting-sort-based grouping
+ * (`bin_sort`) and the high-level `bin_particles` entry point used by the
+ * tiled scatter/gather paths.
+ */
 #ifndef IPPL_INTERPOLATION_BINNING_H
 #define IPPL_INTERPOLATION_BINNING_H
 
@@ -13,11 +21,18 @@ namespace ippl {
     namespace Interpolation {
         namespace detail {
 
+            /*!
+             * @struct BinningResult
+             * @brief Output of bin_particles: permutation + per-bin offsets + tile counts.
+             *
+             * @tparam Dim         Spatial dimension.
+             * @tparam MemorySpace Kokkos memory space the views live in.
+             */
             template <int Dim, typename MemorySpace>
             struct BinningResult {
-                Kokkos::View<size_type*, MemorySpace> permute;
-                Kokkos::View<size_type*, MemorySpace> bin_offsets;
-                Vector<int, Dim> num_tiles;
+                Kokkos::View<size_type*, MemorySpace> permute;     //!< particle ids grouped by bin.
+                Kokkos::View<size_type*, MemorySpace> bin_offsets; //!< exclusive scan of bin counts.
+                Vector<int, Dim> num_tiles;                        //!< tile-grid extent per axis.
             };
 
             /**

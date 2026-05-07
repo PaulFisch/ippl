@@ -1,3 +1,11 @@
+/*!
+ * @file NUFFT.hpp
+ * @brief Implementation of FFT<NUFFTransform, RealField> declared in NUFFT.h.
+ *
+ * Contains the Kokkos functors used to copy particles / fields between IPPL
+ * and FINUFFT-friendly buffers (with optional fftshift) plus the dispatch
+ * to the native and FINUFFT backends.
+ */
 #ifndef IPPL_FFT_TRANSFORM_NUFFT_HPP
 #define IPPL_FFT_TRANSFORM_NUFFT_HPP
 

@@ -1,3 +1,11 @@
+/*!
+ * @file ScatterConfig.h
+ * @brief User-facing configuration knobs for scatter operations.
+ *
+ * Exposes the @c ScatterMethod enum, the @c ScatterConfig<Dim> struct
+ * (tile sizes / team / oversubscription / z-batches), and per-execution-space
+ * defaults selected by @c ScatterConfig::get_default().
+ */
 #ifndef IPPL_SCATTER_CONFIG_H
 #define IPPL_SCATTER_CONFIG_H
 

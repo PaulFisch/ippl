@@ -62,7 +62,10 @@
 namespace ippl {
 namespace Interpolation {
 
-// ── Cache key ────────────────────────────────────────────────────────────────
+/*!
+ * @struct TileCacheKey
+ * @brief Identifies a cached tile-size entry (method + kernel width + complex).
+ */
 struct TileCacheKey {
     ScatterMethod method;
     int           kernel_width;
@@ -74,6 +77,8 @@ struct TileCacheKey {
     }
 };
 
+/*! @struct TileCacheKeyHash
+ *  @brief std::unordered_map-compatible hash functor for TileCacheKey. */
 struct TileCacheKeyHash {
     std::size_t operator()(const TileCacheKey& k) const noexcept {
         std::size_t h = static_cast<std::size_t>(k.method);
@@ -83,24 +88,42 @@ struct TileCacheKeyHash {
     }
 };
 
-// ── Cache entry ───────────────────────────────────────────────────────────────
+/*!
+ * @struct TileCacheEntry
+ * @brief One row from the auto-tune CSV: tile sizes + tuning parameters
+ *        + measured throughput at a particular particle density.
+ *
+ * @c -1 sentinel values mean "fall back to the ScatterConfig default";
+ * @c rho = 0 means "no density was recorded with this entry".
+ */
 struct TileCacheEntry {
     std::array<int, 3> tile     = {1, 1, 1};
-    int  team_size              = -1;   // -1 → keep ScatterConfig default
-    int  oversubscription_factor = -1;  // -1 → keep ScatterConfig default
-    int  z_batches              = -1;   // -1 → keep ScatterConfig default
+    int  team_size              = -1;
+    int  oversubscription_factor = -1;
+    int  z_batches              = -1;
     bool is_rectangular         = false;
-    double throughput_Mpts_s    = 0.0;  // used for best-method selection
-    double rho                  = 0.0;  // 0 = unspecified (old CSV, no rho col)
+    double throughput_Mpts_s    = 0.0;
+    double rho                  = 0.0;
 };
 
-// ── Result of get_best() ─────────────────────────────────────────────────────
+/*!
+ * @struct BestCacheEntry
+ * @brief Return type of TileSizeCache::get_best — best (method, entry) pair
+ *        for the queried width / density.
+ */
 struct BestCacheEntry {
     ScatterMethod  method;
     TileCacheEntry entry;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+/*!
+ * @class TileSizeCache
+ * @brief Singleton cache of tile-size and tuning entries loaded from CSV.
+ *
+ * Loaded once via std::call_once on first access; thereafter read-only.
+ * Holds multiple density-rows per (method, width, is_complex) key so the
+ * runtime can pick the entry closest to the active particle density.
+ */
 class TileSizeCache {
 public:
     static TileSizeCache& instance() {

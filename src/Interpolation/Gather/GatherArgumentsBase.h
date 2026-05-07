@@ -1,3 +1,7 @@
+/*!
+ * @file GatherArgumentsBase.h
+ * @brief Common type bundle and shared argument struct for gather functors.
+ */
 #ifndef IPPL_GATHER_ARGUMENTS_BASE_H
 #define IPPL_GATHER_ARGUMENTS_BASE_H
 
@@ -5,6 +9,10 @@
 
 namespace ippl::Interpolation::detail {
 
+    /*!
+     * @struct GatherTypes
+     * @brief Type bundle propagated through every gather implementation.
+     */
     template <unsigned Dim_, typename RealType_, typename KernelType_, typename GridViewType_,
               typename PositionViewType_, typename ValuesViewType_>
     struct GatherTypes {
@@ -19,6 +27,11 @@ namespace ippl::Interpolation::detail {
         using execution_space  = typename PositionViewType_::execution_space;
     };
 
+    /*!
+     * @struct GatherArgumentsBase
+     * @brief CRTP base bundling per-call inputs (views, mesh info, kernel)
+     *        consumed by the gather functors.
+     */
     template <typename Derived, typename Types>
     struct GatherArgumentsBase {
         static constexpr unsigned Dim = Types::Dim;
