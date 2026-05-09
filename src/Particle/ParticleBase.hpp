@@ -195,9 +195,7 @@ namespace ippl {
         auto& locDeleteIndex = deleteIndex_m.get<memory_space>();
         auto& locKeepIndex   = keepIndex_m.get<memory_space>();
 
-        // Resize buffers per-memory-space. The previous code mistakenly used
-        // the outer `memory_space` template parameter inside the per-space
-        // lambda, leaving every other space's del/keep buffers undersized.
+        // Resize buffers per-memory-space.
         detail::runForAllSpaces([&]<typename MemorySpace>() {
             if (attributes_m.template get<MemorySpace>().size() > 0) {
                 double overalloc = Comm->getDefaultOverallocation();

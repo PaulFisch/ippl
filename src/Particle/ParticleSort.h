@@ -188,13 +188,12 @@ namespace ippl {
 
             size_t temp_bytes = 0;
             cub::DeviceRadixSort::SortPairs(nullptr, temp_bytes, keys.data(), keys_out.data(),
-                                            permute.data(), perm_out.data(), static_cast<int>(n));
+                                            permute.data(), perm_out.data(), n);
 
             bufs.ensureTempStorage(temp_bytes);
 
             cub::DeviceRadixSort::SortPairs(bufs.tempStorage().data(), temp_bytes, keys.data(),
-                                            keys_out.data(), permute.data(), perm_out.data(),
-                                            static_cast<int>(n));
+                                            keys_out.data(), permute.data(), perm_out.data(), n);
             Kokkos::fence();
 
             return bufs.permOut();

@@ -59,9 +59,8 @@ namespace ippl {
         using Base = detail::ParticleLayout<T, Dim, PositionProperties...>;
         using typename Base::position_memory_space, typename Base::position_execution_space;
 
-        using hash_type   = detail::hash_type<position_memory_space>;
-        using locate_type = typename detail::ViewType<int, 1, position_memory_space>::view_type;
-        using bool_type   = typename detail::ViewType<bool, 1, position_memory_space>::view_type;
+        using hash_type = detail::hash_type<position_memory_space>;
+        using bool_type = typename detail::ViewType<bool, 1, position_memory_space>::view_type;
 
         using vector_type = typename Base::vector_type;
         using RegionLayout_t =
@@ -69,6 +68,14 @@ namespace ippl {
         using FieldLayout_t = typename ippl::FieldLayout<Dim>;
 
         using size_type = detail::size_type;
+
+        // Per-rank particle counts / offsets / cursors. Total particles per
+        // rank can exceed INT_MAX in 3D, so the device-side scratch and its
+        // host mirrors must hold size_type, not int.
+        using count_view_type =
+            typename detail::ViewType<size_type, 1, position_memory_space>::view_type;
+        // Rank IDs / neighbor IDs: bounded by Comm->size(), int is fine.
+        using rank_view_type = typename detail::ViewType<int, 1, position_memory_space>::view_type;
 
         // constructor: this one also takes a Mesh
         ParticleSpatialLayout(FieldLayout<Dim>&, Mesh&, bool fem = false,
@@ -109,7 +116,7 @@ namespace ippl {
         //
         // P2P GPU Path
         //
-        locate_type recvCounts_d_;  // [nranks]
+        count_view_type recvCounts_d_;  // [nranks]
 
         //! Type of the Kokkos view containing the local regions.
         using region_view_type = typename RegionLayout_t::view_type;
@@ -147,29 +154,30 @@ namespace ippl {
 
     private:
         // Fixed-size scratch
-        locate_type rankSendCount_d_;  // [nRanks]
-        locate_type sendOffsets_d_;    // [nRanks+1]
-        hash_type sendIds_d_;          // [capacity >= max nInvalid seen]
-        locate_type cursor_d_;         // [nRanks]
-        locate_type destRanks_d_;      // [nRanks] (compacted list)
+        count_view_type rankSendCount_d_;  // [nRanks]   particle counts (size_type)
+        count_view_type sendOffsets_d_;    // [nRanks+1] particle prefix offsets (size_type)
+        hash_type sendIds_d_;              // [capacity >= max nInvalid seen]
+        count_view_type cursor_d_;         // [nRanks]   per-rank write head (size_type)
+        rank_view_type destRanks_d_;       // [nRanks]   compacted rank IDs
 
         // Single scalar on device to count destinations
         Kokkos::View<size_type, position_memory_space> nDest_d_;
 
         // Neigbour cache
-        locate_type neighbors_d_;          // [neighborSize] cached device neighbors list
+        rank_view_type neighbors_d_;       // [neighborSize] cached neighbor rank IDs
         std::vector<int> neighbors_host_;  // flat host copy
         bool neighbors_dirty_      = true;
         size_t neighbors_capacity_ = 0;
         size_type neighbors_used_  = 0;
 
         // Host mirror buffers
-        using host_mem_space   = Kokkos::HostSpace;
-        using locate_host_type = typename detail::ViewType<int, 1, host_mem_space>::view_type;
+        using host_mem_space  = Kokkos::HostSpace;
+        using count_host_type = typename detail::ViewType<size_type, 1, host_mem_space>::view_type;
+        using rank_host_type  = typename detail::ViewType<int, 1, host_mem_space>::view_type;
 
-        locate_host_type rankSendCount_h_;  // [nRanks] (mirror)
-        locate_host_type sendOffsets_h_;    // [nRanks+1] (mirror)
-        locate_host_type destRanks_h_;      // [nRanks] (mirror)
+        count_host_type rankSendCount_h_;  // [nRanks]   mirror of rankSendCount_d_
+        count_host_type sendOffsets_h_;    // [nRanks+1] mirror of sendOffsets_d_
+        rank_host_type destRanks_h_;       // [nRanks]   mirror of destRanks_d_
 
         // Host-side destination list
         std::vector<int> destinationRanks_host_;

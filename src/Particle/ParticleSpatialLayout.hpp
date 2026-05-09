@@ -26,6 +26,7 @@
 #include "Utility/IpplTimings.h"
 #include "Utility/ParallelDispatch.h"
 
+#include "Communicate/DataTypes.h"
 #include "Communicate/Window.h"
 
 namespace ippl {
@@ -62,8 +63,8 @@ namespace ippl {
         for (int rank : destinationRanks_host_) {
             if (rank == Comm->rank())
                 continue;
-            const int* src = &rankSendCount_h_(rank);
-            window_m.put<int>(src, rank, Comm->rank());
+            const size_type* src = &rankSendCount_h_(rank);
+            window_m.template put<size_type>(src, rank, Comm->rank());
         }
 
         window_m.fence(0);
@@ -75,12 +76,16 @@ namespace ippl {
         const int tag    = Comm->next_tag(mpi::tag::P_SPATIAL_LAYOUT, mpi::tag::P_LAYOUT_CYCLE);
 
         // Zero the receive-count buffer on the device
-        Kokkos::deep_copy(position_execution_space{}, recvCounts_d_, 0);
+        Kokkos::deep_copy(position_execution_space{}, recvCounts_d_, size_type(0));
         Kokkos::fence();
 
-        // Device pointer to send-count array
-        int* d_sendCounts = rankSendCount_d_.data();
-        int* d_recvCounts = recvCounts_d_.data();
+        // Per-rank counts are size_type so we ask MPI for the matching type
+        // (resolves to MPI_UNSIGNED_LONG / MPI_UNSIGNED_LONG_LONG depending
+        // on the platform's size_t typedef).
+        const MPI_Datatype count_dtype = mpi::get_mpi_datatype<size_type>(size_type{});
+
+        size_type* d_sendCounts = rankSendCount_d_.data();
+        size_type* d_recvCounts = recvCounts_d_.data();
 
         std::vector<MPI_Request> reqs;
         reqs.reserve(2 * std::max(0, nRanks_ - 1));
@@ -89,14 +94,14 @@ namespace ippl {
         for (int r = 0; r < nRanks_; ++r) {
             if (r == myRank)
                 continue;
-            MPI_Irecv(d_recvCounts + r, 1, MPI_INT, r, tag, Comm->getCommunicator(),
+            MPI_Irecv(d_recvCounts + r, 1, count_dtype, r, tag, Comm->getCommunicator(),
                       &reqs.emplace_back());
         }
 
         for (int r = 0; r < nRanks_; ++r) {
             if (r == myRank)
                 continue;
-            MPI_Isend(d_sendCounts + r, 1, MPI_INT, r, tag, Comm->getCommunicator(),
+            MPI_Isend(d_sendCounts + r, 1, count_dtype, r, tag, Comm->getCommunicator(),
                       &reqs.emplace_back());
         }
 
@@ -105,7 +110,8 @@ namespace ippl {
 
     template <typename T, unsigned Dim, class Mesh, typename... Properties>
     void ParticleSpatialLayout<T, Dim, Mesh, Properties...>::countExchangeAlltoall() {
-        MPI_Alltoall(rankSendCount_d_.data(), 1, MPI_INT, recvCounts_d_.data(), 1, MPI_INT,
+        const MPI_Datatype count_dtype = mpi::get_mpi_datatype<size_type>(size_type{});
+        MPI_Alltoall(rankSendCount_d_.data(), 1, count_dtype, recvCounts_d_.data(), 1, count_dtype,
                      Comm->getCommunicator());
     }
 
