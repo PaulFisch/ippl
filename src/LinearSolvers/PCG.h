@@ -188,7 +188,9 @@ namespace ippl {
         T residueNorm    = 0;
         int iterations_m = 0;
 
-    private:
+        // Workspaces, allocated once via initializeFields() and reused across solves.
+        // Protected so derived solvers (e.g. PCG) can extend the workspace set
+        // without redeclaring r, d, q as locals on every operator() call.
         lhs_type r;
         lhs_type d;
         lhs_type q;
@@ -334,10 +336,22 @@ namespace ippl {
         using InverseDiagF = std::function<InverseDiagRet(lhs_type)>;
         using DiagF        = std::function<DiagRet(lhs_type)>;
 
+        using mesh_type   = typename lhs_type::Mesh_t;
+        using layout_type = typename lhs_type::Layout_t;
+
         PCG()
             : CG<OperatorRet, LowerRet, UpperRet, UpperLowerRet, InverseDiagRet, DiagRet, FieldLHS,
                  FieldRHS>()
             , preconditioner_m(nullptr){};
+
+        // Allocates the PCG workspace. Extends CG by adding the preconditioner
+        // result buffer s. Called once by the owning solver (e.g. PoissonCG)
+        // so that operator() does not allocate per solve.
+        void initializeFields(mesh_type& mesh, layout_type& layout) override {
+            CG<OperatorRet, LowerRet, UpperRet, UpperLowerRet, InverseDiagRet, DiagRet, FieldLHS,
+               FieldRHS>::initializeFields(mesh, layout);
+            s.initialize(mesh, layout);
+        }
 
         /*!
          * Sets the differential operator for the conjugate gradient algorithm
@@ -422,18 +436,18 @@ namespace ippl {
                                     "Preconditioner has not been set for PCG solver");
             }
 
-            typename lhs_type::Mesh_t& mesh     = lhs.get_mesh();
-            typename lhs_type::Layout_t& layout = lhs.getLayout();
-
             this->iterations_m      = 0;
             const int maxIterations = params.get<int>("max_iterations");
 
             // Variable names mostly based on description in
             // https://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf
-            lhs_type r(mesh, layout);
-            lhs_type d(mesh, layout);
-            lhs_type s(mesh, layout);
-            lhs_type q(mesh, layout);
+            // r, d, q come from the CG base class; s is a PCG member. All are
+            // pre-allocated via initializeFields(); operator() only refreshes
+            // their layout in case the owning solver has updated it.
+            this->r.updateLayout(lhs.getLayout());
+            this->d.updateLayout(lhs.getLayout());
+            s.updateLayout(lhs.getLayout());
+            this->q.updateLayout(lhs.getLayout());
 
             preconditioner_m->init_fields(lhs);
 
@@ -459,20 +473,21 @@ namespace ippl {
                 }
             }
 
-            r = rhs - this->op_m(lhs);
-            d = preconditioner_m->operator()(r).deepCopy();
-            d.setFieldBC(bc);
+            this->r = rhs - this->op_m(lhs);
+            this->d = preconditioner_m->operator()(this->r).deepCopy();
+            this->d.setFieldBC(bc);
 
-            T delta1          = innerProduct(r, d);
+            T delta1          = innerProduct(this->r, this->d);
             T delta0          = delta1;
             this->residueNorm = Kokkos::sqrt(Kokkos::abs(delta1));
             const T tolerance = params.get<T>("tolerance") * this->residueNorm;
 
             while (this->iterations_m < maxIterations && this->residueNorm > tolerance) {
-                q       = this->op_m(d);
-                q       = q.deepCopy();
-                T alpha = delta1 / innerProduct(d, q);
-                lhs     = lhs + alpha * d;
+                // q = op_m(d) writes the expression into q's existing storage
+                // via operator=(Expression); no allocation, no extra deep copy.
+                this->q = this->op_m(this->d);
+                T alpha = delta1 / innerProduct(this->d, this->q);
+                lhs     = lhs + alpha * this->d;
 
                 // The exact residue is given by
                 // r = rhs - BaseCG::op_m(lhs);
@@ -481,16 +496,19 @@ namespace ippl {
                 // the correction does not have a significant effect on accuracy;
                 // in some implementations, the correction may be applied every few
                 // iterations to offset accumulated floating point errors
-                r = r - alpha * q;
-                s = preconditioner_m->operator()(r).deepCopy();
+                this->r = this->r - alpha * this->q;
+                // .deepCopy() guards against d/s aliasing the preconditioner's
+                // internal result buffer between successive calls. A fully
+                // out-parameter preconditioner API would let us drop this.
+                s = preconditioner_m->operator()(this->r).deepCopy();
 
                 delta0 = delta1;
-                delta1 = innerProduct(r, s);
+                delta1 = innerProduct(this->r, s);
 
                 T beta            = delta1 / delta0;
                 this->residueNorm = Kokkos::sqrt(Kokkos::abs(delta1));
 
-                d = s + beta * d;
+                this->d = s + beta * this->d;
                 ++this->iterations_m;
             }
 
@@ -502,6 +520,10 @@ namespace ippl {
 
     protected:
         std::unique_ptr<preconditioner<FieldLHS>> preconditioner_m;
+
+        // Preconditioner result buffer, allocated once via initializeFields()
+        // and reused across solves. Sibling of the inherited r, d, q workspaces.
+        lhs_type s;
     };
 
 };  // namespace ippl
