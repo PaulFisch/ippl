@@ -444,18 +444,18 @@ namespace ippl {
             // https://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf
             // r, d, q come from the CG base class; s is a PCG member. All are
             // pre-allocated via initializeFields(); operator() only refreshes
-            // their layout in case the owning solver has updated it. The
-            // preconditioner's scratch is initialized once on the first solve;
-            // subsequent solves reuse it.
+            // their layout so we track load-balancing repartitions of the lhs.
             this->r.updateLayout(lhs.getLayout());
             this->d.updateLayout(lhs.getLayout());
             s.updateLayout(lhs.getLayout());
             this->q.updateLayout(lhs.getLayout());
 
-            if (!preconditioner_initialized_m) {
-                preconditioner_m->init_fields(lhs);
-                preconditioner_initialized_m = true;
-            }
+            // Preconditioner scratch must follow the current lhs layout too,
+            // otherwise its halo-exchange neighbor list goes out of sync with
+            // r/d/s/q after a repartition and halo MPI calls deadlock. Each
+            // preconditioner's init_fields() is responsible for being cheap on
+            // the steady-state path (refreshing layout, not reallocating).
+            preconditioner_m->init_fields(lhs);
 
             using bc_type  = BConds<lhs_type, Dim>;
             bc_type lhsBCs = lhs.getFieldBC();
@@ -530,9 +530,6 @@ namespace ippl {
         // Preconditioner result buffer, allocated once via initializeFields()
         // and reused across solves. Sibling of the inherited r, d, q workspaces.
         lhs_type s;
-
-        // Lazy one-shot init for the preconditioner's scratch.
-        bool preconditioner_initialized_m = false;
     };
 
 };  // namespace ippl
