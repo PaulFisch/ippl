@@ -10,6 +10,19 @@
 #include "SolverAlgorithm.h"
 #include "FEM/FEMVector.h"
 
+#ifdef IPPL_HALO_DEBUG
+#include <cstdio>
+#define IPPL_PCG_LOG(stream)                                                               \
+    do {                                                                                   \
+        std::fprintf(stderr, "[PCG/r=%d]", ippl::Comm->rank());                            \
+        std::fprintf(stderr, "%s\n", (std::ostringstream() << stream).str().c_str());      \
+        std::fflush(stderr);                                                               \
+    } while (0)
+#include <sstream>
+#else
+#define IPPL_PCG_LOG(stream) do {} while (0)
+#endif
+
 namespace ippl {
     template <typename OperatorRet, typename LowerRet, typename UpperRet, typename UpperLowerRet,
               typename InverseDiagRet, typename DiagRet, typename FieldLHS,
@@ -442,6 +455,11 @@ namespace ippl {
             this->iterations_m      = 0;
             const int maxIterations = params.get<int>("max_iterations");
 
+            ++solve_count_m;
+            IPPL_PCG_LOG("solve:enter solve#=" << solve_count_m
+                         << " maxIter=" << maxIterations
+                         << " precond=" << preconditioner_m->get_type());
+
             // Variable names mostly based on description in
             // https://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf
             // r, d, q come from the CG base class; s is a PCG member. All are
@@ -482,6 +500,7 @@ namespace ippl {
                 }
             }
 
+            IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_residual");
             this->r = rhs - this->op_m(lhs);
             // The preconditioner writes into pcond_out (NoBcFace, no halo MPI
             // from BC apply), then we hand the result over to d via an
@@ -490,7 +509,9 @@ namespace ippl {
             // trigger PeriodicFace::apply MPI inside pcond, which is what the
             // master code path avoids by returning a fresh NoBcFace field from
             // pcond.
+            IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_pcond:pre");
             (*preconditioner_m)(this->r, pcond_out);
+            IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_pcond:post");
             this->d = T(1) * pcond_out;
             this->d.setFieldBC(bc);
 
@@ -498,8 +519,12 @@ namespace ippl {
             T delta0           = delta1;
             this->residueNorm = Kokkos::sqrt(Kokkos::abs(delta1));
             const T tolerance = params.get<T>("tolerance") * this->residueNorm;
+            IPPL_PCG_LOG("solve#=" << solve_count_m << " step=loop_start"
+                         << " residue=" << this->residueNorm << " tol=" << tolerance);
 
             while (this->iterations_m < maxIterations && this->residueNorm > tolerance) {
+                IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
+                             << " step=apply_op");
                 // q = op_m(d) writes the expression into q's existing storage
                 // via operator=(Expression); no allocation, no extra deep copy.
                 this->q = this->op_m(this->d);
@@ -514,10 +539,14 @@ namespace ippl {
                 // in some implementations, the correction may be applied every few
                 // iterations to offset accumulated floating point errors
                 this->r = this->r - alpha * this->q;
+                IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
+                             << " step=loop_pcond:pre");
                 // s := M^{-1} r; preconditioner writes into s. s has NoBcFace
                 // BCs (never set by setFieldBC), so its operator chain matches
                 // master's NoBcFace scratch behaviour.
                 (*preconditioner_m)(this->r, s);
+                IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
+                             << " step=loop_pcond:post");
 
                 delta0 = delta1;
                 delta1 = innerProduct(this->r, s);
@@ -527,7 +556,11 @@ namespace ippl {
 
                 this->d = s + beta * this->d;
                 ++this->iterations_m;
+                IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
+                             << " step=loop_end residue=" << this->residueNorm);
             }
+            IPPL_PCG_LOG("solve#=" << solve_count_m << " step=exit iters=" << this->iterations_m
+                         << " residue=" << this->residueNorm);
 
             if (allFacesPeriodic) {
                 T avg = lhs.getVolumeAverage();
@@ -547,6 +580,10 @@ namespace ippl {
         // fresh NoBcFace field.
         lhs_type s;
         lhs_type pcond_out;
+
+        // Counter so debug logs can identify *which* solve is mid-flight when
+        // a halo deadlock fires. Per-rank, advances on every operator() call.
+        int solve_count_m = 0;
     };
 
 };  // namespace ippl

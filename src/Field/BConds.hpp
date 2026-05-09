@@ -27,6 +27,17 @@ namespace ippl {
 
     template <typename Field, unsigned Dim>
     void BConds<Field, Dim>::apply(Field& field) {
+#ifdef IPPL_HALO_DEBUG
+        // Identify the field by its data view pointer so we can correlate the
+        // BC apply with the field that triggered it across ranks.
+        std::fprintf(stderr,
+                     "[HALO/r=%d][BConds:apply][seq=%lu][nfaces=%zu][view=%p]\n",
+                     ippl::Comm->rank(),
+                     ippl::detail::haloDebugSeq().fetch_add(1),
+                     bc_m.size(),
+                     reinterpret_cast<const void*>(field.getView().data()));
+        std::fflush(stderr);
+#endif
         for (auto& bc : bc_m) {
             bc->apply(field);
         }

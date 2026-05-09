@@ -11,6 +11,44 @@
 
 #include "Communicate/Communicator.h"
 
+// Compile-time-toggled deadlock instrumentation.
+//
+//   cmake -DIPPL_HALO_DEBUG=ON ...
+//
+// Every halo exchange logs to stderr (flushed line-by-line):
+//
+//   [HALO/r=R][stage][k=v][...]
+//
+// Recommended workflow:
+//   1. mpirun ... 2> halo.log
+//   2. when it deadlocks, kill -SIGABRT $PID  (or wait for timeout)
+//   3. sort -s -k1,1 halo.log    # group by rank
+//      grep "isend\|recv" halo.log | sort | uniq -c
+//   4. matched (target,tag,nsends) on rank A must equal (source,tag,nrecvs)
+//      on rank A's peer. Any discrepancy is the deadlock.
+//
+// All logging is host-side only (no GPU prints).
+#ifdef IPPL_HALO_DEBUG
+#include <cstdio>
+#include <atomic>
+namespace ippl { namespace detail {
+    inline std::atomic<unsigned long>& haloDebugSeq() {
+        static std::atomic<unsigned long> s{0};
+        return s;
+    }
+}}  // namespace ippl::detail
+#define IPPL_HALO_LOG(stream)                                                              \
+    do {                                                                                   \
+        std::fprintf(stderr, "[HALO/r=%d][seq=%lu]", ippl::Comm->rank(),                   \
+                     ippl::detail::haloDebugSeq().fetch_add(1));                           \
+        std::fprintf(stderr, "%s\n", (std::ostringstream() << stream).str().c_str());      \
+        std::fflush(stderr);                                                               \
+    } while (0)
+#include <sstream>
+#else
+#define IPPL_HALO_LOG(stream) do {} while (0)
+#endif
+
 namespace ippl {
     namespace detail {
         template <typename T, unsigned Dim, class... ViewArgs>
@@ -65,6 +103,21 @@ namespace ippl {
 
             int me = Comm->rank();
 
+            IPPL_HALO_LOG("exchangeBoundaries:enter order=" << static_cast<int>(order)
+                          << " totalRequests=" << totalRequests << " nghost=" << nghost);
+#ifdef IPPL_HALO_DEBUG
+            for (size_t k = 0; k < neighbors.size(); ++k) {
+                std::ostringstream oss;
+                oss << "neighbors[" << k << "]={";
+                for (size_t i = 0; i < neighbors[k].size(); ++i) {
+                    if (i) oss << ",";
+                    oss << neighbors[k][i];
+                }
+                oss << "}";
+                IPPL_HALO_LOG(oss.str());
+            }
+#endif
+
             using memory_space = typename view_type::memory_space;
             using buffer_type  = mpi::Communicator::buffer_type<memory_space>;
             std::vector<MPI_Request> requests(totalRequests);
@@ -106,10 +159,15 @@ namespace ippl {
 
                     buffer_type buf = comm.template getBuffer<memory_space, T>(nsends);
 
+                    IPPL_HALO_LOG("isend index=" << index << " i=" << i
+                                  << " target=" << targetRank << " tag=" << tag
+                                  << " nsends=" << nsends);
                     comm.isend(targetRank, tag, haloData_m, *buf, requests[requestIndex++], nsends);
                     buf->resetWritePos();
                 }
             }
+
+            IPPL_HALO_LOG("exchangeBoundaries:sends_done count=" << requestIndex);
 
             // receiving loop
             for (size_t index = 0; index < cubeCount; index++) {
@@ -141,18 +199,30 @@ namespace ippl {
 
                     buffer_type buf = comm.template getBuffer<memory_space, T>(nrecvs);
 
+                    IPPL_HALO_LOG("recv:pre index=" << index << " i=" << i
+                                  << " source=" << sourceRank << " tag=" << tag
+                                  << " nrecvs=" << nrecvs);
                     comm.recv(sourceRank, tag, haloData_m, *buf, nrecvs * sizeof(T), nrecvs);
+                    IPPL_HALO_LOG("recv:post index=" << index << " i=" << i
+                                  << " source=" << sourceRank << " tag=" << tag);
                     buf->resetReadPos();
 
                     unpack<Op>(range, view, haloData_m);
+                    IPPL_HALO_LOG("unpack:done index=" << index << " i=" << i
+                                  << " source=" << sourceRank);
                 }
             }
 
+            IPPL_HALO_LOG("exchangeBoundaries:recvs_done");
+
             if (totalRequests > 0) {
+                IPPL_HALO_LOG("waitall:pre n=" << totalRequests);
                 MPI_Waitall(totalRequests, requests.data(), MPI_STATUSES_IGNORE);
+                IPPL_HALO_LOG("waitall:post");
             }
-            
+
             comm.freeAllBuffers();
+            IPPL_HALO_LOG("exchangeBoundaries:exit");
         }
 
         template <typename T, unsigned Dim, class... ViewArgs>
