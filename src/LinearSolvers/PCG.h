@@ -346,12 +346,14 @@ namespace ippl {
             , preconditioner_m(nullptr){};
 
         // Allocates the PCG workspace. Extends CG by adding the preconditioner
-        // result buffer s. Called once by the owning solver (e.g. PoissonCG)
-        // so that operator() does not allocate per solve.
+        // result buffer s and a NoBcFace staging buffer pcond_out. Called once
+        // by the owning solver (e.g. PoissonCG) so that operator() does not
+        // allocate per solve.
         void initializeFields(mesh_type& mesh, layout_type& layout) override {
             CG<OperatorRet, LowerRet, UpperRet, UpperLowerRet, InverseDiagRet, DiagRet, FieldLHS,
                FieldRHS>::initializeFields(mesh, layout);
             s.initialize(mesh, layout);
+            pcond_out.initialize(mesh, layout);
         }
 
         /*!
@@ -448,6 +450,7 @@ namespace ippl {
             this->r.updateLayout(lhs.getLayout());
             this->d.updateLayout(lhs.getLayout());
             s.updateLayout(lhs.getLayout());
+            pcond_out.updateLayout(lhs.getLayout());
             this->q.updateLayout(lhs.getLayout());
 
             // Preconditioner scratch must follow the current lhs layout too,
@@ -480,9 +483,15 @@ namespace ippl {
             }
 
             this->r = rhs - this->op_m(lhs);
-            // d := M^{-1} r; preconditioner writes into d's existing storage,
-            // so no Field is allocated and no deep copy is needed.
-            (*preconditioner_m)(this->r, this->d);
+            // The preconditioner writes into pcond_out (NoBcFace, no halo MPI
+            // from BC apply), then we hand the result over to d via an
+            // expression assignment. d's PeriodicFace BCs must NOT be visible
+            // during the preconditioner's internal operator chain — that would
+            // trigger PeriodicFace::apply MPI inside pcond, which is what the
+            // master code path avoids by returning a fresh NoBcFace field from
+            // pcond.
+            (*preconditioner_m)(this->r, pcond_out);
+            this->d = T(1) * pcond_out;
             this->d.setFieldBC(bc);
 
             T delta1          = innerProduct(this->r, this->d);
@@ -505,7 +514,9 @@ namespace ippl {
                 // in some implementations, the correction may be applied every few
                 // iterations to offset accumulated floating point errors
                 this->r = this->r - alpha * this->q;
-                // s := M^{-1} r; preconditioner writes into s, never aliasing d.
+                // s := M^{-1} r; preconditioner writes into s. s has NoBcFace
+                // BCs (never set by setFieldBC), so its operator chain matches
+                // master's NoBcFace scratch behaviour.
                 (*preconditioner_m)(this->r, s);
 
                 delta0 = delta1;
@@ -527,9 +538,15 @@ namespace ippl {
     protected:
         std::unique_ptr<preconditioner<FieldLHS>> preconditioner_m;
 
-        // Preconditioner result buffer, allocated once via initializeFields()
-        // and reused across solves. Sibling of the inherited r, d, q workspaces.
+        // Preconditioner result buffers, allocated once via initializeFields()
+        // and reused across solves. Both deliberately keep their default
+        // NoBcFace BCs so that the preconditioner's internal operator chain
+        // does NOT trigger PeriodicFace::apply MPI calls -- d gets PeriodicFace
+        // via setFieldBC and using d as the pcond result would change the
+        // global MPI sequence relative to master, where pcond returned a
+        // fresh NoBcFace field.
         lhs_type s;
+        lhs_type pcond_out;
     };
 
 };  // namespace ippl
