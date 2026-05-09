@@ -207,7 +207,11 @@ namespace ippl {
 
         IPPL_HALO_LOG("PeriodicFace:enter face=" << face << " d=" << d << " tag=" << tag
                       << " parallel=" << (lDomains[myRank][d].length() < domain[d].length()));
-        IPPL_HALO_SYNC("PeriodicFace:enter face=" << face);
+        // NOTE: do NOT add a barrier here or anywhere inside PeriodicFace::apply.
+        // Face k's recv on rank A depends on face k^1's isend on rank B
+        // (the periodic neighbor across the boundary), which only happens
+        // *after* B finishes its own face=k PeriodicFace::apply. A barrier
+        // at the boundary of any single face would deadlock that pair.
 
         if (lDomains[myRank][d].length() < domain[d].length()) {
             // Only along this dimension we need communication.
@@ -360,7 +364,6 @@ namespace ippl {
                     apply(view, coords) = left;
                 });
         }
-        IPPL_HALO_SYNC("PeriodicFace:exit face=" << face);
     }
 
     template <typename Field>
