@@ -188,9 +188,10 @@ namespace ippl {
         T residueNorm    = 0;
         int iterations_m = 0;
 
-        // Workspaces, allocated once via initializeFields() and reused across solves.
-        // Protected so derived solvers (e.g. PCG) can extend the workspace set
-        // without redeclaring r, d, q as locals on every operator() call.
+        // Workspaces, allocated once via initializeFields() and reused across
+        // solves. Protected so derived solvers (e.g. PCG) can extend the
+        // workspace set without redeclaring r, d, q as locals on every
+        // operator() call.
         lhs_type r;
         lhs_type d;
         lhs_type q;
@@ -443,13 +444,18 @@ namespace ippl {
             // https://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf
             // r, d, q come from the CG base class; s is a PCG member. All are
             // pre-allocated via initializeFields(); operator() only refreshes
-            // their layout in case the owning solver has updated it.
+            // their layout in case the owning solver has updated it. The
+            // preconditioner's scratch is initialized once on the first solve;
+            // subsequent solves reuse it.
             this->r.updateLayout(lhs.getLayout());
             this->d.updateLayout(lhs.getLayout());
             s.updateLayout(lhs.getLayout());
             this->q.updateLayout(lhs.getLayout());
 
-            preconditioner_m->init_fields(lhs);
+            if (!preconditioner_initialized_m) {
+                preconditioner_m->init_fields(lhs);
+                preconditioner_initialized_m = true;
+            }
 
             using bc_type  = BConds<lhs_type, Dim>;
             bc_type lhsBCs = lhs.getFieldBC();
@@ -474,11 +480,13 @@ namespace ippl {
             }
 
             this->r = rhs - this->op_m(lhs);
-            this->d = preconditioner_m->operator()(this->r).deepCopy();
+            // d := M^{-1} r; preconditioner writes into d's existing storage,
+            // so no Field is allocated and no deep copy is needed.
+            (*preconditioner_m)(this->r, this->d);
             this->d.setFieldBC(bc);
 
             T delta1          = innerProduct(this->r, this->d);
-            T delta0          = delta1;
+            T delta0           = delta1;
             this->residueNorm = Kokkos::sqrt(Kokkos::abs(delta1));
             const T tolerance = params.get<T>("tolerance") * this->residueNorm;
 
@@ -497,10 +505,8 @@ namespace ippl {
                 // in some implementations, the correction may be applied every few
                 // iterations to offset accumulated floating point errors
                 this->r = this->r - alpha * this->q;
-                // .deepCopy() guards against d/s aliasing the preconditioner's
-                // internal result buffer between successive calls. A fully
-                // out-parameter preconditioner API would let us drop this.
-                s = preconditioner_m->operator()(this->r).deepCopy();
+                // s := M^{-1} r; preconditioner writes into s, never aliasing d.
+                (*preconditioner_m)(this->r, s);
 
                 delta0 = delta1;
                 delta1 = innerProduct(this->r, s);
@@ -524,6 +530,9 @@ namespace ippl {
         // Preconditioner result buffer, allocated once via initializeFields()
         // and reused across solves. Sibling of the inherited r, d, q workspaces.
         lhs_type s;
+
+        // Lazy one-shot init for the preconditioner's scratch.
+        bool preconditioner_initialized_m = false;
     };
 
 };  // namespace ippl

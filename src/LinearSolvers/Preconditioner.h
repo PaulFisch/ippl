@@ -7,6 +7,8 @@
 #ifndef IPPL_PRECONDITIONER_H
 #define IPPL_PRECONDITIONER_H
 
+#include <vector>
+
 #include "Expression/IpplOperations.h"  // get the function apply()
 
 // Expands to a lambda that acts as a wrapper for a differential operator
@@ -32,17 +34,18 @@ namespace ippl {
 
         virtual ~preconditioner() = default;
 
-        // Placeholder for the function operator, actually implemented in the derived classes
-        virtual Field operator()(Field& u) {
-            Field res = u.deepCopy();
-            return res;
+        // Apply the preconditioner: result = M^{-1} u. Concrete preconditioners
+        // override this to write into the caller-provided result buffer; this
+        // avoids per-call Field allocations and per-call deep copies in PCG.
+        // The default (identity) preconditioner copies u into result.
+        virtual void operator()(Field& u, Field& result) {
+            Kokkos::deep_copy(result.getView(), u.getView());
         }
 
-        // Placeholder for setting additional fields, actually implemented in the derived classes
-        virtual void init_fields(Field& b) {
-            Field res = b.deepCopy();
-            return;
-        }
+        // Allocate any scratch fields the preconditioner needs. Called once
+        // by the owning solver after the layout is known. Concrete
+        // preconditioners that need scratch override this.
+        virtual void init_fields(Field& /*b*/) {}
 
         std::string get_type() { return type_m; };
 
@@ -66,14 +69,11 @@ namespace ippl {
             inverse_diagonal_m = std::move(inverse_diagonal);
         }
 
-        Field operator()(Field& u) override {
-            mesh_type& mesh     = u.get_mesh();
-            layout_type& layout = u.getLayout();
-            Field res(mesh, layout);
-
-            res = inverse_diagonal_m(u);
-            res = w_m * res;
-            return res;
+        void operator()(Field& u, Field& result) override {
+            // result = w * D^{-1} * u, written element-wise into the caller-
+            // provided result buffer.
+            result = inverse_diagonal_m(u);
+            result = w_m * result;
         }
 
     protected:
@@ -125,12 +125,37 @@ namespace ippl {
             return *this = polynomial_newton_preconditioner(other);
         }
 
-        Field recursive_preconditioner(Field& u, unsigned int level) {
-            mesh_type& mesh     = u.get_mesh();
-            layout_type& layout = u.getLayout();
-            // Define etas if not defined yet
+        // Recursive Newton expansion P_k(u) where:
+        //   P_0(u) = eta_0 * u
+        //   P_k(u) = eta_k * (2 P_{k-1}(u) - P_{k-1}(A P_{k-1}(u)))
+        // Writes the result of level `level` into `out`. Uses one scratch
+        // field per recursion depth (Pr, PA, PAPr) so that no Field is
+        // allocated per call. The two recursive calls at each level execute
+        // sequentially and may reuse scratch at lower depths because the
+        // first call's lower-depth values have already been folded into
+        // Pr_scratch[level] before the second call begins.
+        void recursive_preconditioner(Field& u, unsigned int level, Field& out) {
+            if (level == 0) {
+                out = eta_m[0] * u;
+                return;
+            }
+            Field& Pr   = Pr_scratch_m[level];
+            Field& PA   = PA_scratch_m[level];
+            Field& PAPr = PAPr_scratch_m[level];
+
+            recursive_preconditioner(u, level - 1, Pr);
+            PA = op_m(Pr);
+            recursive_preconditioner(PA, level - 1, PAPr);
+            out = eta_m[level] * (2.0 * Pr - PAPr);
+        }
+
+        void operator()(Field& u, Field& result) override {
+            recursive_preconditioner(u, level_m, result);
+        }
+
+        void init_fields(Field& b) override {
+            // One-shot precomputation of the eta coefficients.
             if (eta_m == nullptr) {
-                // Precompute the etas for later use
                 eta_m    = new double[level_m + 1];
                 eta_m[0] = 2.0 / ((alpha_m + beta_m) * (1.0 + zeta_m));
                 if (level_m > 0) {
@@ -143,24 +168,20 @@ namespace ippl {
                 }
             }
 
-            Field res(mesh, layout);
-            // Base case
-            if (level == 0) {
-                res = eta_m[0] * u;
-                return res;
+            // Pre-allocate one scratch field per recursion depth. Depth 0 is
+            // the base case and stores nothing, but we keep size = level_m+1
+            // so depth-indexed access is straightforward.
+            mesh_type& mesh     = b.get_mesh();
+            layout_type& layout = b.getLayout();
+            Pr_scratch_m.resize(level_m + 1);
+            PA_scratch_m.resize(level_m + 1);
+            PAPr_scratch_m.resize(level_m + 1);
+            for (unsigned int i = 1; i <= level_m; ++i) {
+                Pr_scratch_m[i]   = Field(mesh, layout);
+                PA_scratch_m[i]   = Field(mesh, layout);
+                PAPr_scratch_m[i] = Field(mesh, layout);
             }
-            // Recursive case
-            Field PAPr(mesh, layout);
-            Field Pr(mesh, layout);
-
-            Pr   = recursive_preconditioner(u, level - 1);
-            PAPr = op_m(Pr);
-            PAPr = recursive_preconditioner(PAPr, level - 1);
-            res  = eta_m[level] * (2.0 * Pr - PAPr);
-            return res;
         }
-
-        Field operator()(Field& u) override { return recursive_preconditioner(u, level_m); }
 
     protected:
         OperatorF op_m;        // Operator to be preconditioned
@@ -170,6 +191,9 @@ namespace ippl {
         double zeta_m;  // smallest (alpha + beta) is multiplied by (1+zeta) to avoid clustering of
                         // Eigenvalues
         double* eta_m = nullptr;  // Size is determined at runtime
+        std::vector<Field> Pr_scratch_m;
+        std::vector<Field> PA_scratch_m;
+        std::vector<Field> PAPr_scratch_m;
     };
 
     /*!
@@ -219,19 +243,39 @@ namespace ippl {
             return *this = polynomial_chebyshev_preconditioner(other);
         }
 
-        Field operator()(Field& r) override {
-            mesh_type& mesh     = r.get_mesh();
-            layout_type& layout = r.getLayout();
+        void operator()(Field& r, Field& result) override {
+            // x_m, x_old_m, A_m, z_m are pre-allocated scratch (init_fields).
+            // Coefficients in rho_m are also computed once.
 
-            Field res(mesh, layout);
-            Field x(mesh, layout);
-            Field x_old(mesh, layout);
-            Field A(mesh, layout);
-            Field z(mesh, layout);
+            x_old_m = r / theta_m;
+            A_m     = op_m(r);
+            x_m     = 2.0 * rho_m[1] / delta_m * (2.0 * r - A_m / theta_m);
 
-            // Precompute the coefficients if not done yet
+            if (degree_m == 0) {
+                // result = x_old
+                Kokkos::deep_copy(result.getView(), x_old_m.getView());
+                return;
+            }
+
+            if (degree_m == 1) {
+                // result = x
+                Kokkos::deep_copy(result.getView(), x_m.getView());
+                return;
+            }
+            for (unsigned int i = 2; i < degree_m + 1; ++i) {
+                A_m   = op_m(x_m);
+                z_m   = 2.0 / delta_m * (r - A_m);
+                // Write the new x value into result (the caller's buffer);
+                // x_old gets a deep copy of the previous x.
+                result = rho_m[i] * (2 * sigma_m * x_m - rho_m[i - 1] * x_old_m + z_m);
+                Kokkos::deep_copy(x_old_m.getView(), x_m.getView());
+                Kokkos::deep_copy(x_m.getView(), result.getView());
+            }
+        }
+
+        void init_fields(Field& b) override {
+            // One-shot precomputation of the rho coefficients.
             if (rho_m == nullptr) {
-                // Start precomputing the coefficients
                 theta_m = (beta_m + alpha_m) / 2.0 * (1.0 + zeta_m);
                 delta_m = (beta_m - alpha_m) / 2.0;
                 sigma_m = theta_m / delta_m;
@@ -241,29 +285,13 @@ namespace ippl {
                 for (unsigned int i = 1; i < degree_m + 1; ++i) {
                     rho_m[i] = 1.0 / (2.0 * sigma_m - rho_m[i - 1]);
                 }
-            }  // End of precomputing the coefficients
-
-            res = r.deepCopy();
-
-            x_old = r / theta_m;
-            A     = op_m(r);
-            x     = 2.0 * rho_m[1] / delta_m * (2.0 * r - A / theta_m);
-
-            if (degree_m == 0) {
-                return x_old;
             }
-
-            if (degree_m == 1) {
-                return x;
-            }
-            for (unsigned int i = 2; i < degree_m + 1; ++i) {
-                A     = op_m(x);
-                z     = 2.0 / delta_m * (r - A);
-                res   = rho_m[i] * (2 * sigma_m * x - rho_m[i - 1] * x_old + z);
-                x_old = x.deepCopy();
-                x     = res.deepCopy();
-            }
-            return res;
+            mesh_type& mesh     = b.get_mesh();
+            layout_type& layout = b.getLayout();
+            x_m     = Field(mesh, layout);
+            x_old_m = Field(mesh, layout);
+            A_m     = Field(mesh, layout);
+            z_m     = Field(mesh, layout);
         }
 
     protected:
@@ -276,6 +304,10 @@ namespace ippl {
         unsigned degree_m;
         double zeta_m;
         double* rho_m = nullptr;  // Size is determined at runtime
+        Field x_m;
+        Field x_old_m;
+        Field A_m;
+        Field z_m;
     };
 
     /*!
@@ -295,22 +327,18 @@ namespace ippl {
             inverse_diagonal_m = std::move(inverse_diagonal);
         }
 
-        Field operator()(Field& r) override {
+        void operator()(Field& r, Field& result) override {
+            // Richardson iteration in-place on the caller-provided result
+            // buffer. ULg_m stays as a member scratch; the inner deep copies
+            // remain because the (upper, diag, inverse, lower) operators may
+            // return Field-valued expressions that alias their input.
 
-            // In the FEM solver, which uses the preconditioner, 
-            // we re-use a resultField to avoid allocating new
-            // memory at every iteration.
-            // In order for the operator calls to not rewrite
-            // on this same field over and over when calling 
-            // the operators (upper, diag, inverse, lower, etc)
-            // we need deep copies to the preconditioner fields.
-
-            g_m = 0;
+            result = 0;
             for (unsigned int j = 0; j < innerloops_m; ++j) {
-                ULg_m = upper_and_lower_m(g_m);
+                ULg_m = upper_and_lower_m(result);
                 ULg_m = ULg_m.deepCopy();
-                g_m   = r - ULg_m;
-         
+                result = r - ULg_m;
+
                 // The inverse diagonal is applied to the
                 // vector itself to return the result usually.
                 // However, the operator for FEM already
@@ -319,12 +347,11 @@ namespace ippl {
                 // Therefore, we need this if to differentiate
                 // the two cases.
                 if constexpr (std::is_same_v<InvDiagF, std::function<double(Field)>>) {
-                    g_m = inverse_diagonal_m(g_m) * g_m;
+                    result = inverse_diagonal_m(result) * result;
                 } else {
-                    g_m = inverse_diagonal_m(g_m).deepCopy();
+                    result = inverse_diagonal_m(result).deepCopy();
                 }
             }
-            return g_m;
         }
 
         void init_fields(Field& b) override {
@@ -332,7 +359,6 @@ namespace ippl {
             mesh_type& mesh     = b.get_mesh();
 
             ULg_m = Field(mesh, layout);
-            g_m = Field(mesh, layout);
         }
 
     protected:
@@ -340,7 +366,6 @@ namespace ippl {
         InvDiagF inverse_diagonal_m;
         unsigned innerloops_m;
         Field ULg_m;
-        Field g_m;
     };
 
     /*!
@@ -364,22 +389,19 @@ namespace ippl {
             inverse_diagonal_m = std::move(inverse_diagonal);
         }
 
-        Field operator()(Field& r) override {
-            // In the FEM solver, which uses the preconditioner, 
-            // we re-use a resultField to avoid allocating new
-            // memory at every iteration.
-            // In order for the operator calls to not rewrite
-            // on this same field over and over when calling 
-            // the operators (upper, diag, inverse, lower, etc)
-            // we need deep copies to the preconditioner fields.
+        void operator()(Field& r, Field& result) override {
+            // result holds the running iterate; Ag_m and g_old_m are scratch
+            // members. The inner deep copies remain because the operators
+            // (op_m, inverse_diagonal_m) may return Field-valued expressions
+            // that alias their input.
 
-            g_m = 0;
+            result  = 0;
             g_old_m = 0;
 
             for (unsigned int j = 0; j < innerloops_m; ++j) {
-                Ag_m = op_m(g_m);
+                Ag_m = op_m(result);
                 Ag_m = Ag_m.deepCopy();
-                g_m  = r - Ag_m;
+                result = r - Ag_m;
 
                 // The inverse diagonal is applied to the
                 // vector itself to return the result usually.
@@ -389,21 +411,19 @@ namespace ippl {
                 // Therefore, we need this if to differentiate
                 // the two cases.
                 if constexpr (std::is_same_v<InvDiagF, std::function<double(Field)>>) {
-                    g_m = g_old_m + inverse_diagonal_m(g_m) * g_m;
+                    result = g_old_m + inverse_diagonal_m(result) * result;
                 } else {
-                    g_m = g_old_m + inverse_diagonal_m(g_m);
+                    result = g_old_m + inverse_diagonal_m(result);
                 }
-                g_old_m = g_m.deepCopy();
+                Kokkos::deep_copy(g_old_m.getView(), result.getView());
             }
-            return g_m;
         }
 
         void init_fields(Field& b) override {
             layout_type& layout = b.getLayout();
             mesh_type& mesh     = b.get_mesh();
 
-            Ag_m = Field(mesh, layout);
-            g_m = Field(mesh, layout);
+            Ag_m    = Field(mesh, layout);
             g_old_m = Field(mesh, layout);
         }
 
@@ -412,7 +432,6 @@ namespace ippl {
         InvDiagF inverse_diagonal_m;
         unsigned innerloops_m;
         Field Ag_m;
-        Field g_m;
         Field g_old_m;
     };
 
@@ -435,65 +454,42 @@ namespace ippl {
             inverse_diagonal_m = std::move(inverse_diagonal);
         }
 
-        Field operator()(Field& b) override {
-            layout_type& layout = b.getLayout();
-            mesh_type& mesh     = b.get_mesh();
+        void operator()(Field& b, Field& result) override {
+            // The running iterate lives in result; UL_m and r_m are scratch
+            // members. The inner deep copies remain because the (upper, lower,
+            // inverse) operators may return Field-valued expressions that
+            // alias their input.
 
-            Field x(mesh, layout);
-
-            x = 0;  // Initial guess
-
-            // In the FEM solver, which uses the preconditioner, 
-            // we re-use a resultField to avoid allocating new
-            // memory at every iteration.
-            // In order for the operator calls to not rewrite
-            // on this same field over and over when calling 
-            // the operators (upper, diag, inverse, lower, etc)
-            // we need deep copies to the preconditioner fields.
+            result = 0;  // Initial guess
 
             for (unsigned int k = 0; k < outerloops_m; ++k) {
-                UL_m = upper_m(x);
+                UL_m = upper_m(result);
                 UL_m = UL_m.deepCopy();
                 r_m  = b - UL_m;
                 for (unsigned int j = 0; j < innerloops_m; ++j) {
-                    UL_m = lower_m(x);
+                    UL_m = lower_m(result);
                     UL_m = UL_m.deepCopy();
-                    x    = r_m - UL_m;
-                    // The inverse diagonal is applied to the
-                    // vector itself to return the result usually.
-                    // However, the operator for FEM already
-                    // returns the result of inv_diag * itself
-                    // due to the matrix-free evaluation.
-                    // Therefore, we need this if to differentiate
-                    // the two cases.
+                    result = r_m - UL_m;
                     if constexpr (std::is_same_v<InvDiagF, std::function<double(Field)>>) {
-                        x = inverse_diagonal_m(x) * x;
+                        result = inverse_diagonal_m(result) * result;
                     } else {
-                        x = inverse_diagonal_m(x).deepCopy();
+                        result = inverse_diagonal_m(result).deepCopy();
                     }
                 }
-                UL_m = lower_m(x);
+                UL_m = lower_m(result);
                 UL_m = UL_m.deepCopy();
                 r_m  = b - UL_m;
                 for (unsigned int j = 0; j < innerloops_m; ++j) {
-                    UL_m = upper_m(x);
+                    UL_m = upper_m(result);
                     UL_m = UL_m.deepCopy();
-                    x    = r_m - UL_m;
-                    // The inverse diagonal is applied to the
-                    // vector itself to return the result usually.
-                    // However, the operator for FEM already
-                    // returns the result of inv_diag * itself
-                    // due to the matrix-free evaluation.
-                    // Therefore, we need this if to differentiate
-                    // the two cases.
+                    result = r_m - UL_m;
                     if constexpr (std::is_same_v<InvDiagF, std::function<double(Field)>>) {
-                        x = inverse_diagonal_m(x) * x;
+                        result = inverse_diagonal_m(result) * result;
                     } else {
-                        x = inverse_diagonal_m(x).deepCopy();
+                        result = inverse_diagonal_m(result).deepCopy();
                     }
                 }
             }
-            return x;
         }
 
         void init_fields(Field& b) override {
@@ -536,78 +532,60 @@ namespace ippl {
             diagonal_m         = std::move(diagonal);
         }
 
-        Field operator()(Field& b) override {
+        void operator()(Field& b, Field& result) override {
             static IpplTimings::TimerRef initTimer = IpplTimings::getTimer("SSOR Init");
             IpplTimings::startTimer(initTimer);
 
             double D;
 
-            layout_type& layout = b.getLayout();
-            mesh_type& mesh     = b.get_mesh();
-
-            Field x(mesh, layout);
-
-            x = 0;  // Initial guess
+            // The running iterate lives in result; UL_m, r_m are scratch
+            // members. The inner deep copies remain because (upper, lower,
+            // inverse, diagonal) may return aliasing Field-valued expressions.
+            result = 0;  // Initial guess
 
             IpplTimings::stopTimer(initTimer);
 
             static IpplTimings::TimerRef loopTimer = IpplTimings::getTimer("SSOR loop");
             IpplTimings::startTimer(loopTimer);
 
-            // In the FEM solver, which uses the preconditioner, 
-            // we re-use a resultField to avoid allocating new
-            // memory at every iteration.
-            // In order for the operator calls to not rewrite
-            // on this same field over and over when calling 
-            // the operators (upper, diag, inverse, lower, etc)
-            // we need deep copies to the preconditioner fields.
-
-            // The inverse diagonal is applied to the
-            // vector itself to return the result usually.
-            // However, the operator for FEM already
-            // returns the result of inv_diag * itself
-            // due to the matrix-free evaluation.
-            // Therefore, we need this if to differentiate
-            // the two cases.
             for (unsigned int k = 0; k < outerloops_m; ++k) {
                 if constexpr (std::is_same_v<InvDiagF, std::function<double(Field)>>) {
-                    UL_m = upper_m(x);
-                    D    = diagonal_m(x);
-                    r_m  = omega_m * (b - UL_m) + (1.0 - omega_m) * D * x;
+                    UL_m = upper_m(result);
+                    D    = diagonal_m(result);
+                    r_m  = omega_m * (b - UL_m) + (1.0 - omega_m) * D * result;
 
                     for (unsigned int j = 0; j < innerloops_m; ++j) {
-                        UL_m = lower_m(x);
-                        x    = r_m - omega_m * UL_m;
-                        x    = inverse_diagonal_m(x) * x;
+                        UL_m   = lower_m(result);
+                        result = r_m - omega_m * UL_m;
+                        result = inverse_diagonal_m(result) * result;
                     }
-                    UL_m = lower_m(x);
-                    D    = diagonal_m(x);
-                    r_m  = omega_m * (b - UL_m) + (1.0 - omega_m) * D * x;
+                    UL_m = lower_m(result);
+                    D    = diagonal_m(result);
+                    r_m  = omega_m * (b - UL_m) + (1.0 - omega_m) * D * result;
                     for (unsigned int j = 0; j < innerloops_m; ++j) {
-                        UL_m = upper_m(x);
-                        x    = r_m - omega_m * UL_m;
-                        x    = inverse_diagonal_m(x) * x;
+                        UL_m   = upper_m(result);
+                        result = r_m - omega_m * UL_m;
+                        result = inverse_diagonal_m(result) * result;
                     }
                 } else {
-                    UL_m = upper_m(x).deepCopy();
-                    r_m  = omega_m * (b - UL_m) + (1.0 - omega_m) * diagonal_m(x);
+                    UL_m = upper_m(result).deepCopy();
+                    r_m  = omega_m * (b - UL_m) + (1.0 - omega_m) * diagonal_m(result);
 
                     for (unsigned int j = 0; j < innerloops_m; ++j) {
-                        UL_m = lower_m(x).deepCopy();
-                        x    = r_m - omega_m * UL_m;
-                        x    = inverse_diagonal_m(x).deepCopy();
+                        UL_m   = lower_m(result).deepCopy();
+                        result = r_m - omega_m * UL_m;
+                        result = inverse_diagonal_m(result).deepCopy();
                     }
-                    UL_m = lower_m(x).deepCopy();
-                    r_m  = omega_m * (b - UL_m) + (1.0 - omega_m) * diagonal_m(x);
+                    UL_m = lower_m(result).deepCopy();
+                    r_m  = omega_m * (b - UL_m) + (1.0 - omega_m) * diagonal_m(result);
                     for (unsigned int j = 0; j < innerloops_m; ++j) {
-                        UL_m = upper_m(x).deepCopy();
-                        x    = r_m - omega_m * UL_m;
-                        x    = inverse_diagonal_m(x).deepCopy();
+                        UL_m   = upper_m(result).deepCopy();
+                        result = r_m - omega_m * UL_m;
+                        result = inverse_diagonal_m(result).deepCopy();
                     }
                 }
             }
             IpplTimings::stopTimer(loopTimer);
-            return x;
         }
 
         void init_fields(Field& b) override {
