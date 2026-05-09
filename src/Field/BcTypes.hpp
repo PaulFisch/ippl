@@ -207,6 +207,7 @@ namespace ippl {
 
         IPPL_HALO_LOG("PeriodicFace:enter face=" << face << " d=" << d << " tag=" << tag
                       << " parallel=" << (lDomains[myRank][d].length() < domain[d].length()));
+        IPPL_HALO_SYNC("PeriodicFace:enter face=" << face);
 
         if (lDomains[myRank][d].length() < domain[d].length()) {
             // Only along this dimension we need communication.
@@ -359,6 +360,7 @@ namespace ippl {
                     apply(view, coords) = left;
                 });
         }
+        IPPL_HALO_SYNC("PeriodicFace:exit face=" << face);
     }
 
     template <typename Field>

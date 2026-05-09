@@ -83,11 +83,21 @@ int main(int argc, char* argv[]) {
         double lbt              = std::atof(argv[arg++]);
         std::string step_method = argv[arg++];
 
+        // Preconditioner positional args are optional. Read up to 5 tokens,
+        // stop at end-of-argv or at the first '--flag' token (so trailing
+        // ippl/CLI options like --info, --overallocate, --warmup that
+        // ippl::initialize hasn't already stripped don't get swallowed as
+        // preconditioner args). With zero tokens, FieldSolver falls through
+        // to the identity preconditioner.
         std::vector<std::string> preconditioner_params;
-
         if (solver == "PCG" || solver == "FEM_PRECON") {
-            for (int i = 0; i < 5; i++) {
-                preconditioner_params.push_back(argv[arg++]);
+            for (int i = 0; i < 5 && arg < argc; ++i) {
+                std::string tok = argv[arg];
+                if (tok.size() >= 2 && tok[0] == '-' && tok[1] == '-') {
+                    break;
+                }
+                preconditioner_params.push_back(std::move(tok));
+                ++arg;
             }
         }
 
