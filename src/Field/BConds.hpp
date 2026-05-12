@@ -41,15 +41,12 @@ namespace ippl {
         std::fflush(stderr);
 #endif
         IPPL_HALO_SYNC("BConds:enter");
-        // No per-BC barrier inside the loop: paired periodic BCs (bc[2k] is
-        // the lower face along dim k, bc[2k+1] is the upper face) talk to
-        // each other across ranks. A barrier between them deadlocks because
-        // rank A's bc[2k] recv waits on rank B's bc[2k+1] isend, which
-        // can only happen after B finishes its own bc[2k]. The Kokkos fence
-        // and the existing communicator barrier below provide the natural
-        // synchronization at the end of the BC sweep.
+        std::size_t _bc_idx = 0;
         for (auto& bc : bc_m) {
+            IPPL_HALO_SYNC("BConds:bc_pre[" << _bc_idx << "]");
             bc->apply(field);
+            IPPL_HALO_SYNC("BConds:bc_post[" << _bc_idx << "]");
+            ++_bc_idx;
         }
         Kokkos::fence();
         field.getCommunicator().barrier();
