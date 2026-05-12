@@ -205,9 +205,6 @@ namespace ippl {
         // the if is proper.
         int tag = comm.next_tag(mpi::tag::BC_PARALLEL_PERIODIC, mpi::tag::BC_CYCLE);
 
-        IPPL_HALO_LOG("PeriodicFace:enter face=" << face << " d=" << d << " tag=" << tag
-                      << " parallel=" << (lDomains[myRank][d].length() < domain[d].length()));
-
         if (lDomains[myRank][d].length() < domain[d].length()) {
             // Only along this dimension we need communication.
 
@@ -243,9 +240,6 @@ namespace ippl {
                 HaloCells_t& halo = field.getHalo();
                 std::vector<range_t> rangeNeighbors;
 
-                IPPL_HALO_LOG("PeriodicFace:boundary face=" << face
-                              << " neighbors=" << neighbors.size()
-                              << " tag=" << tag << " matchtag=" << matchtag);
                 for (size_t i = 0; i < neighbors.size(); ++i) {
                     int rank = neighbors[i];
 
@@ -270,9 +264,6 @@ namespace ippl {
 
                     buffer_type buf = comm.template getBuffer<memory_space, T>(nSends);
 
-                    IPPL_HALO_LOG("PeriodicFace:isend face=" << face << " i=" << i
-                                  << " target=" << rank << " tag=" << tag
-                                  << " nsends=" << nSends);
                     comm.isend(rank, tag, haloData_m, *buf, requests[i], nSends);
                     buf->resetWritePos();
                 }
@@ -288,25 +279,16 @@ namespace ippl {
                     detail::size_type nRecvs = range.size();
 
                     buffer_type buf = comm.template getBuffer<memory_space, T>(nRecvs);
-                    IPPL_HALO_LOG("PeriodicFace:recv:pre face=" << face << " i=" << i
-                                  << " source=" << rank << " matchtag=" << matchtag
-                                  << " nrecvs=" << nRecvs);
                     comm.recv(rank, matchtag, haloData_m, *buf, nRecvs * sizeof(T), nRecvs);
-                    IPPL_HALO_LOG("PeriodicFace:recv:post face=" << face << " i=" << i
-                                  << " source=" << rank);
                     buf->resetReadPos();
 
                     using assign_t = typename HaloCells_t::assign;
                     halo.template unpack<assign_t>(range, view, haloData_m);
                 }
                 if (!requests.empty()) {
-                    IPPL_HALO_LOG("PeriodicFace:waitall:pre face=" << face
-                                  << " n=" << requests.size());
                     MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
-                    IPPL_HALO_LOG("PeriodicFace:waitall:post face=" << face);
                 }
                 comm.freeAllBuffers();
-                IPPL_HALO_LOG("PeriodicFace:boundary_done face=" << face);
             }
             // For all other processors do nothing
         } else {
