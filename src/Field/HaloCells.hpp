@@ -31,52 +31,22 @@
 #ifdef IPPL_HALO_DEBUG
 #include <cstdio>
 #include <atomic>
-#include <sstream>
-#include <mpi.h>
 namespace ippl { namespace detail {
     inline std::atomic<unsigned long>& haloDebugSeq() {
         static std::atomic<unsigned long> s{0};
         return s;
     }
 }}  // namespace ippl::detail
-// Single fprintf so a line emitted by one rank does not interleave with
-// a line emitted by another (POSIX guarantees fprintf with one buffer is
-// atomic up to PIPE_BUF; one fprintf per line keeps the trace readable).
 #define IPPL_HALO_LOG(stream)                                                              \
     do {                                                                                   \
-        std::ostringstream _ipplhalolog_oss;                                               \
-        _ipplhalolog_oss << "[HALO/r=" << ippl::Comm->rank()                               \
-                         << "][seq=" << ippl::detail::haloDebugSeq().fetch_add(1) << "]"   \
-                         << stream << '\n';                                                \
-        const auto _ipplhalolog_s = _ipplhalolog_oss.str();                                \
-        std::fprintf(stderr, "%s", _ipplhalolog_s.c_str());                                \
+        std::fprintf(stderr, "[HALO/r=%d][seq=%lu]", ippl::Comm->rank(),                   \
+                     ippl::detail::haloDebugSeq().fetch_add(1));                           \
+        std::fprintf(stderr, "%s\n", (std::ostringstream() << stream).str().c_str());      \
         std::fflush(stderr);                                                               \
     } while (0)
-// Every IPPL_HALO_SYNC logs a "pre" line on every rank, calls MPI_Barrier,
-// then logs "post". When one rank desyncs, the LAST line in the log is the
-// SYNC label closest to the divergence:
-//
-//   - if all ranks have a "sync:pre id=FOO" but only some have
-//     "sync:post id=FOO", the divergence happened *before* FOO and ranks
-//     are stuck inside the barrier itself.
-//   - if one rank has "sync:post id=FOO" but the others don't, that rank
-//     reached past FOO while the others are stuck on a prior MPI op.
-//
-// Use ascending phase IDs so the trace is grep-able. Cheap (~µs per call);
-// safe to sprinkle generously inside CG loops while we hunt the bug.
-// `label` is streamed straight into the log via chained `<<`, so callers can
-// pass either a single string ("halo:enter") or a composed expression
-// ("BConds:bc_pre[" << idx << "]"). Don't wrap label in parens; that would
-// break the `<<` chain.
-#define IPPL_HALO_SYNC(label)                                                              \
-    do {                                                                                   \
-        IPPL_HALO_LOG("sync:pre id=" << label);                                            \
-        MPI_Barrier(ippl::Comm->getCommunicator());                                        \
-        IPPL_HALO_LOG("sync:post id=" << label);                                           \
-    } while (0)
+#include <sstream>
 #else
 #define IPPL_HALO_LOG(stream) do {} while (0)
-#define IPPL_HALO_SYNC(label) do {} while (0)
 #endif
 
 namespace ippl {
@@ -135,7 +105,6 @@ namespace ippl {
 
             IPPL_HALO_LOG("exchangeBoundaries:enter order=" << static_cast<int>(order)
                           << " totalRequests=" << totalRequests << " nghost=" << nghost);
-            IPPL_HALO_SYNC("halo:enter");
 #ifdef IPPL_HALO_DEBUG
             for (size_t k = 0; k < neighbors.size(); ++k) {
                 std::ostringstream oss;
@@ -199,7 +168,6 @@ namespace ippl {
             }
 
             IPPL_HALO_LOG("exchangeBoundaries:sends_done count=" << requestIndex);
-            IPPL_HALO_SYNC("halo:sends_done");
 
             // receiving loop
             for (size_t index = 0; index < cubeCount; index++) {
@@ -246,7 +214,6 @@ namespace ippl {
             }
 
             IPPL_HALO_LOG("exchangeBoundaries:recvs_done");
-            IPPL_HALO_SYNC("halo:recvs_done");
 
             if (totalRequests > 0) {
                 IPPL_HALO_LOG("waitall:pre n=" << totalRequests);
@@ -256,7 +223,6 @@ namespace ippl {
 
             comm.freeAllBuffers();
             IPPL_HALO_LOG("exchangeBoundaries:exit");
-            IPPL_HALO_SYNC("halo:exit");
         }
 
         template <typename T, unsigned Dim, class... ViewArgs>

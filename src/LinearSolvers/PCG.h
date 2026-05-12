@@ -12,28 +12,15 @@
 
 #ifdef IPPL_HALO_DEBUG
 #include <cstdio>
-#include <sstream>
-#include <mpi.h>
 #define IPPL_PCG_LOG(stream)                                                               \
     do {                                                                                   \
-        std::ostringstream _ipplpcglog_oss;                                                \
-        _ipplpcglog_oss << "[PCG/r=" << ippl::Comm->rank() << "]" << stream << '\n';       \
-        const auto _ipplpcglog_s = _ipplpcglog_oss.str();                                  \
-        std::fprintf(stderr, "%s", _ipplpcglog_s.c_str());                                 \
+        std::fprintf(stderr, "[PCG/r=%d]", ippl::Comm->rank());                            \
+        std::fprintf(stderr, "%s\n", (std::ostringstream() << stream).str().c_str());      \
         std::fflush(stderr);                                                               \
     } while (0)
-// Phase-boundary barrier inside the CG loop. Same semantics as IPPL_HALO_SYNC
-// but tagged for the PCG trace. If a rank stops emitting "post" lines, the
-// last "pre id=…" line tells us exactly which CG phase it got stuck on.
-#define IPPL_PCG_SYNC(label)                                                               \
-    do {                                                                                   \
-        IPPL_PCG_LOG("sync:pre id=" << label);                                             \
-        MPI_Barrier(ippl::Comm->getCommunicator());                                        \
-        IPPL_PCG_LOG("sync:post id=" << label);                                            \
-    } while (0)
+#include <sstream>
 #else
 #define IPPL_PCG_LOG(stream) do {} while (0)
-#define IPPL_PCG_SYNC(label) do {} while (0)
 #endif
 
 namespace ippl {
@@ -472,7 +459,6 @@ namespace ippl {
             IPPL_PCG_LOG("solve:enter solve#=" << solve_count_m
                          << " maxIter=" << maxIterations
                          << " precond=" << preconditioner_m->get_type());
-            IPPL_PCG_SYNC("solve:enter#" << solve_count_m);
 
             // Variable names mostly based on description in
             // https://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf
@@ -515,9 +501,7 @@ namespace ippl {
             }
 
             IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_residual");
-            IPPL_PCG_SYNC("initial_residual:pre solve#" << solve_count_m);
             this->r = rhs - this->op_m(lhs);
-            IPPL_PCG_SYNC("initial_residual:post solve#" << solve_count_m);
             // The preconditioner writes into pcond_out (NoBcFace, no halo MPI
             // from BC apply), then we hand the result over to d via an
             // expression assignment. d's PeriodicFace BCs must NOT be visible
@@ -526,14 +510,10 @@ namespace ippl {
             // master code path avoids by returning a fresh NoBcFace field from
             // pcond.
             IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_pcond:pre");
-            IPPL_PCG_SYNC("initial_pcond:pre solve#" << solve_count_m);
             (*preconditioner_m)(this->r, pcond_out);
-            IPPL_PCG_SYNC("initial_pcond:post solve#" << solve_count_m);
             IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_pcond:post");
             this->d = T(1) * pcond_out;
-            IPPL_PCG_SYNC("initial_setFieldBC:pre solve#" << solve_count_m);
             this->d.setFieldBC(bc);
-            IPPL_PCG_SYNC("initial_setFieldBC:post solve#" << solve_count_m);
 
             T delta1          = innerProduct(this->r, this->d);
             T delta0           = delta1;
@@ -545,13 +525,9 @@ namespace ippl {
             while (this->iterations_m < maxIterations && this->residueNorm > tolerance) {
                 IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
                              << " step=apply_op");
-                IPPL_PCG_SYNC("iter_apply_op:pre solve#" << solve_count_m
-                              << " iter=" << this->iterations_m);
                 // q = op_m(d) writes the expression into q's existing storage
                 // via operator=(Expression); no allocation, no extra deep copy.
                 this->q = this->op_m(this->d);
-                IPPL_PCG_SYNC("iter_apply_op:post solve#" << solve_count_m
-                              << " iter=" << this->iterations_m);
                 T alpha = delta1 / innerProduct(this->d, this->q);
                 lhs     = lhs + alpha * this->d;
 
@@ -565,14 +541,10 @@ namespace ippl {
                 this->r = this->r - alpha * this->q;
                 IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
                              << " step=loop_pcond:pre");
-                IPPL_PCG_SYNC("iter_pcond:pre solve#" << solve_count_m
-                              << " iter=" << this->iterations_m);
                 // s := M^{-1} r; preconditioner writes into s. s has NoBcFace
                 // BCs (never set by setFieldBC), so its operator chain matches
                 // master's NoBcFace scratch behaviour.
                 (*preconditioner_m)(this->r, s);
-                IPPL_PCG_SYNC("iter_pcond:post solve#" << solve_count_m
-                              << " iter=" << this->iterations_m);
                 IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
                              << " step=loop_pcond:post");
 

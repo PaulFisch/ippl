@@ -200,50 +200,33 @@ public:
         // Increase tolerance in the 1D case
         sp.add("tolerance", 1e-4);
 
-        // Defaults so the ParameterList always has well-defined entries
-        // even when the user provides 0 preconditioner CLI args (which
-        // falls through to the identity preconditioner inside PCG).
-        int gauss_seidel_inner_iterations = 0;
-        int gauss_seidel_outer_iterations = 0;
-        int newton_level                  = 0;
-        int chebyshev_degree              = 0;
-        int richardson_iterations         = 0;
-        int communication                 = 0;
-        double ssor_omega                 = 0.0;
-        std::string preconditioner_type   = "";
-
-        // Read preconditioner type only if at least one positional token was
-        // provided. Empty -> identity. Reading from an empty vector via
-        // operator[] would be UB; size-checked accessors below silently fall
-        // through if the user doesn't pass enough numeric params.
         int arg = 0;
-        const int n_params = static_cast<int>(preconditioner_params_m.size());
-        auto get_str = [&]() {
-            return arg < n_params ? preconditioner_params_m[arg++] : std::string();
-        };
-        auto get_int = [&]() {
-            return arg < n_params ? std::stoi(preconditioner_params_m[arg++]) : 0;
-        };
-        auto get_double = [&]() {
-            return arg < n_params ? std::stod(preconditioner_params_m[arg++]) : 0.0;
-        };
 
-        preconditioner_type = get_str();
+        int gauss_seidel_inner_iterations;
+        int gauss_seidel_outer_iterations;
+        int newton_level;
+        int chebyshev_degree;
+        int richardson_iterations;
+        int communication = 0;
+        double ssor_omega;
+        std::string preconditioner_type = "";
+
+        preconditioner_type = preconditioner_params_m[arg++];
         if (preconditioner_type == "newton") {
-            newton_level = get_int();
+            newton_level = std::stoi(preconditioner_params_m[arg++]);
         } else if (preconditioner_type == "chebyshev") {
-            chebyshev_degree = get_int();
+            chebyshev_degree = std::stoi(preconditioner_params_m[arg++]);
         } else if (preconditioner_type == "richardson") {
-            richardson_iterations = get_int();
-            communication         = get_int();
+            richardson_iterations = std::stoi(preconditioner_params_m[arg++]);
+            communication         = std::stoi(preconditioner_params_m[arg++]);
         } else if (preconditioner_type == "gauss-seidel") {
-            gauss_seidel_inner_iterations = get_int();
-            gauss_seidel_outer_iterations = get_int();
-            communication                 = get_int();
+            gauss_seidel_inner_iterations = std::stoi(preconditioner_params_m[arg++]);
+            gauss_seidel_outer_iterations = std::stoi(preconditioner_params_m[arg++]);
+            communication                 = std::stoi(preconditioner_params_m[arg++]);
         } else if (preconditioner_type == "ssor") {
-            gauss_seidel_inner_iterations = get_int();
-            gauss_seidel_outer_iterations = get_int();
-            ssor_omega                    = get_double();
+            gauss_seidel_inner_iterations = std::stoi(preconditioner_params_m[arg++]);
+            gauss_seidel_outer_iterations = std::stoi(preconditioner_params_m[arg++]);
+            ssor_omega                    = std::stod(preconditioner_params_m[arg++]);
         }
 
         sp.add("preconditioner_type", preconditioner_type);
@@ -272,44 +255,33 @@ public:
         sp.add("output_type", FEMPreconSolver_t<T, Dim>::SOL);
         sp.add("tolerance", 1e-4);
 
-        // See initPCGSolver for the bounds-checked accessor rationale.
-        int gauss_seidel_inner_iterations = 0;
-        int gauss_seidel_outer_iterations = 0;
-        int newton_level                  = 0;
-        int chebyshev_degree              = 0;
-        int richardson_iterations         = 0;
-        int communication                 = 0;
-        double ssor_omega                 = 0.0;
-        std::string preconditioner_type   = "";
-
         int arg = 0;
-        const int n_params = static_cast<int>(preconditioner_params_m.size());
-        auto get_str = [&]() {
-            return arg < n_params ? preconditioner_params_m[arg++] : std::string();
-        };
-        auto get_int = [&]() {
-            return arg < n_params ? std::stoi(preconditioner_params_m[arg++]) : 0;
-        };
-        auto get_double = [&]() {
-            return arg < n_params ? std::stod(preconditioner_params_m[arg++]) : 0.0;
-        };
 
-        preconditioner_type = get_str();
+        int gauss_seidel_inner_iterations;
+        int gauss_seidel_outer_iterations;
+        int newton_level;
+        int chebyshev_degree;
+        int richardson_iterations;
+        int communication = 0;
+        double ssor_omega;
+        std::string preconditioner_type = "";
+
+        preconditioner_type = preconditioner_params_m[arg++];
         if (preconditioner_type == "newton") {
-            newton_level = get_int();
+            newton_level = std::stoi(preconditioner_params_m[arg++]);
         } else if (preconditioner_type == "chebyshev") {
-            chebyshev_degree = get_int();
+            chebyshev_degree = std::stoi(preconditioner_params_m[arg++]);
         } else if (preconditioner_type == "richardson") {
-            richardson_iterations = get_int();
-            communication         = get_int();
+            richardson_iterations = std::stoi(preconditioner_params_m[arg++]);
+            communication         = std::stoi(preconditioner_params_m[arg++]);
         } else if (preconditioner_type == "gauss-seidel") {
-            gauss_seidel_inner_iterations = get_int();
-            gauss_seidel_outer_iterations = get_int();
-            communication                 = get_int();
+            gauss_seidel_inner_iterations = std::stoi(preconditioner_params_m[arg++]);
+            gauss_seidel_outer_iterations = std::stoi(preconditioner_params_m[arg++]);
+            communication                 = std::stoi(preconditioner_params_m[arg++]);
         } else if (preconditioner_type == "ssor") {
-            gauss_seidel_inner_iterations = get_int();
-            gauss_seidel_outer_iterations = get_int();
-            ssor_omega                    = get_double();
+            gauss_seidel_inner_iterations = std::stoi(preconditioner_params_m[arg++]);
+            gauss_seidel_outer_iterations = std::stoi(preconditioner_params_m[arg++]);
+            ssor_omega                    = std::stod(preconditioner_params_m[arg++]);
         }
 
         sp.add("preconditioner_type", preconditioner_type);
@@ -320,7 +292,7 @@ public:
         sp.add("richardson_iterations", richardson_iterations);
         sp.add("communication", communication);
         sp.add("ssor_omega", ssor_omega);
-
+        
         initSolverWithParams<FEMPreconSolver_t<T, Dim>>(sp);
     }
 
