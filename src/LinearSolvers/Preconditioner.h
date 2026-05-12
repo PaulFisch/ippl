@@ -71,21 +71,9 @@ namespace ippl {
 
         void operator()(Field& u, Field& result) override {
             // result = w * D^{-1} * u, written element-wise into the caller-
-            // provided result buffer. Two forms of inverse_diagonal_m are
-            // supported, matching the convention used by the other
-            // preconditioners in this file:
-            //   - returns a scalar (e.g. uniform-mesh Poisson Laplacian):
-            //       result = w * scalar * u
-            //   - returns a Field / expression equal to D^{-1} * u
-            //     (e.g. matrix-free FEM operators):
-            //       result = w * inverse_diagonal_m(u)
-            if constexpr (std::is_same_v<InvDiagF, std::function<double(Field)>>) {
-                const double scale = w_m * inverse_diagonal_m(u);
-                result = scale * u;
-            } else {
-                result = inverse_diagonal_m(u);
-                result = w_m * result;
-            }
+            // provided result buffer.
+            result = inverse_diagonal_m(u);
+            result = w_m * result;
         }
 
     protected:
@@ -180,28 +168,18 @@ namespace ippl {
                 }
             }
 
-            // First call: allocate one scratch field per recursion depth.
-            // Subsequent calls: refresh layout in place so a load-balance
-            // repartition tracks correctly without freeing/reallocating
-            // when the local extents are unchanged.
+            // Pre-allocate one scratch field per recursion depth. Depth 0 is
+            // the base case and stores nothing, but we keep size = level_m+1
+            // so depth-indexed access is straightforward.
             mesh_type& mesh     = b.get_mesh();
             layout_type& layout = b.getLayout();
-            if (!fields_initialized_m) {
-                Pr_scratch_m.resize(level_m + 1);
-                PA_scratch_m.resize(level_m + 1);
-                PAPr_scratch_m.resize(level_m + 1);
-                for (unsigned int i = 1; i <= level_m; ++i) {
-                    Pr_scratch_m[i]   = Field(mesh, layout);
-                    PA_scratch_m[i]   = Field(mesh, layout);
-                    PAPr_scratch_m[i] = Field(mesh, layout);
-                }
-                fields_initialized_m = true;
-            } else {
-                for (unsigned int i = 1; i <= level_m; ++i) {
-                    Pr_scratch_m[i].updateLayout(layout);
-                    PA_scratch_m[i].updateLayout(layout);
-                    PAPr_scratch_m[i].updateLayout(layout);
-                }
+            Pr_scratch_m.resize(level_m + 1);
+            PA_scratch_m.resize(level_m + 1);
+            PAPr_scratch_m.resize(level_m + 1);
+            for (unsigned int i = 1; i <= level_m; ++i) {
+                Pr_scratch_m[i]   = Field(mesh, layout);
+                PA_scratch_m[i]   = Field(mesh, layout);
+                PAPr_scratch_m[i] = Field(mesh, layout);
             }
         }
 
@@ -216,7 +194,6 @@ namespace ippl {
         std::vector<Field> Pr_scratch_m;
         std::vector<Field> PA_scratch_m;
         std::vector<Field> PAPr_scratch_m;
-        bool fields_initialized_m = false;
     };
 
     /*!
@@ -311,20 +288,10 @@ namespace ippl {
             }
             mesh_type& mesh     = b.get_mesh();
             layout_type& layout = b.getLayout();
-            // First call allocates; subsequent calls refresh the layout so a
-            // repartition is tracked without throwing the storage away.
-            if (!fields_initialized_m) {
-                x_m     = Field(mesh, layout);
-                x_old_m = Field(mesh, layout);
-                A_m     = Field(mesh, layout);
-                z_m     = Field(mesh, layout);
-                fields_initialized_m = true;
-            } else {
-                x_m.updateLayout(layout);
-                x_old_m.updateLayout(layout);
-                A_m.updateLayout(layout);
-                z_m.updateLayout(layout);
-            }
+            x_m     = Field(mesh, layout);
+            x_old_m = Field(mesh, layout);
+            A_m     = Field(mesh, layout);
+            z_m     = Field(mesh, layout);
         }
 
     protected:
@@ -341,7 +308,6 @@ namespace ippl {
         Field x_old_m;
         Field A_m;
         Field z_m;
-        bool fields_initialized_m = false;
     };
 
     /*!
@@ -391,12 +357,8 @@ namespace ippl {
         void init_fields(Field& b) override {
             layout_type& layout = b.getLayout();
             mesh_type& mesh     = b.get_mesh();
-            if (!fields_initialized_m) {
-                ULg_m                = Field(mesh, layout);
-                fields_initialized_m = true;
-            } else {
-                ULg_m.updateLayout(layout);
-            }
+
+            ULg_m = Field(mesh, layout);
         }
 
     protected:
@@ -404,7 +366,6 @@ namespace ippl {
         InvDiagF inverse_diagonal_m;
         unsigned innerloops_m;
         Field ULg_m;
-        bool fields_initialized_m = false;
     };
 
     /*!
@@ -461,14 +422,9 @@ namespace ippl {
         void init_fields(Field& b) override {
             layout_type& layout = b.getLayout();
             mesh_type& mesh     = b.get_mesh();
-            if (!fields_initialized_m) {
-                Ag_m                 = Field(mesh, layout);
-                g_old_m              = Field(mesh, layout);
-                fields_initialized_m = true;
-            } else {
-                Ag_m.updateLayout(layout);
-                g_old_m.updateLayout(layout);
-            }
+
+            Ag_m    = Field(mesh, layout);
+            g_old_m = Field(mesh, layout);
         }
 
     protected:
@@ -477,7 +433,6 @@ namespace ippl {
         unsigned innerloops_m;
         Field Ag_m;
         Field g_old_m;
-        bool fields_initialized_m = false;
     };
 
     /*!
@@ -540,14 +495,9 @@ namespace ippl {
         void init_fields(Field& b) override {
             layout_type& layout = b.getLayout();
             mesh_type& mesh     = b.get_mesh();
-            if (!fields_initialized_m) {
-                UL_m                 = Field(mesh, layout);
-                r_m                  = Field(mesh, layout);
-                fields_initialized_m = true;
-            } else {
-                UL_m.updateLayout(layout);
-                r_m.updateLayout(layout);
-            }
+
+            UL_m = Field(mesh, layout);
+            r_m  = Field(mesh, layout);
         }
 
     protected:
@@ -558,7 +508,6 @@ namespace ippl {
         unsigned outerloops_m;
         Field UL_m;
         Field r_m;
-        bool fields_initialized_m = false;
     };
 
     /*!
@@ -642,14 +591,9 @@ namespace ippl {
         void init_fields(Field& b) override {
             layout_type& layout = b.getLayout();
             mesh_type& mesh     = b.get_mesh();
-            if (!fields_initialized_m) {
-                UL_m                 = Field(mesh, layout);
-                r_m                  = Field(mesh, layout);
-                fields_initialized_m = true;
-            } else {
-                UL_m.updateLayout(layout);
-                r_m.updateLayout(layout);
-            }
+
+            UL_m = Field(mesh, layout);
+            r_m  = Field(mesh, layout);
         }
 
     protected:
@@ -662,7 +606,6 @@ namespace ippl {
         double omega_m;
         Field UL_m;
         Field r_m;
-        bool fields_initialized_m = false;
     };
 
     /*!
