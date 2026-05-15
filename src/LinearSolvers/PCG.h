@@ -10,6 +10,32 @@
 #include "SolverAlgorithm.h"
 #include "FEM/FEMVector.h"
 
+#ifdef IPPL_HALO_DEBUG
+#include <cstdio>
+#include <sstream>
+#include <mpi.h>
+#define IPPL_PCG_LOG(stream)                                                               \
+    do {                                                                                   \
+        std::ostringstream _ipplpcglog_oss;                                                \
+        _ipplpcglog_oss << "[PCG/r=" << ippl::Comm->rank() << "]" << stream << '\n';       \
+        const auto _ipplpcglog_s = _ipplpcglog_oss.str();                                  \
+        std::fprintf(stderr, "%s", _ipplpcglog_s.c_str());                                 \
+        std::fflush(stderr);                                                               \
+    } while (0)
+// Phase-boundary barrier inside the CG loop. Same semantics as IPPL_HALO_SYNC
+// but tagged for the PCG trace. If a rank stops emitting "post" lines, the
+// last "pre id=…" line tells us exactly which CG phase it got stuck on.
+#define IPPL_PCG_SYNC(label)                                                               \
+    do {                                                                                   \
+        IPPL_PCG_LOG("sync:pre id=" << label);                                             \
+        MPI_Barrier(ippl::Comm->getCommunicator());                                        \
+        IPPL_PCG_LOG("sync:post id=" << label);                                            \
+    } while (0)
+#else
+#define IPPL_PCG_LOG(stream) do {} while (0)
+#define IPPL_PCG_SYNC(label) do {} while (0)
+#endif
+
 namespace ippl {
     template <typename OperatorRet, typename LowerRet, typename UpperRet, typename UpperLowerRet,
               typename InverseDiagRet, typename DiagRet, typename FieldLHS,
@@ -188,9 +214,10 @@ namespace ippl {
         T residueNorm    = 0;
         int iterations_m = 0;
 
-        // Workspaces, allocated once via initializeFields() and reused across solves.
-        // Protected so derived solvers (e.g. PCG) can extend the workspace set
-        // without redeclaring r, d, q as locals on every operator() call.
+        // Workspaces, allocated once via initializeFields() and reused across
+        // solves. Protected so derived solvers (e.g. PCG) can extend the
+        // workspace set without redeclaring r, d, q as locals on every
+        // operator() call.
         lhs_type r;
         lhs_type d;
         lhs_type q;
@@ -345,12 +372,14 @@ namespace ippl {
             , preconditioner_m(nullptr){};
 
         // Allocates the PCG workspace. Extends CG by adding the preconditioner
-        // result buffer s. Called once by the owning solver (e.g. PoissonCG)
-        // so that operator() does not allocate per solve.
+        // result buffer s and a NoBcFace staging buffer pcond_out. Called once
+        // by the owning solver (e.g. PoissonCG) so that operator() does not
+        // allocate per solve.
         void initializeFields(mesh_type& mesh, layout_type& layout) override {
             CG<OperatorRet, LowerRet, UpperRet, UpperLowerRet, InverseDiagRet, DiagRet, FieldLHS,
                FieldRHS>::initializeFields(mesh, layout);
             s.initialize(mesh, layout);
+            pcond_out.initialize(mesh, layout);
         }
 
         /*!
@@ -439,16 +468,28 @@ namespace ippl {
             this->iterations_m      = 0;
             const int maxIterations = params.get<int>("max_iterations");
 
+            ++solve_count_m;
+            IPPL_PCG_LOG("solve:enter solve#=" << solve_count_m
+                         << " maxIter=" << maxIterations
+                         << " precond=" << preconditioner_m->get_type());
+            IPPL_PCG_SYNC("solve:enter#" << solve_count_m);
+
             // Variable names mostly based on description in
             // https://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf
             // r, d, q come from the CG base class; s is a PCG member. All are
             // pre-allocated via initializeFields(); operator() only refreshes
-            // their layout in case the owning solver has updated it.
+            // their layout so we track load-balancing repartitions of the lhs.
             this->r.updateLayout(lhs.getLayout());
             this->d.updateLayout(lhs.getLayout());
             s.updateLayout(lhs.getLayout());
+            pcond_out.updateLayout(lhs.getLayout());
             this->q.updateLayout(lhs.getLayout());
 
+            // Preconditioner scratch must follow the current lhs layout too,
+            // otherwise its halo-exchange neighbor list goes out of sync with
+            // r/d/s/q after a repartition and halo MPI calls deadlock. Each
+            // preconditioner's init_fields() is responsible for being cheap on
+            // the steady-state path (refreshing layout, not reallocating).
             preconditioner_m->init_fields(lhs);
 
             using bc_type  = BConds<lhs_type, Dim>;
@@ -473,19 +514,44 @@ namespace ippl {
                 }
             }
 
+            IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_residual");
+            IPPL_PCG_SYNC("initial_residual:pre solve#" << solve_count_m);
             this->r = rhs - this->op_m(lhs);
-            this->d = preconditioner_m->operator()(this->r).deepCopy();
+            IPPL_PCG_SYNC("initial_residual:post solve#" << solve_count_m);
+            // The preconditioner writes into pcond_out (NoBcFace, no halo MPI
+            // from BC apply), then we hand the result over to d via an
+            // expression assignment. d's PeriodicFace BCs must NOT be visible
+            // during the preconditioner's internal operator chain — that would
+            // trigger PeriodicFace::apply MPI inside pcond, which is what the
+            // master code path avoids by returning a fresh NoBcFace field from
+            // pcond.
+            IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_pcond:pre");
+            IPPL_PCG_SYNC("initial_pcond:pre solve#" << solve_count_m);
+            (*preconditioner_m)(this->r, pcond_out);
+            IPPL_PCG_SYNC("initial_pcond:post solve#" << solve_count_m);
+            IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_pcond:post");
+            this->d = T(1) * pcond_out;
+            IPPL_PCG_SYNC("initial_setFieldBC:pre solve#" << solve_count_m);
             this->d.setFieldBC(bc);
+            IPPL_PCG_SYNC("initial_setFieldBC:post solve#" << solve_count_m);
 
             T delta1          = innerProduct(this->r, this->d);
-            T delta0          = delta1;
+            T delta0           = delta1;
             this->residueNorm = Kokkos::sqrt(Kokkos::abs(delta1));
             const T tolerance = params.get<T>("tolerance") * this->residueNorm;
+            IPPL_PCG_LOG("solve#=" << solve_count_m << " step=loop_start"
+                         << " residue=" << this->residueNorm << " tol=" << tolerance);
 
             while (this->iterations_m < maxIterations && this->residueNorm > tolerance) {
+                IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
+                             << " step=apply_op");
+                IPPL_PCG_SYNC("iter_apply_op:pre solve#" << solve_count_m
+                              << " iter=" << this->iterations_m);
                 // q = op_m(d) writes the expression into q's existing storage
                 // via operator=(Expression); no allocation, no extra deep copy.
                 this->q = this->op_m(this->d);
+                IPPL_PCG_SYNC("iter_apply_op:post solve#" << solve_count_m
+                              << " iter=" << this->iterations_m);
                 T alpha = delta1 / innerProduct(this->d, this->q);
                 lhs     = lhs + alpha * this->d;
 
@@ -497,10 +563,18 @@ namespace ippl {
                 // in some implementations, the correction may be applied every few
                 // iterations to offset accumulated floating point errors
                 this->r = this->r - alpha * this->q;
-                // .deepCopy() guards against d/s aliasing the preconditioner's
-                // internal result buffer between successive calls. A fully
-                // out-parameter preconditioner API would let us drop this.
-                s = preconditioner_m->operator()(this->r).deepCopy();
+                IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
+                             << " step=loop_pcond:pre");
+                IPPL_PCG_SYNC("iter_pcond:pre solve#" << solve_count_m
+                              << " iter=" << this->iterations_m);
+                // s := M^{-1} r; preconditioner writes into s. s has NoBcFace
+                // BCs (never set by setFieldBC), so its operator chain matches
+                // master's NoBcFace scratch behaviour.
+                (*preconditioner_m)(this->r, s);
+                IPPL_PCG_SYNC("iter_pcond:post solve#" << solve_count_m
+                              << " iter=" << this->iterations_m);
+                IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
+                             << " step=loop_pcond:post");
 
                 delta0 = delta1;
                 delta1 = innerProduct(this->r, s);
@@ -510,7 +584,11 @@ namespace ippl {
 
                 this->d = s + beta * this->d;
                 ++this->iterations_m;
+                IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
+                             << " step=loop_end residue=" << this->residueNorm);
             }
+            IPPL_PCG_LOG("solve#=" << solve_count_m << " step=exit iters=" << this->iterations_m
+                         << " residue=" << this->residueNorm);
 
             if (allFacesPeriodic) {
                 T avg = lhs.getVolumeAverage();
@@ -521,9 +599,19 @@ namespace ippl {
     protected:
         std::unique_ptr<preconditioner<FieldLHS>> preconditioner_m;
 
-        // Preconditioner result buffer, allocated once via initializeFields()
-        // and reused across solves. Sibling of the inherited r, d, q workspaces.
+        // Preconditioner result buffers, allocated once via initializeFields()
+        // and reused across solves. Both deliberately keep their default
+        // NoBcFace BCs so that the preconditioner's internal operator chain
+        // does NOT trigger PeriodicFace::apply MPI calls -- d gets PeriodicFace
+        // via setFieldBC and using d as the pcond result would change the
+        // global MPI sequence relative to master, where pcond returned a
+        // fresh NoBcFace field.
         lhs_type s;
+        lhs_type pcond_out;
+
+        // Counter so debug logs can identify *which* solve is mid-flight when
+        // a halo deadlock fires. Per-rank, advances on every operator() call.
+        int solve_count_m = 0;
     };
 
 };  // namespace ippl
