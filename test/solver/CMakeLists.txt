@@ -14,6 +14,12 @@ add_ippl_integration_test(TestCGSolver ARGS 4 j LABELS solver integration)
 add_ippl_integration_test(TestSolverDesign COMPILE_ONLY LABELS solver integration)
 add_ippl_integration_test(TestCGSolver_convergence COMPILE_ONLY LABELS solver integration)
 
+# Manual reproducer for the LandauDamping+PCG/newton HaloCells deadlock.
+# COMPILE_ONLY so ctest does not run it - launch manually with mpiexec.
+add_ippl_integration_test(TestPCGRepeatedSolve COMPILE_ONLY LABELS solver integration)
+add_ippl_integration_test(TestMinimal COMPILE_ONLY LABELS solver integration)
+add_ippl_integration_test(TestHaloOnly COMPILE_ONLY LABELS solver integration)
+
 if(IPPL_ENABLE_FFT)
   # tests FFTPeriodicPoissonSolver
   add_ippl_integration_test(TestFFTPeriodicPoissonSolver LABELS solver integration)

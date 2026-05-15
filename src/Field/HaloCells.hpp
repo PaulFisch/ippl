@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <vector>
+#include <chrono>
 
 #include "Utility/IpplException.h"
 #include "Utility/ParallelDispatch.h"
