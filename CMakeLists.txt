@@ -62,6 +62,14 @@ option(IPPL_ENABLE_SCRIPTS "Generate job script templates for some benchmarks/te
 option(IPPL_ENABLE_FINUFFT "Enable (CU)FINUFFT" OFF)
 option(IPPL_ENABLE_CUFFTMP "Enable cuFFTMp distributed FFT backend" OFF)
 
+# When ON, the CG/preconditioner paths emit a per-rank trace to stderr that is
+# grep-able and ordered by an atomic sequence number. Use to debug halo
+# deadlocks; the trace is heavy and should NOT be on for production runs.
+option(IPPL_HALO_DEBUG "Emit per-rank CG/preconditioner trace to stderr (deadlock debug)" OFF)
+if(IPPL_HALO_DEBUG)
+  add_compile_definitions(IPPL_HALO_DEBUG)
+endif()
+
 # ------------------------------------------------------------------------------
 # Setup Output directories
 # ------------------------------------------------------------------------------
