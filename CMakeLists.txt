@@ -62,12 +62,28 @@ option(IPPL_ENABLE_SCRIPTS "Generate job script templates for some benchmarks/te
 option(IPPL_ENABLE_FINUFFT "Enable (CU)FINUFFT" OFF)
 option(IPPL_ENABLE_CUFFTMP "Enable cuFFTMp distributed FFT backend" OFF)
 
-# When ON, the CG/preconditioner paths emit a per-rank trace to stderr that is
-# grep-able and ordered by an atomic sequence number. Use to debug halo
-# deadlocks; the trace is heavy and should NOT be on for production runs.
-option(IPPL_HALO_DEBUG "Emit per-rank CG/preconditioner trace to stderr (deadlock debug)" OFF)
-if(IPPL_HALO_DEBUG)
-  add_compile_definitions(IPPL_HALO_DEBUG)
+# Halo-deadlock debug instrumentation. Two independent switches so we can
+# turn on the trace without altering inter-rank timing:
+#
+#   -DIPPL_HALO_LOG=ON   IPPL_HALO_LOG() emits a per-rank stderr trace
+#                        tagged [HALO/r=R][seq=N] / [PCG/r=R]. Block-buffered
+#                        and flushed periodically, so the cost is dominated
+#                        by string formatting, not syscalls.
+#
+#   -DIPPL_HALO_SYNC=ON  IPPL_HALO_SYNC() inserts an MPI_Barrier at each
+#                        debug sync point. When combined with HALO_LOG it
+#                        also brackets the barrier with pre/post log lines.
+#                        Adds inter-rank synchronization that the production
+#                        code path does not have; can mask hangs.
+#
+# Typical hang-hunt: HALO_LOG=ON, HALO_SYNC=OFF (log without changing timing).
+option(IPPL_HALO_LOG  "Emit per-rank CG/preconditioner trace to stderr" OFF)
+option(IPPL_HALO_SYNC "Insert MPI_Barrier at each IPPL_HALO_SYNC() site"  OFF)
+if(IPPL_HALO_LOG)
+  add_compile_definitions(IPPL_HALO_LOG_ENABLE)
+endif()
+if(IPPL_HALO_SYNC)
+  add_compile_definitions(IPPL_HALO_SYNC_ENABLE)
 endif()
 
 # ------------------------------------------------------------------------------

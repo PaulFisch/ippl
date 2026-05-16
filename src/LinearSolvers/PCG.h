@@ -10,21 +10,35 @@
 #include "SolverAlgorithm.h"
 #include "FEM/FEMVector.h"
 
-#ifdef IPPL_HALO_DEBUG
+// PCG trace tagged [PCG/r=R]; shares the [HALO/...] block-buffered stderr
+// init and periodic-flush helpers in HaloCells.hpp via "Ippl.h" -> ... ->
+// HaloCells.h. The LOG and SYNC switches are independent so we can trace
+// without inserting extra MPI_Barriers (which mask timing-sensitive hangs).
+#if defined(IPPL_HALO_LOG_ENABLE) || defined(IPPL_HALO_SYNC_ENABLE)
 #include <cstdio>
 #include <sstream>
 #include <mpi.h>
+#endif
+
+#ifdef IPPL_HALO_LOG_ENABLE
 #define IPPL_PCG_LOG(stream)                                                               \
     do {                                                                                   \
-        std::ostringstream _ipplpcglog_oss;                                                \
+        ippl::detail::haloDebugInit();                                                     \
+        thread_local std::ostringstream _ipplpcglog_oss;                                   \
+        _ipplpcglog_oss.str(std::string{});                                                \
+        _ipplpcglog_oss.clear();                                                           \
         _ipplpcglog_oss << "[PCG/r=" << ippl::Comm->rank() << "]" << stream << '\n';       \
-        const auto _ipplpcglog_s = _ipplpcglog_oss.str();                                  \
-        std::fprintf(stderr, "%s", _ipplpcglog_s.c_str());                                 \
-        std::fflush(stderr);                                                               \
+        const std::string& _ipplpcglog_s = _ipplpcglog_oss.str();                          \
+        std::fwrite(_ipplpcglog_s.data(), 1, _ipplpcglog_s.size(), stderr);                \
+        ippl::detail::haloDebugMaybeFlush();                                               \
     } while (0)
-// Phase-boundary barrier inside the CG loop. Same semantics as IPPL_HALO_SYNC
-// but tagged for the PCG trace. If a rank stops emitting "post" lines, the
-// last "pre id=…" line tells us exactly which CG phase it got stuck on.
+#else
+#define IPPL_PCG_LOG(stream) do {} while (0)
+#endif
+
+// Phase-boundary barrier inside the CG loop. If LOG is also on, the trace
+// brackets the barrier. If LOG is off, this is just a bare barrier.
+#ifdef IPPL_HALO_SYNC_ENABLE
 #define IPPL_PCG_SYNC(label)                                                               \
     do {                                                                                   \
         IPPL_PCG_LOG("sync:pre id=" << label);                                             \
@@ -32,7 +46,6 @@
         IPPL_PCG_LOG("sync:post id=" << label);                                            \
     } while (0)
 #else
-#define IPPL_PCG_LOG(stream) do {} while (0)
 #define IPPL_PCG_SYNC(label) do {} while (0)
 #endif
 

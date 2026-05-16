@@ -147,17 +147,17 @@ namespace ippl {
         // first call's lower-depth values have already been folded into
         // Pr_scratch[level] before the second call begins.
         void recursive_preconditioner(Field& u, unsigned int level, Field& out) {
-#ifdef IPPL_HALO_DEBUG
+#ifdef IPPL_HALO_LOG_ENABLE
             IPPL_HALO_LOG("recursive_preconditioner:enter level=" << level
                           << " u_view=" << (void*)u.getView().data()
                           << " out_view=" << (void*)out.getView().data());
 #endif
             if (level == 0) {
-#ifdef IPPL_HALO_DEBUG
+#ifdef IPPL_HALO_LOG_ENABLE
                 IPPL_HALO_LOG("recursive_preconditioner:leaf level=0 before-assign");
 #endif
                 out = eta_m[0] * u;
-#ifdef IPPL_HALO_DEBUG
+#ifdef IPPL_HALO_LOG_ENABLE
                 IPPL_HALO_LOG("recursive_preconditioner:leaf level=0 after-assign");
                 IPPL_HALO_LOG("recursive_preconditioner:exit level=0");
 #endif
@@ -167,24 +167,24 @@ namespace ippl {
             Field& PA   = PA_scratch_m[level];
             Field& PAPr = PAPr_scratch_m[level];
 
-#ifdef IPPL_HALO_DEBUG
+#ifdef IPPL_HALO_LOG_ENABLE
             IPPL_HALO_LOG("recursive_preconditioner:before-rec-1 level=" << level);
 #endif
             recursive_preconditioner(u, level - 1, Pr);
-#ifdef IPPL_HALO_DEBUG
+#ifdef IPPL_HALO_LOG_ENABLE
             IPPL_HALO_LOG("recursive_preconditioner:before-op_m level=" << level);
 #endif
             PA = op_m(Pr);
-#ifdef IPPL_HALO_DEBUG
+#ifdef IPPL_HALO_LOG_ENABLE
             IPPL_HALO_LOG("recursive_preconditioner:after-op_m level=" << level);
             IPPL_HALO_LOG("recursive_preconditioner:before-rec-2 level=" << level);
 #endif
             recursive_preconditioner(PA, level - 1, PAPr);
-#ifdef IPPL_HALO_DEBUG
+#ifdef IPPL_HALO_LOG_ENABLE
             IPPL_HALO_LOG("recursive_preconditioner:before-out-assign level=" << level);
 #endif
             out = eta_m[level] * (2.0 * Pr - PAPr);
-#ifdef IPPL_HALO_DEBUG
+#ifdef IPPL_HALO_LOG_ENABLE
             IPPL_HALO_LOG("recursive_preconditioner:exit level=" << level);
 #endif
         }

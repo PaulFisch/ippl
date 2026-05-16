@@ -12,19 +12,27 @@
 
 #include "Communicate/Communicator.h"
 
-// Compile-time-toggled deadlock instrumentation.
+// Compile-time-toggled deadlock instrumentation. Two independent switches
+// so we can turn the trace on without changing inter-rank timing:
 //
-//   cmake -DIPPL_HALO_DEBUG=ON ...
+//   cmake -DIPPL_HALO_LOG=ON  ...  enables IPPL_HALO_LOG()
+//   cmake -DIPPL_HALO_SYNC=ON ...  enables the MPI_Barrier in IPPL_HALO_SYNC()
 //
-// When ON, IPPL_HALO_LOG / IPPL_HALO_SYNC expand to a stderr trace tagged
-// with [HALO/r=RANK][seq=N]; when OFF they expand to a no-op so call sites
-// can stay in the source unconditionally.
+// Typical hang-hunt: HALO_LOG=ON, HALO_SYNC=OFF (log without altering timing).
 //
-// IPPL_HALO_SYNC additionally inserts an MPI_Barrier so the trace brackets
-// whatever divergence is being hunted. Host-side only (no GPU prints).
-#ifdef IPPL_HALO_DEBUG
+// Speedups vs. the original single-flag instrumentation:
+//   - stderr is reconfigured to fully-buffered (1 MiB) once at the first
+//     log call, so we no longer pay a write() syscall per line.
+//   - the per-call ostringstream is thread_local and reused; it grows once
+//     and stays at that size.
+//   - we drop the per-line fflush; instead we flush every 256 lines, so a
+//     hang loses at most the last few hundred trace lines on each rank.
+//   - the atomic seq counter is a single CAS per call.
+// Host-side only (no GPU prints).
+#if defined(IPPL_HALO_LOG_ENABLE) || defined(IPPL_HALO_SYNC_ENABLE)
 #include <cstdio>
 #include <atomic>
+#include <mutex>
 #include <sstream>
 #include <mpi.h>
 namespace ippl { namespace detail {
@@ -32,20 +40,49 @@ namespace ippl { namespace detail {
         static std::atomic<unsigned long> s{0};
         return s;
     }
+    // Reconfigure stderr once. Without this stderr is unbuffered by C
+    // default and every log line costs a write() syscall, which is what
+    // made HALO_DEBUG slow enough to mask races.
+    inline void haloDebugInit() {
+        static std::once_flag flag;
+        std::call_once(flag, []{
+            static char buf[1u << 20];  // 1 MiB
+            std::setvbuf(stderr, buf, _IOFBF, sizeof(buf));
+        });
+    }
+    inline void haloDebugMaybeFlush() {
+        static std::atomic<unsigned long> count{0};
+        // 0xFF -> flush every 256 lines.
+        if ((count.fetch_add(1, std::memory_order_relaxed) & 0xFFu) == 0xFFu) {
+            std::fflush(stderr);
+        }
+    }
 }}  // namespace ippl::detail
-// Single fprintf so a line emitted by one rank does not interleave with
-// a line emitted by another (POSIX guarantees fprintf with one buffer is
-// atomic up to PIPE_BUF; one fprintf per line keeps the trace readable).
+#endif
+
+#ifdef IPPL_HALO_LOG_ENABLE
+// fprintf is thread-safe on POSIX; the formatting happens in a thread_local
+// ostringstream so we don't allocate on every call.
 #define IPPL_HALO_LOG(stream)                                                              \
     do {                                                                                   \
-        std::ostringstream _ipplhalolog_oss;                                               \
+        ippl::detail::haloDebugInit();                                                     \
+        thread_local std::ostringstream _ipplhalolog_oss;                                  \
+        _ipplhalolog_oss.str(std::string{});                                               \
+        _ipplhalolog_oss.clear();                                                          \
         _ipplhalolog_oss << "[HALO/r=" << ippl::Comm->rank()                               \
                          << "][seq=" << ippl::detail::haloDebugSeq().fetch_add(1) << "]"   \
                          << stream << '\n';                                                \
-        const auto _ipplhalolog_s = _ipplhalolog_oss.str();                                \
-        std::fprintf(stderr, "%s", _ipplhalolog_s.c_str());                                \
-        std::fflush(stderr);                                                               \
+        const std::string& _ipplhalolog_s = _ipplhalolog_oss.str();                        \
+        std::fwrite(_ipplhalolog_s.data(), 1, _ipplhalolog_s.size(), stderr);              \
+        ippl::detail::haloDebugMaybeFlush();                                               \
     } while (0)
+#else
+#define IPPL_HALO_LOG(stream) do {} while (0)
+#endif
+
+#ifdef IPPL_HALO_SYNC_ENABLE
+// If LOG is also on, the macro is HALO_LOG -> barrier -> HALO_LOG so the
+// trace brackets the barrier. If LOG is off, this is just a bare barrier.
 #define IPPL_HALO_SYNC(label)                                                              \
     do {                                                                                   \
         IPPL_HALO_LOG("sync:pre id=" << label);                                            \
@@ -53,7 +90,6 @@ namespace ippl { namespace detail {
         IPPL_HALO_LOG("sync:post id=" << label);                                           \
     } while (0)
 #else
-#define IPPL_HALO_LOG(stream) do {} while (0)
 #define IPPL_HALO_SYNC(label) do {} while (0)
 #endif
 
