@@ -129,24 +129,37 @@ namespace ippl {
                                 const ParameterList& params) override {
             constexpr unsigned Dim = lhs_type::dim;
 
-            static IpplTimings::TimerRef cg_ops = IpplTimings::getTimer("CG");
-            static IpplTimings::TimerRef up_layout = IpplTimings::getTimer("updateLayout");
-            static IpplTimings::TimerRef apply = IpplTimings::getTimer("applyOp");
-            static IpplTimings::TimerRef inner = IpplTimings::getTimer("innerProduct");
+            // Per-phase timers. Names are stable strings so IpplTimings dedups
+            // on register and the report rows line up across runs.
+            static IpplTimings::TimerRef t_total    = IpplTimings::getTimer("CG/total");
+            static IpplTimings::TimerRef t_layout   = IpplTimings::getTimer("CG/updateLayout");
+            static IpplTimings::TimerRef t_bcSetup  = IpplTimings::getTimer("CG/bcSetup");
+            static IpplTimings::TimerRef t_initRes  = IpplTimings::getTimer("CG/initial_residual");
+            static IpplTimings::TimerRef t_initCopy = IpplTimings::getTimer("CG/initial_d_copy");
+            static IpplTimings::TimerRef t_initInner= IpplTimings::getTimer("CG/initial_inner");
+            static IpplTimings::TimerRef t_loop     = IpplTimings::getTimer("CG/loop_total");
+            static IpplTimings::TimerRef t_apply    = IpplTimings::getTimer("CG/loop_applyOp");
+            static IpplTimings::TimerRef t_alpha    = IpplTimings::getTimer("CG/loop_alpha");
+            static IpplTimings::TimerRef t_lhsUpd   = IpplTimings::getTimer("CG/loop_lhs_update");
+            static IpplTimings::TimerRef t_rUpd     = IpplTimings::getTimer("CG/loop_r_update");
+            static IpplTimings::TimerRef t_innerRR  = IpplTimings::getTimer("CG/loop_inner_rr");
+            static IpplTimings::TimerRef t_dUpd     = IpplTimings::getTimer("CG/loop_d_update");
+            static IpplTimings::TimerRef t_post     = IpplTimings::getTimer("CG/postprocess");
 
-            IpplTimings::startTimer(cg_ops);
+            IpplTimings::startTimer(t_total);
 
             iterations_m            = 0;
             const int maxIterations = params.get<int>("max_iterations");
 
             // Variable names mostly based on description in
             // https://www.cs.cmu.edu/~quake-papers/painless-conjugate-gradient.pdf
-            IpplTimings::startTimer(up_layout);
+            IpplTimings::startTimer(t_layout);
             r.updateLayout(lhs.getLayout());
             d.updateLayout(lhs.getLayout());
             q.updateLayout(lhs.getLayout());
-            IpplTimings::stopTimer(up_layout);
+            IpplTimings::stopTimer(t_layout);
 
+            IpplTimings::startTimer(t_bcSetup);
             using bc_type  = BConds<lhs_type, Dim>;
             bc_type lhsBCs = lhs.getFieldBC();
             bc_type bc;
@@ -168,31 +181,38 @@ namespace ippl {
                     return;
                 }
             }
+            IpplTimings::stopTimer(t_bcSetup);
 
-            IpplTimings::startTimer(apply);
+            IpplTimings::startTimer(t_initRes);
             r = rhs - op_m(lhs);
-            IpplTimings::stopTimer(apply);
+            IpplTimings::stopTimer(t_initRes);
 
+            IpplTimings::startTimer(t_initCopy);
             d = r.deepCopy();
             d.setFieldBC(bc);
+            IpplTimings::stopTimer(t_initCopy);
 
-            IpplTimings::startTimer(inner);
+            IpplTimings::startTimer(t_initInner);
             T delta1          = innerProduct(r, d);
-            IpplTimings::stopTimer(inner);
+            IpplTimings::stopTimer(t_initInner);
             T delta0          = delta1;
             residueNorm       = Kokkos::sqrt(delta1);
             const T tolerance = params.get<T>("tolerance") * norm(rhs);
 
+            IpplTimings::startTimer(t_loop);
             while (iterations_m < maxIterations && residueNorm > tolerance) {
 
-                IpplTimings::startTimer(apply);
+                IpplTimings::startTimer(t_apply);
                 q = op_m(d);
-                IpplTimings::stopTimer(apply);
+                IpplTimings::stopTimer(t_apply);
 
-                IpplTimings::startTimer(inner);
+                IpplTimings::startTimer(t_alpha);
                 T alpha = delta1 / innerProduct(d, q);
-                IpplTimings::stopTimer(inner);
+                IpplTimings::stopTimer(t_alpha);
+
+                IpplTimings::startTimer(t_lhsUpd);
                 lhs     = lhs + alpha * d;
+                IpplTimings::stopTimer(t_lhsUpd);
 
                 // The exact residue is given by
                 // r = rhs - op_m(lhs);
@@ -201,23 +221,32 @@ namespace ippl {
                 // the correction does not have a significant effect on accuracy;
                 // in some implementations, the correction may be applied every few
                 // iterations to offset accumulated floating point errors
+                IpplTimings::startTimer(t_rUpd);
                 r      = r - alpha * q;
+                IpplTimings::stopTimer(t_rUpd);
                 delta0 = delta1;
-                IpplTimings::startTimer(inner);
+
+                IpplTimings::startTimer(t_innerRR);
                 delta1 = innerProduct(r, r);
-                IpplTimings::stopTimer(inner);
+                IpplTimings::stopTimer(t_innerRR);
                 T beta = delta1 / delta0;
 
                 residueNorm = Kokkos::sqrt(delta1);
+
+                IpplTimings::startTimer(t_dUpd);
                 d           = r + beta * d;
+                IpplTimings::stopTimer(t_dUpd);
                 ++iterations_m;
             }
+            IpplTimings::stopTimer(t_loop);
 
+            IpplTimings::startTimer(t_post);
             if (allFacesPeriodic) {
                 T avg = lhs.getVolumeAverage();
                 lhs   = lhs - avg;
             }
-            IpplTimings::stopTimer(cg_ops);
+            IpplTimings::stopTimer(t_post);
+            IpplTimings::stopTimer(t_total);
         }
 
         virtual T getResidue() const { return residueNorm; }
@@ -473,6 +502,27 @@ namespace ippl {
         void operator()(lhs_type& lhs, rhs_type& rhs, const ParameterList& params) override {
             constexpr unsigned Dim = lhs_type::dim;
 
+            // Per-phase timers. "PCG/" prefix keeps the report table grouped.
+            static IpplTimings::TimerRef t_total     = IpplTimings::getTimer("PCG/total");
+            static IpplTimings::TimerRef t_layout    = IpplTimings::getTimer("PCG/updateLayout");
+            static IpplTimings::TimerRef t_precInit  = IpplTimings::getTimer("PCG/precond_init_fields");
+            static IpplTimings::TimerRef t_bcSetup   = IpplTimings::getTimer("PCG/bcSetup");
+            static IpplTimings::TimerRef t_initRes   = IpplTimings::getTimer("PCG/initial_residual");
+            static IpplTimings::TimerRef t_initPc    = IpplTimings::getTimer("PCG/initial_pcond");
+            static IpplTimings::TimerRef t_initDsetup= IpplTimings::getTimer("PCG/initial_d_setup");
+            static IpplTimings::TimerRef t_initInner = IpplTimings::getTimer("PCG/initial_inner");
+            static IpplTimings::TimerRef t_loop      = IpplTimings::getTimer("PCG/loop_total");
+            static IpplTimings::TimerRef t_apply     = IpplTimings::getTimer("PCG/loop_applyOp");
+            static IpplTimings::TimerRef t_alpha     = IpplTimings::getTimer("PCG/loop_alpha");
+            static IpplTimings::TimerRef t_lhsUpd    = IpplTimings::getTimer("PCG/loop_lhs_update");
+            static IpplTimings::TimerRef t_rUpd      = IpplTimings::getTimer("PCG/loop_r_update");
+            static IpplTimings::TimerRef t_loopPc    = IpplTimings::getTimer("PCG/loop_pcond");
+            static IpplTimings::TimerRef t_innerRS   = IpplTimings::getTimer("PCG/loop_inner_rs");
+            static IpplTimings::TimerRef t_dUpd      = IpplTimings::getTimer("PCG/loop_d_update");
+            static IpplTimings::TimerRef t_post      = IpplTimings::getTimer("PCG/postprocess");
+
+            IpplTimings::startTimer(t_total);
+
             if (preconditioner_m == nullptr) {
                 throw IpplException("PCG::operator()",
                                     "Preconditioner has not been set for PCG solver");
@@ -492,19 +542,24 @@ namespace ippl {
             // r, d, q come from the CG base class; s is a PCG member. All are
             // pre-allocated via initializeFields(); operator() only refreshes
             // their layout so we track load-balancing repartitions of the lhs.
+            IpplTimings::startTimer(t_layout);
             this->r.updateLayout(lhs.getLayout());
             this->d.updateLayout(lhs.getLayout());
             s.updateLayout(lhs.getLayout());
             pcond_out.updateLayout(lhs.getLayout());
             this->q.updateLayout(lhs.getLayout());
+            IpplTimings::stopTimer(t_layout);
 
             // Preconditioner scratch must follow the current lhs layout too,
             // otherwise its halo-exchange neighbor list goes out of sync with
             // r/d/s/q after a repartition and halo MPI calls deadlock. Each
             // preconditioner's init_fields() is responsible for being cheap on
             // the steady-state path (refreshing layout, not reallocating).
+            IpplTimings::startTimer(t_precInit);
             preconditioner_m->init_fields(lhs);
+            IpplTimings::stopTimer(t_precInit);
 
+            IpplTimings::startTimer(t_bcSetup);
             using bc_type  = BConds<lhs_type, Dim>;
             bc_type lhsBCs = lhs.getFieldBC();
             bc_type bc;
@@ -526,10 +581,13 @@ namespace ippl {
                     return;
                 }
             }
+            IpplTimings::stopTimer(t_bcSetup);
 
             IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_residual");
             IPPL_PCG_SYNC("initial_residual:pre solve#" << solve_count_m);
+            IpplTimings::startTimer(t_initRes);
             this->r = rhs - this->op_m(lhs);
+            IpplTimings::stopTimer(t_initRes);
             IPPL_PCG_SYNC("initial_residual:post solve#" << solve_count_m);
             // The preconditioner writes into pcond_out (NoBcFace, no halo MPI
             // from BC apply), then we hand the result over to d via an
@@ -540,21 +598,28 @@ namespace ippl {
             // pcond.
             IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_pcond:pre");
             IPPL_PCG_SYNC("initial_pcond:pre solve#" << solve_count_m);
+            IpplTimings::startTimer(t_initPc);
             (*preconditioner_m)(this->r, pcond_out);
+            IpplTimings::stopTimer(t_initPc);
             IPPL_PCG_SYNC("initial_pcond:post solve#" << solve_count_m);
             IPPL_PCG_LOG("solve#=" << solve_count_m << " step=initial_pcond:post");
+            IpplTimings::startTimer(t_initDsetup);
             this->d = T(1) * pcond_out;
             IPPL_PCG_SYNC("initial_setFieldBC:pre solve#" << solve_count_m);
             this->d.setFieldBC(bc);
+            IpplTimings::stopTimer(t_initDsetup);
             IPPL_PCG_SYNC("initial_setFieldBC:post solve#" << solve_count_m);
 
+            IpplTimings::startTimer(t_initInner);
             T delta1          = innerProduct(this->r, this->d);
+            IpplTimings::stopTimer(t_initInner);
             T delta0           = delta1;
             this->residueNorm = Kokkos::sqrt(Kokkos::abs(delta1));
             const T tolerance = params.get<T>("tolerance") * this->residueNorm;
             IPPL_PCG_LOG("solve#=" << solve_count_m << " step=loop_start"
                          << " residue=" << this->residueNorm << " tol=" << tolerance);
 
+            IpplTimings::startTimer(t_loop);
             while (this->iterations_m < maxIterations && this->residueNorm > tolerance) {
                 IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
                              << " step=apply_op");
@@ -562,11 +627,17 @@ namespace ippl {
                               << " iter=" << this->iterations_m);
                 // q = op_m(d) writes the expression into q's existing storage
                 // via operator=(Expression); no allocation, no extra deep copy.
+                IpplTimings::startTimer(t_apply);
                 this->q = this->op_m(this->d);
+                IpplTimings::stopTimer(t_apply);
                 IPPL_PCG_SYNC("iter_apply_op:post solve#" << solve_count_m
                               << " iter=" << this->iterations_m);
+                IpplTimings::startTimer(t_alpha);
                 T alpha = delta1 / innerProduct(this->d, this->q);
+                IpplTimings::stopTimer(t_alpha);
+                IpplTimings::startTimer(t_lhsUpd);
                 lhs     = lhs + alpha * this->d;
+                IpplTimings::stopTimer(t_lhsUpd);
 
                 // The exact residue is given by
                 // r = rhs - BaseCG::op_m(lhs);
@@ -575,7 +646,9 @@ namespace ippl {
                 // the correction does not have a significant effect on accuracy;
                 // in some implementations, the correction may be applied every few
                 // iterations to offset accumulated floating point errors
+                IpplTimings::startTimer(t_rUpd);
                 this->r = this->r - alpha * this->q;
+                IpplTimings::stopTimer(t_rUpd);
                 IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
                              << " step=loop_pcond:pre");
                 IPPL_PCG_SYNC("iter_pcond:pre solve#" << solve_count_m
@@ -583,30 +656,40 @@ namespace ippl {
                 // s := M^{-1} r; preconditioner writes into s. s has NoBcFace
                 // BCs (never set by setFieldBC), so its operator chain matches
                 // master's NoBcFace scratch behaviour.
+                IpplTimings::startTimer(t_loopPc);
                 (*preconditioner_m)(this->r, s);
+                IpplTimings::stopTimer(t_loopPc);
                 IPPL_PCG_SYNC("iter_pcond:post solve#" << solve_count_m
                               << " iter=" << this->iterations_m);
                 IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
                              << " step=loop_pcond:post");
 
                 delta0 = delta1;
+                IpplTimings::startTimer(t_innerRS);
                 delta1 = innerProduct(this->r, s);
+                IpplTimings::stopTimer(t_innerRS);
 
                 T beta            = delta1 / delta0;
                 this->residueNorm = Kokkos::sqrt(Kokkos::abs(delta1));
 
+                IpplTimings::startTimer(t_dUpd);
                 this->d = s + beta * this->d;
+                IpplTimings::stopTimer(t_dUpd);
                 ++this->iterations_m;
                 IPPL_PCG_LOG("solve#=" << solve_count_m << " iter=" << this->iterations_m
                              << " step=loop_end residue=" << this->residueNorm);
             }
+            IpplTimings::stopTimer(t_loop);
             IPPL_PCG_LOG("solve#=" << solve_count_m << " step=exit iters=" << this->iterations_m
                          << " residue=" << this->residueNorm);
 
+            IpplTimings::startTimer(t_post);
             if (allFacesPeriodic) {
                 T avg = lhs.getVolumeAverage();
                 lhs   = lhs - avg;
             }
+            IpplTimings::stopTimer(t_post);
+            IpplTimings::stopTimer(t_total);
         }
 
     protected:
