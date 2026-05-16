@@ -233,13 +233,29 @@ namespace ippl {
 
                 using memory_space = typename Field::memory_space;
                 using buffer_type  = mpi::Communicator::buffer_type<memory_space>;
-                std::vector<MPI_Request> requests(neighbors.size());
 
                 using HaloCells_t = typename Field::halo_type;
                 using range_t     = typename HaloCells_t::bound_type;
                 HaloCells_t& halo = field.getHalo();
                 std::vector<range_t> rangeNeighbors;
+                rangeNeighbors.reserve(neighbors.size());
 
+                // Same "Irecv-first then Isend, single Waitall, unpack
+                // after" pattern as HaloCells::exchangeBoundaries. See the
+                // comment there for why we no longer use the old "Isend
+                // loop then blocking Recv loop" form.
+                std::vector<MPI_Request> recvRequests;
+                std::vector<buffer_type> recvBuffers;
+                std::vector<range_t>     recvRangeList;
+                std::vector<detail::size_type> recvSizes;
+                recvRequests.reserve(neighbors.size());
+                recvBuffers.reserve(neighbors.size());
+                recvRangeList.reserve(neighbors.size());
+                recvSizes.reserve(neighbors.size());
+
+                // Compute the send ranges first (they're needed both for the
+                // send pack and to derive the corresponding recv ranges) and
+                // post the Irecvs.
                 for (size_t i = 0; i < neighbors.size(); ++i) {
                     int rank = neighbors[i];
 
@@ -259,35 +275,51 @@ namespace ippl {
 
                     rangeNeighbors.push_back(range);
 
+                    range_t recvRange = range;
+                    recvRange.lo[d] = recvRange.lo[d] + offsetRecv;
+                    recvRange.hi[d] = recvRange.hi[d] + offsetRecv;
+
+                    detail::size_type nRecvs = recvRange.size();
+                    buffer_type rbuf = comm.template getBuffer<memory_space, T>(nRecvs);
+
+                    MPI_Request rreq;
+                    comm.irecv(rank, matchtag, *rbuf, rreq, nRecvs * sizeof(T));
+
+                    recvRequests.push_back(rreq);
+                    recvBuffers.push_back(rbuf);
+                    recvRangeList.push_back(recvRange);
+                    recvSizes.push_back(nRecvs);
+                }
+
+                // Pack and post the Isends.
+                std::vector<MPI_Request> sendRequests(neighbors.size());
+                for (size_t i = 0; i < neighbors.size(); ++i) {
+                    int rank          = neighbors[i];
+                    range_t sendRange = rangeNeighbors[i];
+
                     detail::size_type nSends;
-                    halo.pack(range, view, haloData_m, nSends);
+                    halo.pack(sendRange, view, haloData_m, nSends);
 
                     buffer_type buf = comm.template getBuffer<memory_space, T>(nSends);
 
-                    comm.isend(rank, tag, haloData_m, *buf, requests[i], nSends);
+                    comm.isend(rank, tag, haloData_m, *buf, sendRequests[i], nSends);
                     buf->resetWritePos();
                 }
 
-                for (size_t i = 0; i < neighbors.size(); ++i) {
-                    int rank = neighbors[i];
+                if (!sendRequests.empty()) {
+                    MPI_Waitall(sendRequests.size(), sendRequests.data(), MPI_STATUSES_IGNORE);
+                    MPI_Waitall(recvRequests.size(), recvRequests.data(), MPI_STATUSES_IGNORE);
+                }
 
-                    range_t range = rangeNeighbors[i];
-
-                    range.lo[d] = range.lo[d] + offsetRecv;
-                    range.hi[d] = range.hi[d] + offsetRecv;
-
-                    detail::size_type nRecvs = range.size();
-
-                    buffer_type buf = comm.template getBuffer<memory_space, T>(nRecvs);
-                    comm.recv(rank, matchtag, haloData_m, *buf, nRecvs * sizeof(T), nRecvs);
-                    buf->resetReadPos();
-
+                // Deserialize and unpack each recv in order; haloData_m is
+                // the shared scratch buffer that each pair overwrites.
+                for (size_t k = 0; k < recvBuffers.size(); ++k) {
+                    haloData_m.deserialize(*recvBuffers[k], recvSizes[k]);
+                    recvBuffers[k]->resetReadPos();
                     using assign_t = typename HaloCells_t::assign;
-                    halo.template unpack<assign_t>(range, view, haloData_m);
+                    halo.template unpack<assign_t>(recvRangeList[k], view, haloData_m);
                 }
-                if (!requests.empty()) {
-                    MPI_Waitall(requests.size(), requests.data(), MPI_STATUSES_IGNORE);
-                }
+
                 comm.freeAllBuffers();
             }
             // For all other processors do nothing

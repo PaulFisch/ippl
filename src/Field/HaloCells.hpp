@@ -25,13 +25,23 @@
 //     log call, so we no longer pay a write() syscall per line.
 //   - the per-call ostringstream is thread_local and reused; it grows once
 //     and stays at that size.
-//   - we drop the per-line fflush; instead we flush every 256 lines, so a
-//     hang loses at most the last few hundred trace lines on each rank.
+//   - we drop the per-line fflush; instead we flush every 64 lines and on
+//     fatal signals, so a hang loses at most ~64 trace lines per rank
+//     (smaller window than the original 256 because the last few dozen
+//     lines are exactly what tells us which MPI op blocked).
 //   - the atomic seq counter is a single CAS per call.
+//
+// Flushing on termination: we install SIGTERM/SIGINT/SIGHUP handlers that
+// drain stderr before the process dies. slurm sends SIGTERM with a grace
+// period before SIGKILL, so the handler reliably catches a timed-out job.
+// SIGUSR1 also forces a flush, so `kill -USR1 <pid>` from another shell
+// captures the live state of a stuck rank without killing it.
 // Host-side only (no GPU prints).
 #if defined(IPPL_HALO_LOG_ENABLE) || defined(IPPL_HALO_SYNC_ENABLE)
 #include <cstdio>
 #include <atomic>
+#include <csignal>
+#include <cstdlib>
 #include <mutex>
 #include <sstream>
 #include <mpi.h>
@@ -40,20 +50,42 @@ namespace ippl { namespace detail {
         static std::atomic<unsigned long> s{0};
         return s;
     }
+    // Async-signal-safe (or close enough): fflush(NULL) flushes all open
+    // streams. The C standard does not guarantee fflush is signal-safe, but
+    // glibc's implementation is in practice safe for our case (no nested
+    // signal, single writer). The worst case is a malformed last line, not
+    // a deadlocked flush. Re-raise so the default action still terminates
+    // the process for fatal signals.
+    inline void haloDebugFatalSignal(int sig) {
+        std::fflush(NULL);
+        std::signal(sig, SIG_DFL);
+        std::raise(sig);
+    }
+    inline void haloDebugUsrSignal(int /*sig*/) {
+        std::fflush(NULL);  // SIGUSR1: flush and keep running.
+    }
     // Reconfigure stderr once. Without this stderr is unbuffered by C
     // default and every log line costs a write() syscall, which is what
-    // made HALO_DEBUG slow enough to mask races.
+    // made HALO_DEBUG slow enough to mask races. Also install signal
+    // handlers so the buffer drains on graceful termination.
     inline void haloDebugInit() {
         static std::once_flag flag;
         std::call_once(flag, []{
             static char buf[1u << 20];  // 1 MiB
             std::setvbuf(stderr, buf, _IOFBF, sizeof(buf));
+            std::atexit([]{ std::fflush(NULL); });
+            std::signal(SIGTERM, haloDebugFatalSignal);
+            std::signal(SIGINT,  haloDebugFatalSignal);
+            std::signal(SIGHUP,  haloDebugFatalSignal);
+            std::signal(SIGUSR1, haloDebugUsrSignal);
         });
     }
     inline void haloDebugMaybeFlush() {
         static std::atomic<unsigned long> count{0};
-        // 0xFF -> flush every 256 lines.
-        if ((count.fetch_add(1, std::memory_order_relaxed) & 0xFFu) == 0xFFu) {
+        // 0x3F -> flush every 64 lines (~6 KB per rank). Small enough that
+        // a kill -9 loses at most ~64 lines, large enough that the fwrite
+        // path stays cheap.
+        if ((count.fetch_add(1, std::memory_order_relaxed) & 0x3Fu) == 0x3Fu) {
             std::fflush(stderr);
         }
     }
@@ -149,10 +181,74 @@ namespace ippl {
 
             using memory_space = typename view_type::memory_space;
             using buffer_type  = mpi::Communicator::buffer_type<memory_space>;
-            std::vector<MPI_Request> requests(totalRequests);
-            // sending loop
             constexpr size_t cubeCount = detail::countHypercubes(Dim) - 1;
-            size_t requestIndex        = 0;
+
+            // Post all Irecvs first, then all Isends, then a single Waitall
+            // over both sides. The previous "all Isends, then all blocking
+            // Recvs" pattern is standard-conformant, but on GPU-aware Cray
+            // MPICH + UCX we observed individual MPI_Isend calls blocking
+            // for >145 s when the implementation's send-side rendezvous /
+            // registration-cache resources fill before any matching receive
+            // is posted. Posting Irecvs first gives the implementation
+            // matching receives to clear those resources against, and is the
+            // recommended pattern in both the Cray and UCX docs.
+            std::vector<MPI_Request> recvRequests;
+            std::vector<buffer_type> recvBuffers;
+            std::vector<bound_type>  recvRangeList;
+            std::vector<size_type>   recvSizes;
+            recvRequests.reserve(totalRequests);
+            recvBuffers.reserve(totalRequests);
+            recvRangeList.reserve(totalRequests);
+            recvSizes.reserve(totalRequests);
+
+            // Irecv loop: allocate a unique buffer per neighbor and post the
+            // Irecv. Deserialization into haloData_m is deferred to after
+            // Waitall because haloData_m is a single scratch buffer that
+            // gets overwritten by each deserialize/unpack pair.
+            for (size_t index = 0; index < cubeCount; index++) {
+                int tag                        = mpi::tag::HALO + Layout_t::getMatchingIndex(index);
+                const auto& componentNeighbors = neighbors[index];
+                for (size_t i = 0; i < componentNeighbors.size(); i++) {
+                    int sourceRank = componentNeighbors[i];
+
+                    bound_type range;
+                    if (order == INTERNAL_TO_HALO) {
+                        range = recvRanges[index][i];
+                    } else if (order == HALO_TO_INTERNAL_NOGHOST) {
+                        range = sendRanges[index][i];
+
+                        for (size_t j = 0; j < Dim; ++j) {
+                            bool isLower = ((range.lo[j] + ldomains[me][j].first()
+                                            - nghost) == domain[j].min());
+                            bool isUpper = ((range.hi[j] - 1 +
+                                            ldomains[me][j].first() - nghost)
+                                            == domain[j].max());
+                            range.lo[j] += isLower * (nghost);
+                            range.hi[j] -= isUpper * (nghost);
+                        }
+                    } else {
+                        range = sendRanges[index][i];
+                    }
+
+                    size_type nrecvs = range.size();
+                    buffer_type buf = comm.template getBuffer<memory_space, T>(nrecvs);
+
+                    MPI_Request req;
+                    comm.irecv(sourceRank, tag, *buf, req, nrecvs * sizeof(T));
+
+                    recvRequests.push_back(req);
+                    recvBuffers.push_back(buf);
+                    recvRangeList.push_back(range);
+                    recvSizes.push_back(nrecvs);
+                }
+            }
+
+            // Isend loop: same pack/serialize/Isend pattern as before. The
+            // pack writes into haloData_m; isend serializes haloData_m into
+            // a per-call buffer before launching MPI_Isend, so reusing
+            // haloData_m across send iterations is safe.
+            std::vector<MPI_Request> sendRequests(totalRequests);
+            size_t sendIndex = 0;
             for (size_t index = 0; index < cubeCount; index++) {
                 int tag                        = mpi::tag::HALO + index;
                 const auto& componentNeighbors = neighbors[index];
@@ -173,7 +269,7 @@ namespace ippl {
                         for (size_t j = 0; j < Dim; ++j) {
                             bool isLower = ((range.lo[j] + ldomains[me][j].first()
                                             - nghost) == domain[j].min());
-                            bool isUpper = ((range.hi[j] - 1 + 
+                            bool isUpper = ((range.hi[j] - 1 +
                                             ldomains[me][j].first() - nghost)
                                             == domain[j].max());
                             range.lo[j] += isLower * (nghost);
@@ -188,52 +284,24 @@ namespace ippl {
 
                     buffer_type buf = comm.template getBuffer<memory_space, T>(nsends);
 
-                    comm.isend(targetRank, tag, haloData_m, *buf, requests[requestIndex++], nsends);
+                    comm.isend(targetRank, tag, haloData_m, *buf, sendRequests[sendIndex++], nsends);
                     buf->resetWritePos();
                 }
             }
 
-            // receiving loop
-            for (size_t index = 0; index < cubeCount; index++) {
-                int tag                        = mpi::tag::HALO + Layout_t::getMatchingIndex(index);
-                const auto& componentNeighbors = neighbors[index];
-                for (size_t i = 0; i < componentNeighbors.size(); i++) {
-                    int sourceRank = componentNeighbors[i];
-
-                    bound_type range;
-                    if (order == INTERNAL_TO_HALO) {
-                        range = recvRanges[index][i];
-                    } else if (order == HALO_TO_INTERNAL_NOGHOST) {
-                        range = sendRanges[index][i];
-
-                        for (size_t j = 0; j < Dim; ++j) {
-                            bool isLower = ((range.lo[j] + ldomains[me][j].first()
-                                            - nghost) == domain[j].min());
-                            bool isUpper = ((range.hi[j] - 1 + 
-                                            ldomains[me][j].first() - nghost)
-                                            == domain[j].max());
-                            range.lo[j] += isLower * (nghost);
-                            range.hi[j] -= isUpper * (nghost);
-                        }
-                    } else {
-                        range = sendRanges[index][i];
-                    }
-
-                    size_type nrecvs = range.size();
-
-                    buffer_type buf = comm.template getBuffer<memory_space, T>(nrecvs);
-
-                    comm.recv(sourceRank, tag, haloData_m, *buf, nrecvs * sizeof(T), nrecvs);
-                    buf->resetReadPos();
-
-                    unpack<Op>(range, view, haloData_m);
-                }
-            }
-
             if (totalRequests > 0) {
-                MPI_Waitall(totalRequests, requests.data(), MPI_STATUSES_IGNORE);
+                MPI_Waitall(sendRequests.size(), sendRequests.data(), MPI_STATUSES_IGNORE);
+                MPI_Waitall(recvRequests.size(), recvRequests.data(), MPI_STATUSES_IGNORE);
             }
-            
+
+            // Deserialize + unpack each recv buffer in order. haloData_m is
+            // overwritten by each pair, so the loop must be sequential.
+            for (size_t k = 0; k < recvBuffers.size(); ++k) {
+                haloData_m.deserialize(*recvBuffers[k], recvSizes[k]);
+                recvBuffers[k]->resetReadPos();
+                unpack<Op>(recvRangeList[k], view, haloData_m);
+            }
+
             comm.freeAllBuffers();
         }
 
